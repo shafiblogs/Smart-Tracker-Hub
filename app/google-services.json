@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "541031697157",
+    "project_id": "smart-tracker-hub",
+    "storage_bucket": "smart-tracker-hub.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:541031697157:android:852f2a0838b678152e456c",
+        "android_client_info": {
+          "package_name": "com.marsa.smarttrackerhub"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCdMyysBT_zf2SBdAbGa5llzuTgkkJGlbc"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
