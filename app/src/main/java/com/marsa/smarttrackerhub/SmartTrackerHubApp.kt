@@ -23,7 +23,7 @@ class SmartTrackerHubApp : Application() {
             .setApplicationId("com.marsa.smarttracker")
             .setApiKey("AIzaSyC2l2MAQEBsRLt9-X5JMyIrRrZ0Gz6vwbA")
             .setProjectId("smart-tracker-8012f")
-            .setStorageBucket("smart-tracker-8012f.appspot.com")
+            .setStorageBucket("smart-tracker-8012f.firebasestorage.app")
             .build()
         FirebaseApp.initializeApp(this, trackerOptions, "SmartTrackerApp")
     }
