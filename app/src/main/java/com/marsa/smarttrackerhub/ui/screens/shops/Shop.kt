@@ -7,6 +7,8 @@ package com.marsa.smarttrackerhub.ui.screens.shops
  * muhammed.poyil@morohub.com
  */
 data class Shop(
-    val id: String = "",           // Firebase doc ID
-    val name: String = ""          // Any fields you store
+    val name: String? = null,
+    val address: String? = null,
+    val shopId: String? = null,
+    val token: String? = null
 )

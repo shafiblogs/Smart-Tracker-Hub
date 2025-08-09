@@ -4,6 +4,7 @@ import android.app.Application
 import android.util.Log
 import com.google.firebase.FirebaseApp
 import com.google.firebase.FirebaseOptions
+import com.google.firebase.firestore.FirebaseFirestore
 
 
 /**
@@ -14,25 +15,16 @@ import com.google.firebase.FirebaseOptions
 class SmartTrackerHubApp : Application() {
     override fun onCreate() {
         super.onCreate()
+        // Default app (Hub project)
         FirebaseApp.initializeApp(this)
 
         // Initialize Firebase App (Smart Tracker)
-        val options = FirebaseOptions.Builder()
+        val trackerOptions = FirebaseOptions.Builder()
             .setApplicationId("com.marsa.smarttracker")
             .setApiKey("AIzaSyC2l2MAQEBsRLt9-X5JMyIrRrZ0Gz6vwbA")
             .setProjectId("smart-tracker-8012f")
             .setStorageBucket("smart-tracker-8012f.appspot.com")
             .build()
-
-        val firebaseApp =
-            FirebaseApp.initializeApp(applicationContext, options, "com.marsa.smarttracker")
-        Log.d(
-            "Firebase",
-            "Initialized app: ${firebaseApp.name}, is default: ${
-                FirebaseApp.getApps(this).contains(firebaseApp)
-            }"
-        )
-        // Use Firebase Firestore
-        //val firestore = FirebaseFirestore.getInstance(firebaseApp)
+        FirebaseApp.initializeApp(this, trackerOptions, "SmartTrackerApp")
     }
 }
