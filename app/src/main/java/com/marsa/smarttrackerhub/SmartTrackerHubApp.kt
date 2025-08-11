@@ -21,9 +21,9 @@ class SmartTrackerHubApp : Application() {
         // Initialize Firebase App (Smart Tracker)
         val trackerOptions = FirebaseOptions.Builder()
             .setApplicationId("com.marsa.smarttracker")
-            .setApiKey("AIzaSyC2l2MAQEBsRLt9-X5JMyIrRrZ0Gz6vwbA")
-            .setProjectId("smart-tracker-8012f")
-            .setStorageBucket("smart-tracker-8012f.firebasestorage.app")
+            .setApiKey("###")
+            .setProjectId("##")
+            .setStorageBucket("##")
             .build()
         FirebaseApp.initializeApp(this, trackerOptions, "SmartTrackerApp")
     }
