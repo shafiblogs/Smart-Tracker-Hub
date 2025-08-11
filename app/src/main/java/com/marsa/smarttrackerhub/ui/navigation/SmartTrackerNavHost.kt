@@ -47,8 +47,14 @@ import com.marsa.smarttrackerhub.ui.components.SmallTextField
 import com.marsa.smarttrackerhub.ui.screens.SplashScreen
 import com.marsa.smarttrackerhub.ui.screens.account.AccountSetupScreen
 import com.marsa.smarttrackerhub.ui.screens.category.CategoryListScreen
+import com.marsa.smarttrackerhub.ui.screens.employees.AddEmployeeScreen
+import com.marsa.smarttrackerhub.ui.screens.employees.EmployeesScreen
 import com.marsa.smarttrackerhub.ui.screens.home.HomeScreen
+import com.marsa.smarttrackerhub.ui.screens.investers.AddInvestorScreen
+import com.marsa.smarttrackerhub.ui.screens.investers.InvestorsScreen
 import com.marsa.smarttrackerhub.ui.screens.login.LoginScreen
+import com.marsa.smarttrackerhub.ui.screens.shops.AddShopScreen
+import com.marsa.smarttrackerhub.ui.screens.shops.ShopsListScreen
 import com.marsa.smarttrackerhub.ui.screens.shops.ShopsScreen
 import com.marsa.smarttrackerhub.ui.screens.summary.SummaryScreen
 import kotlinx.coroutines.launch
@@ -116,8 +122,26 @@ fun SmartTrackerNavHost(navController: NavHostController) {
             }
             composable(Screen.Shops.route) { ShopsScreen() }
             composable(Screen.Summary.route) { SummaryScreen() }
+            composable(Screen.AddShop.route) { AddShopScreen() }
+            composable(Screen.AddInvestor.route) { AddInvestorScreen() }
+            composable(Screen.AddEmployee.route) { AddEmployeeScreen() }
             composable(Screen.CategoryList.route) {
                 CategoryListScreen(
+                    onItemClick = {},
+                    onAddClick = {})
+            }
+            composable(Screen.ShopList.route) {
+                ShopsListScreen(
+                    onItemClick = {},
+                    onAddClick = {})
+            }
+            composable(Screen.Investors.route) {
+                InvestorsScreen(
+                    onItemClick = {},
+                    onAddClick = {})
+            }
+            composable(Screen.Employees.route) {
+                EmployeesScreen(
                     onItemClick = {},
                     onAddClick = {})
             }
@@ -151,40 +175,6 @@ fun SmartTrackerNavHost(navController: NavHostController) {
                         )
                     }
 
-                    Screen.Shops.route -> {
-                        TopAppBar(
-                            title = {
-                                CommonTextField(
-                                    value = "Sales Track",
-                                    style = sTypography.titleLarge.copy(
-                                        fontWeight = FontWeight.Bold,
-                                        fontSize = 22.sp
-                                    )
-                                )
-                            },
-                            navigationIcon = {
-                                IconButton(onClick = { navController.popBackStack() }) {
-                                    Icon(
-                                        Icons.AutoMirrored.Filled.ArrowBack,
-                                        contentDescription = "Back",
-                                        tint = MaterialTheme.colorScheme.onSurface
-                                    )
-                                }
-                            },
-                            actions = {
-//                                IconButton(onClick = { navController.navigate(Screen.AddSales.route) }) {
-//                                    Icon(
-//                                        imageVector = Icons.Default.Add,
-//                                        contentDescription = "Add Sales",
-//                                        tint = MaterialTheme.colorScheme.primary,
-//                                        modifier = Modifier.size(28.dp),
-//                                    )
-//                                }
-                            },
-                            colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent)
-                        )
-                    }
-
                     Screen.Login.route -> {
                         TopAppBar(
                             title = {
@@ -200,12 +190,15 @@ fun SmartTrackerNavHost(navController: NavHostController) {
                         )
                     }
 
-                    Screen.Shops.route, Screen.AccountSetup.route, Screen.CategoryList.route, Screen.Summary.route,
+                    Screen.Shops.route, Screen.ShopList.route, Screen.AddShop.route,
+                    Screen.Investors.route, Screen.AddInvestor.route, Screen.Employees.route, Screen.AddEmployee.route,
+                    Screen.AccountSetup.route, Screen.CategoryList.route, Screen.Summary.route,
                     Screen.AddCategory.route -> {
                         val titleText = when (currentRoute) {
                             Screen.AccountSetup.route -> "My Account"
-                            Screen.CategoryList.route -> "Categories"
-                            Screen.AddCategory.route -> "Add Category"
+                            Screen.Investors.route -> "Investors"
+                            Screen.ShopList.route -> "Shops"
+                            Screen.Employees.route -> "Employees"
                             else -> "$currentRoute Records"
                         }
                         TopAppBar(
@@ -305,7 +298,9 @@ fun SmartTrackerNavHost(navController: NavHostController) {
 
                         val drawerItems = listOf(
                             Screen.AccountSetup.route to "My Account",
-                            Screen.CategoryList.route to "Categories",
+                            Screen.Investors.route to "Investors",
+                            Screen.ShopList.route to "Shops",
+                            Screen.Employees.route to "Employees",
                         )
 
                         drawerItems.forEach { (route, label) ->
