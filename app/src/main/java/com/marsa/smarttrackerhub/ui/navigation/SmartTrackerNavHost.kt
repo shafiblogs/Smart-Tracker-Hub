@@ -133,17 +133,23 @@ fun SmartTrackerNavHost(navController: NavHostController) {
             composable(Screen.ShopList.route) {
                 ShopsListScreen(
                     onItemClick = {},
-                    onAddClick = {})
+                    onAddClick = {
+                        navController.navigate(Screen.AddShop.route)
+                    })
             }
             composable(Screen.Investors.route) {
                 InvestorsScreen(
                     onItemClick = {},
-                    onAddClick = {})
+                    onAddClick = {
+                        navController.navigate(Screen.AddInvestor.route)
+                    })
             }
             composable(Screen.Employees.route) {
                 EmployeesScreen(
                     onItemClick = {},
-                    onAddClick = {})
+                    onAddClick = {
+                        navController.navigate(Screen.AddEmployee.route)
+                    })
             }
         }
     }
