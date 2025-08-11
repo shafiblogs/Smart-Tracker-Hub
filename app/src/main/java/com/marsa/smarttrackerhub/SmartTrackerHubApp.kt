@@ -1,10 +1,8 @@
 package com.marsa.smarttrackerhub
 
 import android.app.Application
-import android.util.Log
 import com.google.firebase.FirebaseApp
 import com.google.firebase.FirebaseOptions
-import com.google.firebase.firestore.FirebaseFirestore
 
 
 /**
@@ -21,9 +19,9 @@ class SmartTrackerHubApp : Application() {
         // Initialize Firebase App (Smart Tracker)
         val trackerOptions = FirebaseOptions.Builder()
             .setApplicationId("com.marsa.smarttracker")
-            .setApiKey("###")
-            .setProjectId("##")
-            .setStorageBucket("##")
+            .setApiKey(BuildConfig.api_key)
+            .setProjectId(BuildConfig.project_id)
+            .setStorageBucket(BuildConfig.storage_bucket)
             .build()
         FirebaseApp.initializeApp(this, trackerOptions, "SmartTrackerApp")
     }

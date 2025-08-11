@@ -1,3 +1,6 @@
+import java.io.FileInputStream
+import java.util.Properties
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
@@ -10,12 +13,22 @@ android {
     namespace = "com.marsa.smarttrackerhub"
     compileSdk = 35
 
+    buildFeatures {
+        buildConfig = true
+    }
+
     defaultConfig {
         applicationId = "com.marsa.smarttrackerhub"
         minSdk = 29
         targetSdk = 35
         versionCode = 1
         versionName = "1.0"
+
+        val localProperties = Properties()
+        localProperties.load(FileInputStream(rootProject.file("local.properties")))
+        buildConfigField("String", "api_key", "\"${localProperties["api_key"]}\"")
+        buildConfigField("String", "project_id", "\"${localProperties["project_id"]}\"")
+        buildConfigField("String", "storage_bucket", "\"${localProperties["storage_bucket"]}\"")
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
