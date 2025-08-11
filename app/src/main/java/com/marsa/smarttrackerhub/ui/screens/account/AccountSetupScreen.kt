@@ -25,7 +25,6 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.marsa.smarttrackerhub.ui.components.DropdownField
 import com.marsa.smarttrackerhub.ui.components.LabeledInputField
 
 /**
@@ -87,11 +86,11 @@ fun AccountSetupScreen(
 
                 Spacer(modifier = Modifier.height(16.dp))
 
-                DropdownField(
-                    label = "Account Type",
-                    selectedValue = state.accountType,
-                    options = listOf("Personal", "Business"),
-                    onOptionSelected = viewModel::updateAccountType,
+                LabeledInputField(
+                    label = "User Code",
+                    value = state.userCode,
+                    maxLength = 20,
+                    onValueChange = viewModel::updateUserCode,
                     modifier = Modifier.fillMaxWidth()
                 )
 

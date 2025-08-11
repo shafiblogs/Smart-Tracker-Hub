@@ -13,7 +13,7 @@ import androidx.room.PrimaryKey
 data class UserAccount(
     @PrimaryKey(autoGenerate = true) val id: Int = 0,
     val accountName: String,
-    val accountType: String, // "personal" or "business"
+    val userCode: String,
     val address: String,
     val userName: String,
     val password: String

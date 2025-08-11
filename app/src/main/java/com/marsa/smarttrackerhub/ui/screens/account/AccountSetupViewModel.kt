@@ -3,6 +3,11 @@ package com.marsa.smarttrackerhub.ui.screens.account
 import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.marsa.smarttrackerhub.data.AppDatabase
+import com.marsa.smarttrackerhub.data.entity.UserAccount
+import com.marsa.smarttrackerhub.data.repository.UserAccountRepository
+import com.marsa.smarttrackerhub.helper.AuthHelper
+import com.marsa.smarttrackerhub.helper.checkValidShop
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -45,20 +50,20 @@ class AccountSetupViewModel : ViewModel() {
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(), false)
 
     fun loadExistingAccount(context: Context) = viewModelScope.launch(Dispatchers.IO) {
-//        val db = AppDatabase.getDatabase(context)
-//        val account = db.userAccountDao().getFirstAccount()
-//        if (account != null) {
-//            editingAccountId = account.id
-//            _formState.value = AccountFormState(
-//                accountName = account.accountName,
-//                accountType = account.accountType,
-//                address = account.address,
-//                userName = account.userName,
-//                password = account.password,
-//                confirmPassword = account.password
-//            )
-//            _isLoaded.value = true
-//        }
+        val db = AppDatabase.getDatabase(context)
+        val account = db.userAccountDao().getFirstAccount()
+        if (account != null) {
+            editingAccountId = account.id
+            _formState.value = AccountFormState(
+                accountName = account.accountName,
+                userCode = account.userCode,
+                address = account.address,
+                userName = account.userName,
+                password = account.password,
+                confirmPassword = account.password
+            )
+            _isLoaded.value = true
+        }
     }
 
     fun updateAccountName(name: String) {
@@ -71,8 +76,8 @@ class AccountSetupViewModel : ViewModel() {
         _error.value = null
     }
 
-    fun updateAccountType(type: String) {
-        _formState.update { it.copy(accountType = type) }
+    fun updateUserCode(userCode: String) {
+        _formState.update { it.copy(userCode = userCode) }
         _error.value = null
     }
 
@@ -126,32 +131,32 @@ class AccountSetupViewModel : ViewModel() {
         }
 
         try {
-//            val db = AppDatabase.getDatabase(context)
-//            val repo = UserAccountRepository(db.userAccountDao())
-//
-//            val account = UserAccount(
-//                id = editingAccountId ?: 0,
-//                accountName = state.accountName,
-//                accountType = state.accountType,
-//                address = state.address,
-//                userName = state.userName,
-//                password = state.password
-//            )
-//
-//            if (editingAccountId != null) {
-//                repo.updateAccount(account)
-//            } else {
-//                repo.insertAccount(account)
-//            }
-//            if (checkValidShop(account)) {
-//                AuthHelper.updateFireStore(context, account, onSuccess = {
-//                    _isSaved.value = true
-//                    onSuccess()
-//                }, onFail)
-//            } else {
-//                _isSaved.value = true
-//                onSuccess()
-//            }
+            val db = AppDatabase.getDatabase(context)
+            val repo = UserAccountRepository(db.userAccountDao())
+
+            val account = UserAccount(
+                id = editingAccountId ?: 0,
+                accountName = state.accountName,
+                userCode = state.userCode,
+                address = state.address,
+                userName = state.userName,
+                password = state.password
+            )
+
+            if (editingAccountId != null) {
+                repo.updateAccount(account)
+            } else {
+                repo.insertAccount(account)
+            }
+            if (checkValidShop(account)) {
+                AuthHelper.updateFireStore(context, account, onSuccess = {
+                    _isSaved.value = true
+                    onSuccess()
+                }, onFail)
+            } else {
+                _isSaved.value = true
+                onSuccess()
+            }
         } catch (e: Exception) {
             onFail("Failed to save account: ${e.localizedMessage}")  // Call onFail in case of any error
         }

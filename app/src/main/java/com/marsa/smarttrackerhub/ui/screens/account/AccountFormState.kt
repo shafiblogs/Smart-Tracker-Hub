@@ -8,8 +8,8 @@ package com.marsa.smarttrackerhub.ui.screens.account
  */
 data class AccountFormState(
     val accountName: String = "",
-    val accountType: String = "personal",
     val address: String = "",
+    val userCode: String = "",
     val userName: String = "",
     val password: String = "",
     val confirmPassword: String = ""
