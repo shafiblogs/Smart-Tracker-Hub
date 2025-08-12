@@ -6,6 +6,8 @@ import androidx.lifecycle.viewModelScope
 import com.marsa.smarttrackerhub.data.AppDatabase
 import com.marsa.smarttrackerhub.data.entity.ShopInfo
 import com.marsa.smarttrackerhub.data.repository.ShopRepository
+import com.marsa.smarttrackerhub.ui.screens.enums.ShopStatus
+import com.marsa.smarttrackerhub.ui.screens.enums.ShopType
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -40,8 +42,6 @@ class AddShopViewModel : ViewModel() {
         .map {
             it.shopName.isNotBlank() &&
                     it.shopCode.isNotBlank() &&
-                    it.shopStatus.isNotBlank() &&
-                    it.shopType.isNotBlank() &&
                     it.shopAddress.isNotBlank()
         }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(), false)
@@ -61,12 +61,12 @@ class AddShopViewModel : ViewModel() {
         _error.value = null
     }
 
-    fun updateShopType(name: String) {
+    fun updateShopType(name: ShopType) {
         _formState.update { it.copy(shopType = name) }
         _error.value = null
     }
 
-    fun updateShopStatus(name: String) {
+    fun updateShopStatus(name: ShopStatus) {
         _formState.update { it.copy(shopStatus = name) }
         _error.value = null
     }
@@ -88,8 +88,8 @@ class AddShopViewModel : ViewModel() {
                 shopName = state.shopName,
                 shopAddress = state.shopAddress,
                 shopCode = state.shopCode,
-                shopType = state.shopType,
-                shopStatus = state.shopStatus
+                shopType = state.shopType?.name ?: "",
+                shopStatus = state.shopStatus?.name ?: ""
             )
 
             if (editingAccountId != null) {

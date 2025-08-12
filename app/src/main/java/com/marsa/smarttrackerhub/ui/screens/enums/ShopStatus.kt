@@ -6,6 +6,10 @@ package com.marsa.smarttrackerhub.ui.screens.enums
  * Moro Hub
  * muhammed.poyil@morohub.com
  */
-enum class ScreenType {
-    Purchase,Sales,Expense
+enum class ShopStatus {
+    Running, Initial, Closed
+}
+
+enum class ShopType {
+    Grocery, Cafeteria, Super, Hyper
 }

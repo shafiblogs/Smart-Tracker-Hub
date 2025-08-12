@@ -25,7 +25,10 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.marsa.smarttrackerhub.ui.components.DropdownField
 import com.marsa.smarttrackerhub.ui.components.LabeledInputField
+import com.marsa.smarttrackerhub.ui.screens.enums.ShopStatus
+import com.marsa.smarttrackerhub.ui.screens.enums.ShopType
 
 
 /**
@@ -95,21 +98,21 @@ fun AddShopScreen(onShopCreated: () -> Unit) {
 
                 Spacer(modifier = Modifier.height(16.dp))
 
-                LabeledInputField(
+                DropdownField(
                     label = "Shop Type",
-                    value = state.shopType,
-                    maxLength = 20,
-                    onValueChange = viewModel::updateShopType,
+                    selectedValue = state.shopType?.name ?: "Select Type",
+                    options = listOf(ShopStatus.Running.name, ShopStatus.Initial.name,ShopStatus.Closed.name),
+                    onOptionSelected = { state.shopStatus = ShopStatus.valueOf(it) },
                     modifier = Modifier.fillMaxWidth()
                 )
 
                 Spacer(modifier = Modifier.height(16.dp))
 
-                LabeledInputField(
+                DropdownField(
                     label = "Shop Status",
-                    value = state.shopStatus,
-                    onValueChange = viewModel::updateShopStatus,
-                    keyboardType = KeyboardType.Text,
+                    selectedValue = state.shopType?.name ?: "Select Type",
+                    options = listOf(ShopType.Grocery.name, ShopType.Cafeteria.name,ShopType.Hyper.name,ShopType.Super.name),
+                    onOptionSelected = { state.shopType = ShopType.valueOf(it) },
                     modifier = Modifier.fillMaxWidth()
                 )
 

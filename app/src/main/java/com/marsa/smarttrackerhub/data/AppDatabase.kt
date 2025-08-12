@@ -24,7 +24,7 @@ import com.marsa.smarttrackerhub.data.helper.Converters
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-import com.marsa.smarttrackerhub.ui.screens.enums.ScreenType
+import com.marsa.smarttrackerhub.ui.screens.enums.ShopStatus
 
 
 /**
@@ -58,43 +58,6 @@ abstract class AppDatabase : RoomDatabase() {
                 ).addCallback(object : Callback() {
                     override fun onCreate(db: SupportSQLiteDatabase) {
                         super.onCreate(db)
-                        // Seed default categories on first creation
-                        CoroutineScope(Dispatchers.IO).launch {
-                            getDatabase(context).categoryDao().insertAll(
-                                listOf(
-                                    Category(
-                                        name = "Fruits & Vegetables",
-                                        description = "market purchase",
-                                        screenType = ScreenType.Purchase.name
-                                    ),
-                                    Category(
-                                        name = "Milk & Dairy",
-                                        description = "diary products",
-                                        screenType = ScreenType.Purchase.name
-                                    ),
-                                    Category(
-                                        name = "Bakery",
-                                        description = "bakery products",
-                                        screenType = ScreenType.Purchase.name
-                                    ),
-                                    Category(
-                                        name = "Rent",
-                                        description = "rent",
-                                        screenType = ScreenType.Expense.name
-                                    ),
-                                    Category(
-                                        name = "Utilities",
-                                        description = "electricity and water",
-                                        screenType = ScreenType.Expense.name
-                                    ),
-                                    Category(
-                                        name = "Bank Charges",
-                                        description = "bank charges",
-                                        screenType = ScreenType.Expense.name
-                                    ),
-                                )
-                            )
-                        }
                     }
                 }).build().also { INSTANCE = it }
             }
