@@ -44,7 +44,7 @@ fun ShopsListScreen(onAddClick: () -> Unit, onItemClick: (Int) -> Unit) {
                 .padding(16.dp),
             containerColor = MaterialTheme.colorScheme.primary
         ) {
-            Icon(Icons.Default.Add, contentDescription = "Add Investor")
+            Icon(Icons.Default.Add, contentDescription = "Add Shop")
         }
     }
 }

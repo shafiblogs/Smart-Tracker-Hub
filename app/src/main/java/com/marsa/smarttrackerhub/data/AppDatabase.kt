@@ -9,12 +9,14 @@ import androidx.sqlite.db.SupportSQLiteDatabase
 import com.marsa.smarttrackerhub.data.dao.CategoryDao
 import com.marsa.smarttrackerhub.data.dao.EntryDao
 import com.marsa.smarttrackerhub.data.dao.SalesDao
+import com.marsa.smarttrackerhub.data.dao.ShopDao
 import com.marsa.smarttrackerhub.data.dao.SummaryDao
 import com.marsa.smarttrackerhub.data.dao.UserAccountDao
 import com.marsa.smarttrackerhub.data.dao.VendorDao
 import com.marsa.smarttrackerhub.data.entity.Category
 import com.marsa.smarttrackerhub.data.entity.EntryEntity
 import com.marsa.smarttrackerhub.data.entity.SaleEntity
+import com.marsa.smarttrackerhub.data.entity.ShopInfo
 import com.marsa.smarttrackerhub.data.entity.SummaryEntity
 import com.marsa.smarttrackerhub.data.entity.UserAccount
 import com.marsa.smarttrackerhub.data.entity.Vendor
@@ -32,7 +34,7 @@ import com.marsa.smarttrackerhub.ui.screens.enums.ScreenType
  */
 
 @Database(
-    entities = [EntryEntity::class, SummaryEntity::class, SaleEntity::class, UserAccount::class, Category::class, Vendor::class],
+    entities = [EntryEntity::class, SummaryEntity::class, SaleEntity::class, UserAccount::class, Category::class, ShopInfo::class, Vendor::class],
     version = 1
 )
 @TypeConverters(Converters::class)
@@ -43,6 +45,7 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun userAccountDao(): UserAccountDao
     abstract fun categoryDao(): CategoryDao
     abstract fun vendorDao(): VendorDao
+    abstract fun shopDao(): ShopDao
 
     companion object {
         @Volatile
