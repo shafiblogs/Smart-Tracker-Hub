@@ -14,7 +14,5 @@ data class InvestorInfo(
     @PrimaryKey(autoGenerate = true) val id: Int = 0,
     val investorName: String,
     val investorEmail: String,
-    val investorPhone: String,
-    val investmentAmount: Double,
-    val associatedShopId: Int // FK reference to ShopInfo.id
+    val investorPhone: String
 )
