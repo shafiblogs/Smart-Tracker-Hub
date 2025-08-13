@@ -61,8 +61,8 @@ class AddShopViewModel : ViewModel() {
         _error.value = null
     }
 
-    fun updateShopType(name: ShopType) {
-        _formState.update { it.copy(shopType = name) }
+    fun updateShopType(type: ShopType) {
+        _formState.update { it.copy(shopType = type) }
         _error.value = null
     }
 

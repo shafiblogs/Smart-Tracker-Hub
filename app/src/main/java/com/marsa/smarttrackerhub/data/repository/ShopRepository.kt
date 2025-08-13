@@ -4,6 +4,7 @@ import com.marsa.smarttrackerhub.data.dao.ShopDao
 import com.marsa.smarttrackerhub.data.dao.UserAccountDao
 import com.marsa.smarttrackerhub.data.entity.ShopInfo
 import com.marsa.smarttrackerhub.data.entity.UserAccount
+import kotlinx.coroutines.flow.Flow
 
 
 /**
@@ -21,5 +22,5 @@ class ShopRepository(private val dao: ShopDao) {
 
     suspend fun hasShops(): Boolean = dao.hasShops()
 
-    suspend fun getAllShops(): ShopInfo? = dao.getAllShops()
+    fun getAllShops(): Flow<List<ShopInfo>> = dao.getAllShops()
 }

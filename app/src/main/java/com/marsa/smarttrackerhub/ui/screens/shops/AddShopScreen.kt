@@ -99,22 +99,35 @@ fun AddShopScreen(onShopCreated: () -> Unit) {
                 Spacer(modifier = Modifier.height(16.dp))
 
                 DropdownField(
-                    label = "Shop Type",
-                    selectedValue = state.shopType?.name ?: "Select Type",
-                    options = listOf(ShopStatus.Running.name, ShopStatus.Initial.name,ShopStatus.Closed.name),
-                    onOptionSelected = { state.shopStatus = ShopStatus.valueOf(it) },
-                    modifier = Modifier.fillMaxWidth()
+                    label = "Shop Status",
+                    selectedValue = state.shopStatus?.name ?: "Select Status",
+                    options = listOf(
+                        ShopStatus.Running.name,
+                        ShopStatus.Initial.name,
+                        ShopStatus.Closed.name
+                    ),
+                    onOptionSelected = { selected ->
+                        viewModel.updateShopStatus(ShopStatus.valueOf(selected))
+                    }, modifier = Modifier.fillMaxWidth()
                 )
 
                 Spacer(modifier = Modifier.height(16.dp))
 
                 DropdownField(
-                    label = "Shop Status",
+                    label = "Shop Type",
                     selectedValue = state.shopType?.name ?: "Select Type",
-                    options = listOf(ShopType.Grocery.name, ShopType.Cafeteria.name,ShopType.Hyper.name,ShopType.Super.name),
-                    onOptionSelected = { state.shopType = ShopType.valueOf(it) },
+                    options = listOf(
+                        ShopType.Grocery.name,
+                        ShopType.Cafeteria.name,
+                        ShopType.Hyper.name,
+                        ShopType.Super.name
+                    ),
+                    onOptionSelected = { selected ->
+                        viewModel.updateShopType(ShopType.valueOf(selected))
+                    },
                     modifier = Modifier.fillMaxWidth()
                 )
+
 
                 if (!error.isNullOrEmpty()) {
                     Text(
