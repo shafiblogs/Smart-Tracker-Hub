@@ -72,7 +72,7 @@ class AddShopViewModel : ViewModel() {
     }
 
 
-    fun saveAccount(
+    fun saveShop(
         context: Context,
         onSuccess: () -> Unit = {},
         onFail: (String) -> Unit = {}
