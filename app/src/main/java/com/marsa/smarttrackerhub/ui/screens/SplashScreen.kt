@@ -30,7 +30,7 @@ fun SplashScreen(onTimeout: () -> Unit) {
     Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
         CommonTextField(
             stringResource(R.string.app_name),
-            style = sTypography.titleLarge.copy(fontWeight = FontWeight.Bold, fontSize = 24.sp)
+            style = sTypography.titleLarge.copy(fontWeight = FontWeight.Bold, fontSize = 32.sp)
         )
     }
 }
