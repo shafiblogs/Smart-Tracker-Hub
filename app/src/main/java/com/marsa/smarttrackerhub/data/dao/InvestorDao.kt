@@ -1,5 +1,13 @@
 package com.marsa.smarttrackerhub.data.dao
 
+import androidx.room.Dao
+import androidx.room.Delete
+import androidx.room.Insert
+import androidx.room.OnConflictStrategy
+import androidx.room.Query
+import com.marsa.smarttrackerhub.data.entity.InvestorInfo
+import kotlinx.coroutines.flow.Flow
+
 
 /**
  * Created by Muhammed Shafi on 13/08/2025.
