@@ -11,6 +11,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 
@@ -25,6 +26,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 fun AddInvestorScreen(onSaveSuccess: () -> Unit) {
     val viewModel: InvestorAddViewModel = viewModel()
     val state = viewModel.formState
+    val context = LocalContext.current
 
     Column(
         modifier = Modifier
@@ -53,7 +55,7 @@ fun AddInvestorScreen(onSaveSuccess: () -> Unit) {
         Spacer(modifier = Modifier.height(16.dp))
         Button(
             onClick = {
-                viewModel.saveInvestor()
+                viewModel.saveInvestor(context)
                 onSaveSuccess()
             },
             modifier = Modifier.fillMaxWidth()

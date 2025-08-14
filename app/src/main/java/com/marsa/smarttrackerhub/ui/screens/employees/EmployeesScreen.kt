@@ -46,6 +46,7 @@ fun EmployeesScreen(
     val context = LocalContext.current
 
     LaunchedEffect(Unit) {
+        viewModel.initDatabase(context)
         viewModel.loadEmployees()
     }
 

@@ -1,10 +1,12 @@
 package com.marsa.smarttrackerhub.ui.screens.investers
 
+import android.content.Context
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.marsa.smarttrackerhub.data.AppDatabase
 import com.marsa.smarttrackerhub.data.entity.InvestorInfo
 import com.marsa.smarttrackerhub.data.repository.InvestorRepository
 import kotlinx.coroutines.launch
@@ -15,9 +17,7 @@ import kotlinx.coroutines.launch
  * Moro Hub
  * muhammed.poyil@morohub.com
  */
-class InvestorAddViewModel(
-    private val repository: InvestorRepository
-) : ViewModel() {
+class InvestorAddViewModel() : ViewModel() {
 
     var formState by mutableStateOf(InvestorFormState())
         private set
@@ -34,15 +34,16 @@ class InvestorAddViewModel(
         formState = formState.copy(investorPhone = value)
     }
 
-    fun saveInvestor() {
-        viewModelScope.launch {
-            repository.insertInvestor(
-                InvestorInfo(
-                    investorName = formState.investorName,
-                    investorEmail = formState.investorEmail,
-                    investorPhone = formState.investorPhone
-                )
+    fun saveInvestor(context: Context) = viewModelScope.launch {
+        val db = AppDatabase.getDatabase(context)
+        val repository = InvestorRepository(db.investorDao())
+
+        repository.insertInvestor(
+            InvestorInfo(
+                investorName = formState.investorName,
+                investorEmail = formState.investorEmail,
+                investorPhone = formState.investorPhone
             )
-        }
+        )
     }
 }

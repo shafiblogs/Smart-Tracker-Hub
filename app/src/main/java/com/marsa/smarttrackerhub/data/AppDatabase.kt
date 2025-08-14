@@ -7,14 +7,18 @@ import androidx.room.RoomDatabase
 import androidx.room.TypeConverters
 import androidx.sqlite.db.SupportSQLiteDatabase
 import com.marsa.smarttrackerhub.data.dao.CategoryDao
+import com.marsa.smarttrackerhub.data.dao.EmployeeInfoDao
 import com.marsa.smarttrackerhub.data.dao.EntryDao
+import com.marsa.smarttrackerhub.data.dao.InvestorDao
 import com.marsa.smarttrackerhub.data.dao.SalesDao
 import com.marsa.smarttrackerhub.data.dao.ShopDao
 import com.marsa.smarttrackerhub.data.dao.SummaryDao
 import com.marsa.smarttrackerhub.data.dao.UserAccountDao
 import com.marsa.smarttrackerhub.data.dao.VendorDao
 import com.marsa.smarttrackerhub.data.entity.Category
+import com.marsa.smarttrackerhub.data.entity.EmployeeInfo
 import com.marsa.smarttrackerhub.data.entity.EntryEntity
+import com.marsa.smarttrackerhub.data.entity.InvestorInfo
 import com.marsa.smarttrackerhub.data.entity.SaleEntity
 import com.marsa.smarttrackerhub.data.entity.ShopInfo
 import com.marsa.smarttrackerhub.data.entity.SummaryEntity
@@ -34,7 +38,8 @@ import com.marsa.smarttrackerhub.ui.screens.enums.ShopStatus
  */
 
 @Database(
-    entities = [EntryEntity::class, SummaryEntity::class, SaleEntity::class, UserAccount::class, Category::class, ShopInfo::class, Vendor::class],
+    entities = [EntryEntity::class, SummaryEntity::class, SaleEntity::class, UserAccount::class, Category::class,
+        ShopInfo::class, Vendor::class,InvestorInfo::class,EmployeeInfo::class],
     version = 1
 )
 @TypeConverters(Converters::class)
@@ -46,6 +51,8 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun categoryDao(): CategoryDao
     abstract fun vendorDao(): VendorDao
     abstract fun shopDao(): ShopDao
+    abstract fun investorDao(): InvestorDao
+    abstract fun employeeDao(): EmployeeInfoDao
 
     companion object {
         @Volatile

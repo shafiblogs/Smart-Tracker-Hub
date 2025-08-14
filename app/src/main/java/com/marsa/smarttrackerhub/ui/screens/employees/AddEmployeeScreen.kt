@@ -41,6 +41,10 @@ fun AddEmployeeScreen(
     val error by viewModel.error.collectAsState()
     val context = LocalContext.current
 
+    LaunchedEffect(Unit) {
+        viewModel.initDatabase(context)
+    }
+
     LaunchedEffect(isSaved) {
         if (isSaved) {
             onEmployeeCreated()
@@ -111,7 +115,6 @@ fun AddEmployeeScreen(
         Button(
             onClick = {
                 viewModel.saveEmployee(
-                    context,
                     onSuccess = {
                         Toast.makeText(context, "Employee saved", Toast.LENGTH_SHORT).show()
                     },
