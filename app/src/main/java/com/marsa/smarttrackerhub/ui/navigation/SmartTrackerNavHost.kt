@@ -123,8 +123,8 @@ fun SmartTrackerNavHost(navController: NavHostController) {
             composable(Screen.Shops.route) { ShopsScreen() }
             composable(Screen.Summary.route) { SummaryScreen() }
             composable(Screen.AddShop.route) { AddShopScreen(onShopCreated = { navController.popBackStack() }) }
-            composable(Screen.AddInvestor.route) { AddInvestorScreen() }
-            composable(Screen.AddEmployee.route) { AddEmployeeScreen() }
+            composable(Screen.AddInvestor.route) { AddInvestorScreen(onSaveSuccess = { navController.popBackStack() }) }
+            composable(Screen.AddEmployee.route) { AddEmployeeScreen(onEmployeeCreated = {navController.popBackStack()}) }
             composable(Screen.CategoryList.route) {
                 CategoryListScreen(
                     onItemClick = {},
