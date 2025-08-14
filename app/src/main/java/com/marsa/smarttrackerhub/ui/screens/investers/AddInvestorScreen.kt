@@ -1,14 +1,17 @@
 package com.marsa.smarttrackerhub.ui.screens.investers
 
-import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.Button
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.unit.sp
-import com.marsa.smarttracker.ui.theme.sTypography
-import com.marsa.smarttrackerhub.ui.components.CommonTextField
+import androidx.compose.ui.unit.dp
 
 
 /**
@@ -18,16 +21,42 @@ import com.marsa.smarttrackerhub.ui.components.CommonTextField
  */
 
 @Composable
-fun AddInvestorScreen() {
-    Box(
-        modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center
+fun AddInvestorScreen(viewModel: InvestorAddViewModel, onSaveSuccess: () -> Unit) {
+    val state = viewModel.formState
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(16.dp)
     ) {
-        CommonTextField(
-            value = "Summary Screen",
-            style = sTypography.bodyMedium.copy(
-                fontWeight = FontWeight.Medium,
-                fontSize = 20.sp
-            )
+        OutlinedTextField(
+            value = state.investorName,
+            onValueChange = { viewModel.updateName(it) },
+            label = { Text("Name") },
+            modifier = Modifier.fillMaxWidth()
         )
+        OutlinedTextField(
+            value = state.investorEmail,
+            onValueChange = { viewModel.updateEmail(it) },
+            label = { Text("Email") },
+            modifier = Modifier.fillMaxWidth()
+        )
+        OutlinedTextField(
+            value = state.investorPhone,
+            onValueChange = { viewModel.updatePhone(it) },
+            label = { Text("Phone") },
+            modifier = Modifier.fillMaxWidth()
+        )
+
+        Spacer(modifier = Modifier.height(16.dp))
+        Button(
+            onClick = {
+                viewModel.saveInvestor()
+                onSaveSuccess()
+            },
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Text("Save Investor")
+        }
     }
 }
