@@ -12,9 +12,9 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.Divider
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Divider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -27,8 +27,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.google.firebase.FirebaseApp
 import com.marsa.smarttrackerhub.domain.MonthlySummary
@@ -71,107 +71,122 @@ fun DailySummaryCard(
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .pointerInput(Unit) { detectTapGestures(onLongPress = { onDelete() }) }
-            .padding(vertical = 4.dp),
+            .padding(vertical = 6.dp)
+            .pointerInput(Unit) { detectTapGestures(onLongPress = { onDelete() }) },
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        shape = RoundedCornerShape(8.dp),
-        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+        shape = RoundedCornerShape(12.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
 
-            // Shop Name - bigger and bold, no divider
+            // Shop Name - bigger and bold
             val shopName = when (entry.shopId) {
                 "MARSA_101" -> "Al Marsa Grocery - Muzeira"
                 "MARSA_102" -> "Al Marsa Grocery - Masfooth"
                 "WADI_101" -> "Al Wadi Cafe - Muzeira"
                 else -> "Al Wadi Cafe - Muzeira"
             }
+
             Text(
                 text = shopName,
-                fontSize = 16.sp,
-                fontWeight = FontWeight.Bold,
+                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
                 color = MaterialTheme.colorScheme.primary
             )
 
-            // Opening Balances
-            SectionTitleWithDivider("Opening Balances")
-            BalanceRow(
-                cash = entry.openingCashBalance,
-                account = entry.openingAccountBalance,
-                credit = entry.openingCreditBalance
-            )
+            Spacer(Modifier.height(12.dp))
 
-            // Current Balances
-            SectionTitleWithDivider("Current Balances")
-            BalanceRow(
-                cash = entry.cashBalance,
-                account = entry.accountBalance,
-                credit = entry.creditSaleBalance
-            )
+            // Balances Title Row
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Text(
+                    text = "Balances",
+                    style = MaterialTheme.typography.labelMedium,
+                    modifier = Modifier.weight(1f)
+                )
+                Text(
+                    text = "Opening",
+                    style = MaterialTheme.typography.labelMedium,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.weight(1f)
+                )
+                Text(
+                    text = "Current",
+                    style = MaterialTheme.typography.labelMedium,
+                    textAlign = TextAlign.End,
+                    modifier = Modifier.weight(1f)
+                )
+            }
 
-            // Transaction Summaries
-            SectionTitleWithDivider("Transactions")
-            InfoRow("💰 Total Sale", entry.totalSales, color = MaterialTheme.colorScheme.onSurface)
-            InfoRow(
-                "🛒 Total Purchase",
-                entry.totalPurchases,
-                color = MaterialTheme.colorScheme.onSurface
-            )
-            InfoRow(
-                "💳 Total Expense",
-                entry.totalExpenses,
-                color = MaterialTheme.colorScheme.onSurface
-            )
-            InfoRow(
-                "💰 Credit Sale Payment",
-                entry.creditSalePayment,
-                color = MaterialTheme.colorScheme.primary
-            )
+            Divider(Modifier.padding(vertical = 6.dp))
+
+            BalanceComparisonRow("Cash", entry.openingCashBalance, entry.cashBalance)
+            BalanceComparisonRow("Account", entry.openingAccountBalance, entry.accountBalance)
+            BalanceComparisonRow("Credit", entry.openingCreditBalance, entry.creditSaleBalance)
+
+            Divider(Modifier.padding(vertical = 8.dp))
+
+            // Totals Section
+            InfoRow("💰 Total Sale", entry.totalSales)
+            InfoRow("🛒 Total Purchase", entry.totalPurchases)
+            InfoRow("💳 Total Expense", entry.totalExpenses)
+            InfoRow("💰 Credit Sale Payment", entry.creditSalePayment, isHighlight = true)
         }
     }
 }
 
 @Composable
-fun SectionTitleWithDivider(title: String) {
-    Column {
-        Spacer(modifier = Modifier.height(8.dp))
-        Divider()
-        Spacer(modifier = Modifier.height(4.dp))
-        Text(
-            text = title,
-            fontSize = 13.sp,
-            fontWeight = FontWeight.Medium,
-            color = MaterialTheme.colorScheme.secondary
-        )
-        Spacer(modifier = Modifier.height(4.dp))
-    }
-}
-
-@Composable
-fun BalanceRow(cash: Double, account: Double, credit: Double) {
+fun BalanceComparisonRow(label: String, opening: Double, current: Double) {
     Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.SpaceBetween
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 4.dp),
+        verticalAlignment = Alignment.CenterVertically
     ) {
-        InfoColumn("Cash", cash)
-        InfoColumn("Account", account)
-        InfoColumn("Credit", credit)
-    }
-}
-
-@Composable
-fun InfoColumn(label: String, value: Double) {
-    Column(horizontalAlignment = Alignment.CenterHorizontally) {
         Text(
             text = label,
-            fontSize = 12.sp,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
+            style = MaterialTheme.typography.bodyMedium,
+            modifier = Modifier.weight(1f)
+        )
+        Text(
+            text = "₹%.2f".format(opening),
+            style = MaterialTheme.typography.bodyMedium,
+            textAlign = TextAlign.Center,
+            modifier = Modifier.weight(1f)
+        )
+        Text(
+            text = "₹%.2f".format(current),
+            style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Medium),
+            color = if (current < 0) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface,
+            textAlign = TextAlign.End,
+            modifier = Modifier.weight(1f)
+        )
+    }
+}
+
+@Composable
+fun InfoRow(label: String, value: Double, isHighlight: Boolean = false) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 4.dp),
+        horizontalArrangement = Arrangement.SpaceBetween
+    ) {
+        Text(
+            text = label,
+            style = MaterialTheme.typography.bodyMedium
         )
         Text(
             text = "₹%.2f".format(value),
-            fontSize = 14.sp,
-            fontWeight = FontWeight.SemiBold,
-            color = if (value < 0) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface
+            style = if (isHighlight) {
+                MaterialTheme.typography.bodyMedium.copy(
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.primary
+                )
+            } else {
+                MaterialTheme.typography.bodyMedium
+            }
         )
     }
 }
