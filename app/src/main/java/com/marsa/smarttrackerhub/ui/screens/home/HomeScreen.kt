@@ -27,6 +27,7 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material.Divider
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.google.firebase.FirebaseApp
@@ -78,17 +79,33 @@ fun DailySummaryCard(
         shape = RoundedCornerShape(8.dp),
         elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)) {
         Column(modifier = Modifier.padding(16.dp)) {
+            val shopName = when (entry.shopId) {
+                "MARSA_101" -> "Al Marsa Grocery - Muzeira"
+                "MARSA_102" -> "Al Marsa Grocery - Masfooth"
+                "WADI_101" -> "Al Wadi Cafe - Muzeira"
+                else -> "Al Wadi Cafe - Muzeira"
+            }
+
+            Text(
+                text = shopName,
+                fontSize = 14.sp,
+                style = MaterialTheme.typography.titleSmall,
+                color = MaterialTheme.colorScheme.primary
+            )
+
+            Divider(modifier = Modifier.padding(vertical = 4.dp))
+
             Row(
                 modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween
             ) {
                 Column {
                     Text(
-                        text = "Date",
+                        text = "Cash Balance",
                         fontSize = 12.sp,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                     Text(
-                        text = entry.monthYear,
+                        text = "₹%.2f".format(entry.cashBalance),
                         fontSize = 16.sp,
                         fontWeight = FontWeight.SemiBold,
                         color = MaterialTheme.colorScheme.onSurface
@@ -97,12 +114,12 @@ fun DailySummaryCard(
 
                 Column(horizontalAlignment = Alignment.End) {
                     Text(
-                        text = "Total Sale",
+                        text = "Account Balance",
                         fontSize = 12.sp,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                     Text(
-                        text = "₹%.2f".format(entry.totalSales),
+                        text = "₹%.2f".format(entry.accountBalance),
                         fontSize = 16.sp,
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.onSurface
@@ -111,15 +128,19 @@ fun DailySummaryCard(
             }
 
             Spacer(modifier = Modifier.height(12.dp))
-            InfoRow("💰 Cash Sale", entry.cashBalance, color = MaterialTheme.colorScheme.secondary)
-            InfoRow("💳 Card Sale", entry.creditSaleBalance, MaterialTheme.colorScheme.primary)
-            InfoRow("🛒 Credit Sale", entry.accountBalance, MaterialTheme.colorScheme.primary)
+            InfoRow("💰 Total Sale", entry.totalSales, color = MaterialTheme.colorScheme.secondary)
+            InfoRow("💳 Total Expense", entry.totalExpenses, MaterialTheme.colorScheme.primary)
+            InfoRow("🛒 Total Purchase", entry.totalPurchases, MaterialTheme.colorScheme.primary)
             InfoRow(
-                "💰 Cash Payment",
+                "💰 Credit Sale Payment",
                 entry.creditSalePayment,
                 color = MaterialTheme.colorScheme.secondary
             )
-            InfoRow("💳 Card Payments", entry.openingCashBalance, MaterialTheme.colorScheme.primary)
+            InfoRow(
+                "💳 Credit Sale Balance",
+                entry.creditSaleBalance,
+                MaterialTheme.colorScheme.primary
+            )
         }
     }
 }

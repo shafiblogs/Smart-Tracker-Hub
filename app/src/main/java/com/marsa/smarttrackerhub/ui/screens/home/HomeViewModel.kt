@@ -5,7 +5,6 @@ import androidx.lifecycle.ViewModel
 import com.google.firebase.FirebaseApp
 import com.google.firebase.firestore.FirebaseFirestore
 import com.marsa.smarttrackerhub.domain.MonthlySummary
-import com.marsa.smarttrackerhub.ui.screens.shops.Shop
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 
@@ -27,13 +26,13 @@ class HomeViewModel(private val firebaseApp: FirebaseApp) : ViewModel() {
     }
 
     private fun loadSummary() {
-        trackerFireStore.collection("shops")
+        trackerFireStore.collection("summary")
             .addSnapshotListener { snapshot, error ->
                 if (error != null) {
-                    Log.e("ShopsViewModel", "Error fetching shops", error)
+                    Log.e("HomeViewModel", "Error fetching summary", error)
                     return@addSnapshotListener
                 }
-                if (snapshot != null) {
+                if (snapshot != null && !snapshot.isEmpty) {
                     _summary.value = snapshot.documents.mapNotNull {
                         it.toObject(MonthlySummary::class.java)
                     }
