@@ -27,9 +27,6 @@ class ShopsViewModel(private val firebaseApp: FirebaseApp) : ViewModel() {
     private val _shops = MutableStateFlow<List<Shop>>(emptyList())
     val shops: StateFlow<List<Shop>> = _shops
 
-    private val _pdfUrls = MutableStateFlow<List<String>>(emptyList())
-    val pdfUrls: StateFlow<List<String>> = _pdfUrls
-
     private val trackerFireStore = FirebaseFirestore.getInstance(firebaseApp)
     private val storage = FirebaseStorage.getInstance(firebaseApp)
 
@@ -46,30 +43,34 @@ class ShopsViewModel(private val firebaseApp: FirebaseApp) : ViewModel() {
                 "gs://smart-tracker-8012f.firebasestorage.app/wadi/muzeira"
             )
 
-            val allUrls = mutableListOf<String>()
+            val urlMap = mutableMapOf<String, String>() // Map<shopId, pdfUrl>
 
             for (folderUrl in folders) {
                 val folderRef = storage.getReferenceFromUrl(folderUrl)
                 try {
-                    Log.d("StatementsViewModel", "Listing folder: $folderUrl")
                     val listResult = Tasks.await(folderRef.listAll())
-
-                    if (listResult.items.isEmpty()) {
-                        Log.d("StatementsViewModel", "No files in $folderUrl")
-                    }
-
                     for (fileRef in listResult.items) {
                         val url = Tasks.await(fileRef.downloadUrl).toString()
-                        Log.d("StatementsViewModel", "File URL: $url")
-                        allUrls.add(url)
+                        if (folderUrl.contains("marsa/masfout")) {
+                            urlMap["MARSA_102"] = url
+                        } else if (folderUrl.contains("marsa/muzeira")) {
+                            urlMap["MARSA_101"] = url
+                        } else if (folderUrl.contains("wadi/muzeira")) {
+                            urlMap["WADI_101"] = url
+                        }
                     }
                 } catch (e: Exception) {
                     Log.e("StatementsViewModel", "Error listing files in $folderUrl", e)
                 }
             }
 
-            _pdfUrls.value = allUrls
-            Log.d("StatementsViewModel", "Total files loaded: ${allUrls.size}")
+            // Update shops with PDF URLs
+            val updatedShops = _shops.value.map { shop ->
+                val pdfUrl = shop.shopId?.let { urlMap[it] }
+                shop.copy(pdfUrl = pdfUrl ?: shop.pdfUrl)
+            }
+
+            _shops.value = updatedShops
         }
     }
 
