@@ -111,21 +111,21 @@ fun DailySummaryCard(
 
             // Transaction Summaries
             SectionTitleWithDivider("Transactions")
-            InfoRow("💰 Total Sale", entry.totalSales, color = MaterialTheme.colorScheme.primary)
+            InfoRow("💰 Total Sale", entry.totalSales, color = MaterialTheme.colorScheme.onSurface)
             InfoRow(
                 "🛒 Total Purchase",
                 entry.totalPurchases,
-                color = MaterialTheme.colorScheme.primary
+                color = MaterialTheme.colorScheme.onSurface
             )
             InfoRow(
                 "💳 Total Expense",
                 entry.totalExpenses,
-                color = MaterialTheme.colorScheme.primary
+                color = MaterialTheme.colorScheme.onSurface
             )
             InfoRow(
                 "💰 Credit Sale Payment",
                 entry.creditSalePayment,
-                color = MaterialTheme.colorScheme.secondary
+                color = MaterialTheme.colorScheme.primary
             )
         }
     }
@@ -171,7 +171,7 @@ fun InfoColumn(label: String, value: Double) {
             text = "₹%.2f".format(value),
             fontSize = 14.sp,
             fontWeight = FontWeight.SemiBold,
-            color = MaterialTheme.colorScheme.onSurface
+            color = if (value < 0) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface
         )
     }
 }
