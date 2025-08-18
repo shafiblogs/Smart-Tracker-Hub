@@ -1,16 +1,13 @@
 package com.marsa.smarttrackerhub.ui.screens.home
 
-import android.app.Application
-import androidx.lifecycle.AndroidViewModel
-import androidx.lifecycle.viewModelScope
-import com.marsa.smarttrackerhub.data.AppDatabase
-import com.marsa.smarttrackerhub.data.repository.SalesRepository
-import com.marsa.smarttrackerhub.domain.SalesSummary
-import com.marsa.smarttrackerhub.helper.getFormatedDate
+import android.util.Log
+import androidx.lifecycle.ViewModel
+import com.google.firebase.FirebaseApp
+import com.google.firebase.firestore.FirebaseFirestore
+import com.marsa.smarttrackerhub.domain.MonthlySummary
+import com.marsa.smarttrackerhub.ui.screens.shops.Shop
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.launch
 
 
 /**
@@ -19,39 +16,28 @@ import kotlinx.coroutines.launch
  * muhammed.poyil@morohub.com
  */
 
-class HomeViewModel(application: Application) : AndroidViewModel(application) {
-    private val _entries = MutableStateFlow<List<SalesSummary>>(emptyList())
-    val entries: StateFlow<List<SalesSummary>> = _entries
+class HomeViewModel(private val firebaseApp: FirebaseApp) : ViewModel() {
+    private val _summary = MutableStateFlow<List<MonthlySummary>>(emptyList())
+    val summary: StateFlow<List<MonthlySummary>> = _summary
 
-    private val salesRepository: SalesRepository by lazy {
-        SalesRepository(AppDatabase.getDatabase(application).salesDao())
-    }
+    private val trackerFireStore = FirebaseFirestore.getInstance(firebaseApp)
 
     init {
-        viewModelScope.launch {
-            salesRepository.allSalesFlow
-                .map { salesList ->
-                    salesList.map { saleEntity ->
-                        val totalSale =
-                            saleEntity.cashSale + saleEntity.cardSale + saleEntity.creditSale
-                        val totalCashIn = saleEntity.cashSale + saleEntity.cashPayment
+        loadSummary()
+    }
 
-                        SalesSummary(
-                            dateKey = saleEntity.date,
-                            date = getFormatedDate(saleEntity.date),
-                            totalSale = totalSale,
-                            cashIn = totalCashIn,
-                            cashSale = saleEntity.cashSale,
-                            cardSale = saleEntity.cardSale,
-                            creditSale = saleEntity.creditSale,
-                            cashPayment = saleEntity.cashPayment,
-                            cardPayment = saleEntity.cardPayment
-                        )
+    private fun loadSummary() {
+        trackerFireStore.collection("shops")
+            .addSnapshotListener { snapshot, error ->
+                if (error != null) {
+                    Log.e("ShopsViewModel", "Error fetching shops", error)
+                    return@addSnapshotListener
+                }
+                if (snapshot != null) {
+                    _summary.value = snapshot.documents.mapNotNull {
+                        it.toObject(MonthlySummary::class.java)
                     }
                 }
-                .collect { summaryList ->
-                    _entries.value = summaryList
-                }
-        }
+            }
     }
 }

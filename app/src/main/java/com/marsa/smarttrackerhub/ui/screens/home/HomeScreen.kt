@@ -2,7 +2,6 @@ package com.marsa.smarttrackerhub.ui.screens.home
 
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -27,11 +26,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.foundation.lazy.items
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.marsa.smarttracker.ui.theme.sTypography
-import com.marsa.smarttrackerhub.domain.SalesSummary
-import com.marsa.smarttrackerhub.ui.components.CommonTextField
+import com.google.firebase.FirebaseApp
+import com.marsa.smarttrackerhub.domain.MonthlySummary
 import com.marsa.smarttrackerhub.ui.components.InfoRow
 
 
@@ -43,17 +42,18 @@ import com.marsa.smarttrackerhub.ui.components.InfoRow
 
 @Composable
 fun HomeScreen() {
-    val viewModel: HomeViewModel = viewModel()
-    val entries by viewModel.entries.collectAsState()
-    var selectedItem by remember { mutableStateOf<SalesSummary?>(null) }
+    val firebaseApp = FirebaseApp.getInstance("SmartTrackerApp")
+    val viewModel: HomeViewModel = viewModel(factory = HomeViewModelFactory(firebaseApp))
+
+    val summary by viewModel.summary.collectAsState()
+    var selectedItem by remember { mutableStateOf<MonthlySummary?>(null) }
 
     LazyColumn(
         modifier = Modifier
             .fillMaxSize()
             .padding(12.dp)
     ) {
-        items(entries.size) { index ->
-            val entry = entries[index]
+        items(summary) { entry ->
             DailySummaryCard(entry, onDelete = {
                 selectedItem = entry
             })
@@ -64,15 +64,16 @@ fun HomeScreen() {
 
 @Composable
 fun DailySummaryCard(
-    entry: SalesSummary, onDelete: () -> Unit
+    entry: MonthlySummary, onDelete: () -> Unit
 ) {
-    Card(modifier = Modifier
-        .fillMaxWidth()
-        .pointerInput(Unit) {
-            detectTapGestures(
-                onLongPress = { onDelete() })
-        }
-        .padding(vertical = 4.dp),
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .pointerInput(Unit) {
+                detectTapGestures(
+                    onLongPress = { onDelete() })
+            }
+            .padding(vertical = 4.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         shape = RoundedCornerShape(8.dp),
         elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)) {
@@ -87,7 +88,7 @@ fun DailySummaryCard(
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                     Text(
-                        text = entry.date,
+                        text = entry.monthYear,
                         fontSize = 16.sp,
                         fontWeight = FontWeight.SemiBold,
                         color = MaterialTheme.colorScheme.onSurface
@@ -101,7 +102,7 @@ fun DailySummaryCard(
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                     Text(
-                        text = "₹%.2f".format(entry.totalSale),
+                        text = "₹%.2f".format(entry.totalSales),
                         fontSize = 16.sp,
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.onSurface
@@ -110,13 +111,15 @@ fun DailySummaryCard(
             }
 
             Spacer(modifier = Modifier.height(12.dp))
-            InfoRow("💰 Cash Sale", entry.cashSale, color = MaterialTheme.colorScheme.secondary)
-            InfoRow("💳 Card Sale", entry.cardSale, MaterialTheme.colorScheme.primary)
-            InfoRow("🛒 Credit Sale", entry.creditSale, MaterialTheme.colorScheme.primary)
+            InfoRow("💰 Cash Sale", entry.cashBalance, color = MaterialTheme.colorScheme.secondary)
+            InfoRow("💳 Card Sale", entry.creditSaleBalance, MaterialTheme.colorScheme.primary)
+            InfoRow("🛒 Credit Sale", entry.accountBalance, MaterialTheme.colorScheme.primary)
             InfoRow(
-                "💰 Cash Payment", entry.cashPayment, color = MaterialTheme.colorScheme.secondary
+                "💰 Cash Payment",
+                entry.creditSalePayment,
+                color = MaterialTheme.colorScheme.secondary
             )
-            InfoRow("💳 Card Payments", entry.cardPayment, MaterialTheme.colorScheme.primary)
+            InfoRow("💳 Card Payments", entry.openingCashBalance, MaterialTheme.colorScheme.primary)
         }
     }
 }
