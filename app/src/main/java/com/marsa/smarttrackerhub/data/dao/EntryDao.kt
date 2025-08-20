@@ -18,15 +18,6 @@ interface EntryDao {
     @Update
     suspend fun update(entry: EntryEntity)
 
-    @Query("SELECT SUM(creditSale) FROM sales")
-    fun getCreditSaleFlow(): Flow<Double?>
-
-    @Query("SELECT SUM(cardPayment + cashPayment) FROM sales")
-    fun getTotalCreditPaymentFlow(): Flow<Double?>
-
-    @Query("SELECT SUM(cashSale + cashPayment) FROM SALES")
-    fun getTotalCashInFlow(): Flow<Double?>
-
     @Query("SELECT * FROM entries WHERE date = :date")
     suspend fun getEntriesByDate(date: String): List<EntryEntity>
 
