@@ -46,7 +46,6 @@ import com.marsa.smarttrackerhub.ui.components.CommonTextField
 import com.marsa.smarttrackerhub.ui.components.SmallTextField
 import com.marsa.smarttrackerhub.ui.screens.SplashScreen
 import com.marsa.smarttrackerhub.ui.screens.account.AccountSetupScreen
-import com.marsa.smarttrackerhub.ui.screens.category.CategoryListScreen
 import com.marsa.smarttrackerhub.ui.screens.employees.AddEmployeeScreen
 import com.marsa.smarttrackerhub.ui.screens.employees.EmployeesScreen
 import com.marsa.smarttrackerhub.ui.screens.home.HomeScreen
@@ -124,12 +123,7 @@ fun SmartTrackerNavHost(navController: NavHostController) {
             composable(Screen.Summary.route) { SummaryScreen() }
             composable(Screen.AddShop.route) { AddShopScreen(onShopCreated = { navController.popBackStack() }) }
             composable(Screen.AddInvestor.route) { AddInvestorScreen(onSaveSuccess = { navController.popBackStack() }) }
-            composable(Screen.AddEmployee.route) { AddEmployeeScreen(onEmployeeCreated = {navController.popBackStack()}) }
-            composable(Screen.CategoryList.route) {
-                CategoryListScreen(
-                    onItemClick = {},
-                    onAddClick = {})
-            }
+            composable(Screen.AddEmployee.route) { AddEmployeeScreen(onEmployeeCreated = { navController.popBackStack() }) }
             composable(Screen.ShopList.route) {
                 ShopsListScreen(
                     onItemClick = {},
@@ -198,8 +192,7 @@ fun SmartTrackerNavHost(navController: NavHostController) {
 
                     Screen.Statement.route, Screen.ShopList.route, Screen.AddShop.route,
                     Screen.Investors.route, Screen.AddInvestor.route, Screen.Employees.route, Screen.AddEmployee.route,
-                    Screen.AccountSetup.route, Screen.CategoryList.route, Screen.Summary.route,
-                    Screen.AddCategory.route -> {
+                    Screen.AccountSetup.route, Screen.Summary.route -> {
                         val titleText = when (currentRoute) {
                             Screen.AccountSetup.route -> "My Account"
                             Screen.Investors.route -> "Investors"
