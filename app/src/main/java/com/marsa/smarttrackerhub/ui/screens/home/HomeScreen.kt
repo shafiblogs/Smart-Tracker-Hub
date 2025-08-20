@@ -112,7 +112,7 @@ fun DailySummaryCard(
                     modifier = Modifier.weight(1f)
                 )
                 Text(
-                    text = "Current",
+                    text = "Closing",
                     style = MaterialTheme.typography.labelMedium,
                     textAlign = TextAlign.End,
                     modifier = Modifier.weight(1f)
