@@ -215,6 +215,7 @@ fun SmartTrackerNavHost(navController: NavHostController) {
                             Screen.Investors.route -> "Investors"
                             Screen.Statement.route -> "Statements"
                             Screen.ShopList.route -> "Shops"
+                            Screen.Summary.route -> "Summary"
                             Screen.Employees.route -> "Employees"
                             else -> "$currentRoute Records"
                         }
