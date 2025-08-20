@@ -35,7 +35,7 @@ import com.google.firebase.FirebaseApp
  * muhammed.poyil@morohub.com
  */
 @Composable
-fun ShopsScreen() {
+fun StatementScreen() {
     val firebaseApp = FirebaseApp.getInstance("SmartTrackerApp")
     val viewModel: ShopsViewModel = viewModel(factory = StatementViewModelFactory(firebaseApp))
     val context = LocalContext.current

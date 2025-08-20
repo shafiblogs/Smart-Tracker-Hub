@@ -55,7 +55,7 @@ import com.marsa.smarttrackerhub.ui.screens.investers.InvestorsScreen
 import com.marsa.smarttrackerhub.ui.screens.login.LoginScreen
 import com.marsa.smarttrackerhub.ui.screens.shops.AddShopScreen
 import com.marsa.smarttrackerhub.ui.screens.shops.ShopsListScreen
-import com.marsa.smarttrackerhub.ui.screens.statement.ShopsScreen
+import com.marsa.smarttrackerhub.ui.screens.statement.StatementScreen
 import com.marsa.smarttrackerhub.ui.screens.summary.SummaryScreen
 import kotlinx.coroutines.launch
 
@@ -75,7 +75,7 @@ fun SmartTrackerNavHost(navController: NavHostController) {
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
 
     val bottomNavRoutes = mutableListOf(
-        Screen.Home.route, Screen.Shops.route, Screen.Summary.route
+        Screen.Home.route, Screen.Statement.route, Screen.Summary.route
     )
 
     val showBottomBar = currentRoute in bottomNavRoutes
@@ -120,7 +120,7 @@ fun SmartTrackerNavHost(navController: NavHostController) {
             composable(Screen.Home.route) {
                 HomeScreen()
             }
-            composable(Screen.Shops.route) { ShopsScreen() }
+            composable(Screen.Statement.route) { StatementScreen() }
             composable(Screen.Summary.route) { SummaryScreen() }
             composable(Screen.AddShop.route) { AddShopScreen(onShopCreated = { navController.popBackStack() }) }
             composable(Screen.AddInvestor.route) { AddInvestorScreen(onSaveSuccess = { navController.popBackStack() }) }
@@ -196,13 +196,14 @@ fun SmartTrackerNavHost(navController: NavHostController) {
                         )
                     }
 
-                    Screen.Shops.route, Screen.ShopList.route, Screen.AddShop.route,
+                    Screen.Statement.route, Screen.ShopList.route, Screen.AddShop.route,
                     Screen.Investors.route, Screen.AddInvestor.route, Screen.Employees.route, Screen.AddEmployee.route,
                     Screen.AccountSetup.route, Screen.CategoryList.route, Screen.Summary.route,
                     Screen.AddCategory.route -> {
                         val titleText = when (currentRoute) {
                             Screen.AccountSetup.route -> "My Account"
                             Screen.Investors.route -> "Investors"
+                            Screen.Statement.route -> "Statements"
                             Screen.ShopList.route -> "Shops"
                             Screen.Employees.route -> "Employees"
                             else -> "$currentRoute Records"
@@ -253,13 +254,13 @@ fun SmartTrackerNavHost(navController: NavHostController) {
                             })
 
                         NavigationBarItem(
-                            selected = currentRoute == Screen.Shops.route,
-                            onClick = { navigateToRoute(Screen.Shops.route) },
+                            selected = currentRoute == Screen.Statement.route,
+                            onClick = { navigateToRoute(Screen.Statement.route) },
                             icon = {
-                                Icon(Icons.Default.DateRange, contentDescription = "Shops")
+                                Icon(Icons.Default.DateRange, contentDescription = "Statements")
                             },
                             label = {
-                                SmallTextField("Shops")
+                                SmallTextField("Statements")
                             })
 
                         NavigationBarItem(
