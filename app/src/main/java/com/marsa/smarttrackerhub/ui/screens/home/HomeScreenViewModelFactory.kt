@@ -10,13 +10,13 @@ import com.google.firebase.FirebaseApp
  * Moro Hub
  * muhammed.poyil@morohub.com
  */
-class HomeViewModelFactory(
+class HomeScreenViewModelFactory(
     private val firebaseApp: FirebaseApp
 ) : ViewModelProvider.Factory {
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
-        if (modelClass.isAssignableFrom(HomeViewModel::class.java)) {
+        if (modelClass.isAssignableFrom(HomeScreenViewModel::class.java)) {
             @Suppress("UNCHECKED_CAST")
-            return HomeViewModel(firebaseApp) as T
+            return HomeScreenViewModel(firebaseApp) as T
         }
         throw IllegalArgumentException("Unknown ViewModel class")
     }

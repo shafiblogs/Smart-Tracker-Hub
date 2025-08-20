@@ -3,7 +3,6 @@ package com.marsa.smarttrackerhub.data.repository
 import com.marsa.smarttrackerhub.data.dao.EntryDao
 import com.marsa.smarttrackerhub.data.dao.SummaryDao
 import com.marsa.smarttrackerhub.data.entity.SummaryEntity
-import com.marsa.smarttracker.ui.screens.home.BalanceModel
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
 
