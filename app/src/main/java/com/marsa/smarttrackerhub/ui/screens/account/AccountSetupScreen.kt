@@ -67,28 +67,8 @@ fun AccountSetupScreen(
             ) {
 
                 LabeledInputField(
-                    label = "Account Name",
-                    value = state.accountName,
-                    maxLength = 20,
-                    onValueChange = viewModel::updateAccountName,
-                    modifier = Modifier.fillMaxWidth()
-                )
-
-                Spacer(modifier = Modifier.height(16.dp))
-
-                LabeledInputField(
-                    label = "Address",
-                    value = state.address,
-                    maxLength = 30,
-                    onValueChange = viewModel::updateAddress,
-                    modifier = Modifier.fillMaxWidth()
-                )
-
-                Spacer(modifier = Modifier.height(16.dp))
-
-                LabeledInputField(
-                    label = "User Code",
-                    value = state.userCode,
+                    label = "Access Code",
+                    value = state.accessCode,
                     maxLength = 20,
                     onValueChange = viewModel::updateUserCode,
                     modifier = Modifier.fillMaxWidth()

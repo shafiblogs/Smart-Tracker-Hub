@@ -40,9 +40,12 @@ class AccountSetupViewModel : ViewModel() {
 
     private var editingAccountId: Int? = null
 
+    private val ADMIN_CODE = "4243"
+    private val USER_CODE = "1011"
+
     val isFormValid: StateFlow<Boolean> = formState
         .map {
-            it.accountName.isNotBlank() &&
+            it.accessCode.isNotBlank() &&
                     it.userName.isNotBlank() &&
                     it.password.length >= 4 &&
                     it.password == it.confirmPassword
@@ -55,9 +58,7 @@ class AccountSetupViewModel : ViewModel() {
         if (account != null) {
             editingAccountId = account.id
             _formState.value = AccountFormState(
-                accountName = account.accountName,
-                userCode = account.userCode,
-                address = account.address,
+                accessCode = if (account.userRole == "admin") ADMIN_CODE else USER_CODE,
                 userName = account.userName,
                 password = account.password,
                 confirmPassword = account.password
@@ -66,18 +67,8 @@ class AccountSetupViewModel : ViewModel() {
         }
     }
 
-    fun updateAccountName(name: String) {
-        _formState.update { it.copy(accountName = name) }
-        _error.value = null
-    }
-
-    fun updateAddress(name: String) {
-        _formState.update { it.copy(address = name) }
-        _error.value = null
-    }
-
-    fun updateUserCode(userCode: String) {
-        _formState.update { it.copy(userCode = userCode) }
+    fun updateUserCode(accessCode: String) {
+        _formState.update { it.copy(accessCode = accessCode) }
         _error.value = null
     }
 
@@ -109,10 +100,14 @@ class AccountSetupViewModel : ViewModel() {
             return@launch
         }
 
-        // Validate all required fields have at least 4 characters
-        if (state.accountName.length < 4) {
-            onFail("Account name must be at least 4 characters")
-            return@launch
+        val code = state.accessCode.trim()
+        val userRole = when (code) {
+            ADMIN_CODE -> "admin"
+            USER_CODE -> "user"
+            else -> {
+                onFail("Invalid access code")
+                return@launch
+            }
         }
 
         if (state.userName.length < 4) {
@@ -125,20 +120,13 @@ class AccountSetupViewModel : ViewModel() {
             return@launch
         }
 
-        if (state.address.length < 8) {
-            onFail("Address must be at least 8 characters")
-            return@launch
-        }
-
         try {
             val db = AppDatabase.getDatabase(context)
             val repo = UserAccountRepository(db.userAccountDao())
 
             val account = UserAccount(
                 id = editingAccountId ?: 0,
-                accountName = state.accountName,
-                userCode = state.userCode,
-                address = state.address,
+                userRole = userRole,
                 userName = state.userName,
                 password = state.password
             )
@@ -158,7 +146,7 @@ class AccountSetupViewModel : ViewModel() {
                 onSuccess()
             }
         } catch (e: Exception) {
-            onFail("Failed to save account: ${e.localizedMessage}")  // Call onFail in case of any error
+            onFail("Failed to save account: ${e.localizedMessage}")
         }
     }
 }

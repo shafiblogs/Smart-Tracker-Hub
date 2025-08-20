@@ -3,6 +3,8 @@ package com.marsa.smarttrackerhub.ui.screens.login
 import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.marsa.smarttrackerhub.data.AppDatabase
+import com.marsa.smarttrackerhub.data.repository.UserAccountRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -19,7 +21,6 @@ import kotlinx.coroutines.launch
  * muhammed.poyil@morohub.com
  */
 class LoginViewModel : ViewModel() {
-
     private val _formData = MutableStateFlow(LoginModel())
     val formData: StateFlow<LoginModel> = _formData.asStateFlow()
 
@@ -30,10 +31,10 @@ class LoginViewModel : ViewModel() {
     val errorMessage: StateFlow<String?> = _errorMessage.asStateFlow()
 
     fun checkAccountAvailability(context: Context) = viewModelScope.launch {
-//        val db = AppDatabase.getDatabase(context)
-//        val repo = UserAccountRepository(db.userAccountDao())
-//        val account = repo.getFirstAccount()
-//        _formData.update { it.copy(userName = account?.userName ?: "") }
+        val db = AppDatabase.getDatabase(context)
+        val repo = UserAccountRepository(db.userAccountDao())
+        val account = repo.getFirstAccount()
+        _formData.update { it.copy(userName = account?.userName ?: "") }
     }
 
     val isFormValid: StateFlow<Boolean> = _formData
@@ -55,19 +56,19 @@ class LoginViewModel : ViewModel() {
         val password = _formData.value.password
 
         // Hardcoded admin check
-        if (username == "admin" && password == "1234") {
+        if (username == "admin" && password == "424356") {
             _isLoggedInSuccess.value = true
             _errorMessage.value = null
             return@launch
         }
 
         // DB-based authentication
-//        val db = AppDatabase.getDatabase(context)
-//        val repo = UserAccountRepository(db.userAccountDao())
-//        val account = repo.authenticate(username, password)
+        val db = AppDatabase.getDatabase(context)
+        val repo = UserAccountRepository(db.userAccountDao())
+        val account = repo.authenticate(username, password)
 
-//        _isLoggedInSuccess.value = account != null
-//        _errorMessage.value = if (account != null) null else "Invalid username or password"
+        _isLoggedInSuccess.value = account != null
+        _errorMessage.value = if (account != null) null else "Invalid username or password"
     }
 
 }
