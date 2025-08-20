@@ -100,41 +100,8 @@ fun Context.showNotification(title: String, message: String) {
     notificationManager.notify(1, notification)
 }
 
-fun checkValidShop(account: UserAccount?): Boolean {
+fun isAdminUser(account: UserAccount?): Boolean {
     if (account == null) return false
-
-    return when {
-        account.accountName.contains("marsa", ignoreCase = true) -> {
-            account.address.contains("#101", ignoreCase = true) ||
-                    account.address.contains("#102", ignoreCase = true)
-        }
-
-        account.accountName.contains("wadi", ignoreCase = true) -> {
-            account.address.contains("#101", ignoreCase = true)
-        }
-
-        else -> false
-    }
+    return account.userRole == "admin"
 }
 
-fun getShopIdForFireBase(account: UserAccount): String {
-    return when {
-        account.accountName.contains("marsa", ignoreCase = true) -> {
-            when {
-                account.address.contains("#101", ignoreCase = true) -> "MARSA_101"
-                account.address.contains("#102", ignoreCase = true) -> "MARSA_102"
-                else -> "marsa_110"
-            }
-        }
-
-        account.accountName.contains("wadi", ignoreCase = true) -> {
-            if (account.address.contains("#101", ignoreCase = true)) {
-                "WADI_101"
-            } else {
-                "WADI_110"
-            }
-        }
-
-        else -> "101"
-    }
-}

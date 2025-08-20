@@ -7,7 +7,6 @@ import com.marsa.smarttrackerhub.data.AppDatabase
 import com.marsa.smarttrackerhub.data.entity.UserAccount
 import com.marsa.smarttrackerhub.data.repository.UserAccountRepository
 import com.marsa.smarttrackerhub.helper.AuthHelper
-import com.marsa.smarttrackerhub.helper.checkValidShop
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -136,15 +135,12 @@ class AccountSetupViewModel : ViewModel() {
             } else {
                 repo.insertAccount(account)
             }
-            if (checkValidShop(account)) {
-                AuthHelper.updateFireStore(context, account, onSuccess = {
-                    _isSaved.value = true
-                    onSuccess()
-                }, onFail)
-            } else {
-                _isSaved.value = true
+            _isSaved.value = true
+
+            AuthHelper.updateFireStore(context, account, onSuccess = {
                 onSuccess()
-            }
+            }, onFail)
+
         } catch (e: Exception) {
             onFail("Failed to save account: ${e.localizedMessage}")
         }

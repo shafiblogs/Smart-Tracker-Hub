@@ -18,7 +18,7 @@ import kotlin.coroutines.suspendCoroutine
  */
 
 object AuthHelper {
-    suspend fun signInAnonymously(): Boolean {
+    private suspend fun signInAnonymously(): Boolean {
         val auth = FirebaseAuth.getInstance()
 
         // Already signed in
@@ -51,25 +51,22 @@ object AuthHelper {
             return onFail("Anonymous sign-in failed")
         }
 
-        val shopId = getShopIdForFireBase(account)
         FirebaseMessaging.getInstance().token
             .addOnSuccessListener { token ->
                 saveTokenToPreferences(context, token)
                 Log.d("##PDF", "New FCM Token - Account Setup: $token")
                 val shopInfo = mapOf(
-                    "shopId" to shopId,
-                    "name" to account.accountName,
-                    "address" to account.address,
+                    "name" to account.userName,
+                    "role" to account.userRole,
                     "token" to token
                 )
 
                 FirebaseFirestore.getInstance()
-                    .collection("shops")
-                    .document(shopId)
+                    .collection("accounts")
+                    .document(account.userName + "_" + token.take(8))
                     .set(shopInfo, SetOptions.merge())
                     .addOnSuccessListener {
                         Log.d("##PDF", "addOnSuccessListener - Account Setup")
-                        saveShopIdToPreferences(context, shopId)
                         onSuccess()
                     }
                     .addOnFailureListener {

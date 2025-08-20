@@ -6,4 +6,4 @@ package com.marsa.smarttrackerhub.ui.screens.login
  * Moro Hub
  * muhammed.poyil@morohub.com
  */
-data class LoginModel(val userName: String = "admin", val password: String = "1234")
+data class LoginModel(val userName: String = "", val password: String = "")

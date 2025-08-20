@@ -29,6 +29,8 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.rememberDrawerState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
@@ -37,6 +39,7 @@ import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -68,16 +71,23 @@ import kotlinx.coroutines.launch
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SmartTrackerNavHost(navController: NavHostController) {
+    val viewModel: MainAppViewModel = viewModel()
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
     val scope = rememberCoroutineScope()
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
+
+    LaunchedEffect(Unit) {
+        viewModel.loadUserAccount()
+    }
 
     val bottomNavRoutes = mutableListOf(
         Screen.Home.route, Screen.Statement.route, Screen.Summary.route
     )
 
     val showBottomBar = currentRoute in bottomNavRoutes
+    val isAccountActive by viewModel.isAccountActive.collectAsState()
+    val isAdminUser by viewModel.isAdminUser.collectAsState()
 
     fun navigateToRoute(route: String) {
         if (currentRoute != route) {
@@ -97,8 +107,14 @@ fun SmartTrackerNavHost(navController: NavHostController) {
         ) {
             composable(Screen.Splash.route) {
                 SplashScreen(onTimeout = {
-                    navController.navigate(Screen.Login.route) {
-                        popUpTo(Screen.Splash.route) { inclusive = true }
+                    if (isAccountActive) {
+                        navController.navigate(Screen.Login.route) {
+                            popUpTo(Screen.Splash.route) { inclusive = true }
+                        }
+                    } else {
+                        navController.navigate(Screen.AccountSetup.route) {
+                            popUpTo(Screen.Splash.route) { inclusive = true }
+                        }
                     }
                 })
             }
@@ -163,6 +179,7 @@ fun SmartTrackerNavHost(navController: NavHostController) {
                                     )
                                 )
                             },
+
                             navigationIcon = {
                                 IconButton(onClick = { scope.launch { drawerState.open() } }) {
                                     Icon(
@@ -268,10 +285,6 @@ fun SmartTrackerNavHost(navController: NavHostController) {
                     }
                 }
             },
-            floatingActionButton = {
-                when (currentRoute) {
-                }
-            },
             containerColor = MaterialTheme.colorScheme.background,
             content = content
         )
@@ -296,11 +309,13 @@ fun SmartTrackerNavHost(navController: NavHostController) {
                             style = MaterialTheme.typography.titleMedium
                         )
 
-                        val drawerItems = listOf(
+                        val drawerItems = if (isAdminUser) listOf(
                             Screen.AccountSetup.route to "My Account",
                             Screen.Investors.route to "Investors",
                             Screen.ShopList.route to "Shops",
                             Screen.Employees.route to "Employees",
+                        ) else listOf(
+                            Screen.AccountSetup.route to "My Account"
                         )
 
                         drawerItems.forEach { (route, label) ->
