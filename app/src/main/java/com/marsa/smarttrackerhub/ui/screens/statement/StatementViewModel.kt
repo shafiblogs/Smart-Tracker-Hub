@@ -16,6 +16,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
+import androidx.core.net.toUri
 
 
 /**
@@ -93,7 +94,7 @@ class ShopsViewModel(private val firebaseApp: FirebaseApp) : ViewModel() {
 
 fun openPdf(context: Context, url: String) {
     val intent = Intent(Intent.ACTION_VIEW).apply {
-        setDataAndType(Uri.parse(url), "application/pdf")
+        setDataAndType(url.toUri(), "application/pdf")
         flags = Intent.FLAG_ACTIVITY_NO_HISTORY or Intent.FLAG_GRANT_READ_URI_PERMISSION
     }
     try {
