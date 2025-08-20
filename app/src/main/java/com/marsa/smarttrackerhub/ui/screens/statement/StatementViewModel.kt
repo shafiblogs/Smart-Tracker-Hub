@@ -1,4 +1,4 @@
-package com.marsa.smarttrackerhub.ui.screens.shops
+package com.marsa.smarttrackerhub.ui.screens.statement
 
 import android.content.ActivityNotFoundException
 import android.content.Context
@@ -24,8 +24,8 @@ import kotlinx.coroutines.launch
  * muhammed.poyil@morohub.com
  */
 class ShopsViewModel(private val firebaseApp: FirebaseApp) : ViewModel() {
-    private val _shops = MutableStateFlow<List<Shop>>(emptyList())
-    val shops: StateFlow<List<Shop>> = _shops
+    private val _shops = MutableStateFlow<List<StatementDto>>(emptyList())
+    val shops: StateFlow<List<StatementDto>> = _shops
 
     private val trackerFireStore = FirebaseFirestore.getInstance(firebaseApp)
     private val storage = FirebaseStorage.getInstance(firebaseApp)
@@ -84,7 +84,7 @@ class ShopsViewModel(private val firebaseApp: FirebaseApp) : ViewModel() {
                 }
                 if (snapshot != null) {
                     _shops.value = snapshot.documents.mapNotNull {
-                        it.toObject(Shop::class.java)?.copy(shopId = it.id)
+                        it.toObject(StatementDto::class.java)?.copy(shopId = it.id)
                     }
                 }
             }

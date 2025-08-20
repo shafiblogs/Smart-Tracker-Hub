@@ -1,4 +1,4 @@
-package com.marsa.smarttrackerhub.ui.screens.shops
+package com.marsa.smarttrackerhub.ui.screens.statement
 
 
 /**
@@ -6,7 +6,7 @@ package com.marsa.smarttrackerhub.ui.screens.shops
  * Moro Hub
  * muhammed.poyil@morohub.com
  */
-data class Shop(
+data class StatementDto(
     val name: String? = null,
     val address: String? = null,
     val shopId: String? = null,

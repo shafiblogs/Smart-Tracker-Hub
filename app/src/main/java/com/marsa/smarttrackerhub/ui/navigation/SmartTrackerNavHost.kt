@@ -55,7 +55,7 @@ import com.marsa.smarttrackerhub.ui.screens.investers.InvestorsScreen
 import com.marsa.smarttrackerhub.ui.screens.login.LoginScreen
 import com.marsa.smarttrackerhub.ui.screens.shops.AddShopScreen
 import com.marsa.smarttrackerhub.ui.screens.shops.ShopsListScreen
-import com.marsa.smarttrackerhub.ui.screens.shops.ShopsScreen
+import com.marsa.smarttrackerhub.ui.screens.statement.ShopsScreen
 import com.marsa.smarttrackerhub.ui.screens.summary.SummaryScreen
 import kotlinx.coroutines.launch
 

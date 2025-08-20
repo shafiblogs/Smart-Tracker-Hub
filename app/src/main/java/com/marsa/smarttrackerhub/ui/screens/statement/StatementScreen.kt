@@ -1,4 +1,4 @@
-package com.marsa.smarttrackerhub.ui.screens.shops
+package com.marsa.smarttrackerhub.ui.screens.statement
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -37,7 +37,7 @@ import com.google.firebase.FirebaseApp
 @Composable
 fun ShopsScreen() {
     val firebaseApp = FirebaseApp.getInstance("SmartTrackerApp")
-    val viewModel: ShopsViewModel = viewModel(factory = ShopsViewModelFactory(firebaseApp))
+    val viewModel: ShopsViewModel = viewModel(factory = StatementViewModelFactory(firebaseApp))
     val context = LocalContext.current
 
     val shops by viewModel.shops.collectAsState()
@@ -54,7 +54,7 @@ fun ShopsScreen() {
 
 @Composable
 fun ShopCard(
-    shop: Shop,
+    statementDto: StatementDto,
     onViewPdf: (String) -> Unit
 ) {
     Card(
@@ -69,7 +69,7 @@ fun ShopCard(
 
             // Shop Name
             Text(
-                text = shop.name ?: "-",
+                text = statementDto.name ?: "-",
                 style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.onSurface
@@ -84,7 +84,7 @@ fun ShopCard(
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
             Text(
-                text = shop.address ?: "-",
+                text = statementDto.address ?: "-",
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurface
             )
@@ -102,14 +102,14 @@ fun ShopCard(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = shop.shopId?.toString() ?: "-",
+                    text = statementDto.shopId?.toString() ?: "-",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
 
                 Button(
-                    onClick = { shop.pdfUrl?.let { onViewPdf(it) } },
-                    enabled = !shop.pdfUrl.isNullOrBlank()
+                    onClick = { statementDto.pdfUrl?.let { onViewPdf(it) } },
+                    enabled = !statementDto.pdfUrl.isNullOrBlank()
                 ) {
                     Text(text = "View Statement")
                 }

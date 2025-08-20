@@ -1,4 +1,4 @@
-package com.marsa.smarttrackerhub.ui.screens.shops
+package com.marsa.smarttrackerhub.ui.screens.statement
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
@@ -10,7 +10,7 @@ import com.google.firebase.FirebaseApp
  * Moro Hub
  * muhammed.poyil@morohub.com
  */
-class ShopsViewModelFactory(
+class StatementViewModelFactory(
     private val firebaseApp: FirebaseApp
 ) : ViewModelProvider.Factory {
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
