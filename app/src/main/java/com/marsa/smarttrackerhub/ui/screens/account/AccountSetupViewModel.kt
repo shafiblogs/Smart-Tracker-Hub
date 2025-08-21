@@ -41,6 +41,7 @@ class AccountSetupViewModel : ViewModel() {
 
     private val ADMIN_CODE = "4243"
     private val USER_CODE = "1011"
+    private val GUEST_CODE = "100"
 
     val isFormValid: StateFlow<Boolean> = formState
         .map {
@@ -57,7 +58,7 @@ class AccountSetupViewModel : ViewModel() {
         if (account != null) {
             editingAccountId = account.id
             _formState.value = AccountFormState(
-                accessCode = if (account.userRole == "admin") ADMIN_CODE else USER_CODE,
+                accessCode = if (account.userRole == "admin") ADMIN_CODE else if(account.userRole == "user") USER_CODE else GUEST_CODE,
                 userName = account.userName,
                 password = account.password,
                 confirmPassword = account.password
@@ -104,8 +105,7 @@ class AccountSetupViewModel : ViewModel() {
             ADMIN_CODE -> "admin"
             USER_CODE -> "user"
             else -> {
-                onFail("Invalid access code")
-                return@launch
+                "guest"
             }
         }
 

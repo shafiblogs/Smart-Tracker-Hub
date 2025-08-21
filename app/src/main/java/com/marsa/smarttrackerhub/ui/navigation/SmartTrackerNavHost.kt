@@ -88,6 +88,7 @@ fun SmartTrackerNavHost(navController: NavHostController) {
     val showBottomBar = currentRoute in bottomNavRoutes
     val isAccountActive by viewModel.isAccountActive.collectAsState()
     val isAdminUser by viewModel.isAdminUser.collectAsState()
+    val isGuestUser by viewModel.isGuestUser.collectAsState()
 
     fun navigateToRoute(route: String) {
         if (currentRoute != route) {
@@ -133,9 +134,9 @@ fun SmartTrackerNavHost(navController: NavHostController) {
                 })
             }
             composable(Screen.Home.route) {
-                HomeScreen()
+                HomeScreen(isGuestUser = isGuestUser)
             }
-            composable(Screen.Statement.route) { StatementScreen() }
+            composable(Screen.Statement.route) { StatementScreen(isGuestUser = isGuestUser) }
             composable(Screen.Summary.route) { SummaryScreen() }
             composable(Screen.AddShop.route) { AddShopScreen(onShopCreated = { navController.popBackStack() }) }
             composable(Screen.AddInvestor.route) { AddInvestorScreen(onSaveSuccess = { navController.popBackStack() }) }

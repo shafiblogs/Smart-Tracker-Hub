@@ -21,7 +21,7 @@ class HomeScreenViewModel(firebaseApp: FirebaseApp) : ViewModel() {
 
     private val trackerFireStore = FirebaseFirestore.getInstance(firebaseApp)
 
-    init {
+    fun loadScreenData() {
         loadSummary()
     }
 

@@ -100,7 +100,7 @@ fun Context.showNotification(title: String, message: String) {
     notificationManager.notify(1, notification)
 }
 
-fun isAdminUser(account: UserAccount?): Boolean {
+fun isValidUser(account: UserAccount?): Boolean {
     if (account == null) return false
     return account.userRole == "admin"
 }

@@ -42,9 +42,14 @@ import com.marsa.smarttrackerhub.ui.components.InfoRow
  */
 
 @Composable
-fun HomeScreen() {
+fun HomeScreen(isGuestUser: Boolean) {
     val firebaseApp = FirebaseApp.getInstance("SmartTrackerApp")
-    val viewModel: HomeScreenViewModel = viewModel(factory = HomeScreenViewModelFactory(firebaseApp))
+    val viewModel: HomeScreenViewModel =
+        viewModel(factory = HomeScreenViewModelFactory(firebaseApp))
+
+    if (!isGuestUser) {
+        viewModel.loadScreenData()
+    }
 
     val summary by viewModel.summary.collectAsState()
     var selectedItem by remember { mutableStateOf<MonthlySummary?>(null) }

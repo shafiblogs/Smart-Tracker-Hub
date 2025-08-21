@@ -35,10 +35,14 @@ import com.google.firebase.FirebaseApp
  * muhammed.poyil@morohub.com
  */
 @Composable
-fun StatementScreen() {
+fun StatementScreen(isGuestUser: Boolean) {
     val firebaseApp = FirebaseApp.getInstance("SmartTrackerApp")
     val viewModel: ShopsViewModel = viewModel(factory = StatementViewModelFactory(firebaseApp))
     val context = LocalContext.current
+
+    if (!isGuestUser) {
+        viewModel.loadScreenData()
+    }
 
     val shops by viewModel.shops.collectAsState()
 

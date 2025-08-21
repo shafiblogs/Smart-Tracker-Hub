@@ -7,7 +7,7 @@ package com.marsa.smarttrackerhub.ui.screens.account
  * muhammed.poyil@morohub.com
  */
 data class AccountFormState(
-    val accessCode: String = "",
+    val accessCode: String = "100",
     val userName: String = "",
     val password: String = "",
     val confirmPassword: String = ""

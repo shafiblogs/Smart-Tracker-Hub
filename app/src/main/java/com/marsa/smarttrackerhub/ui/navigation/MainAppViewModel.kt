@@ -23,12 +23,16 @@ class MainAppViewModel(application: Application) : AndroidViewModel(application)
     private val _isAccountActive = MutableStateFlow(false)
     val isAccountActive: StateFlow<Boolean> = _isAccountActive.asStateFlow()
 
+    private val _isGuestUser = MutableStateFlow(false)
+    val isGuestUser: StateFlow<Boolean> = _isGuestUser.asStateFlow()
+
     fun loadUserAccount() {
         viewModelScope.launch {
             val db = AppDatabase.getDatabase(getApplication())
             val account = db.userAccountDao().getFirstAccount()
             _isAccountActive.value = account != null
             _isAdminUser.value = account?.userRole.equals("admin", ignoreCase = true)
+            _isGuestUser.value = account?.userRole.equals("guest", ignoreCase = true)
         }
     }
 

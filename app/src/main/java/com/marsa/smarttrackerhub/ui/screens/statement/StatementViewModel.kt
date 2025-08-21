@@ -30,7 +30,7 @@ class ShopsViewModel(private val firebaseApp: FirebaseApp) : ViewModel() {
     private val trackerFireStore = FirebaseFirestore.getInstance(firebaseApp)
     private val storage = FirebaseStorage.getInstance(firebaseApp)
 
-    init {
+    fun loadScreenData() {
         loadShops()
         loadStatements()
     }
