@@ -23,7 +23,7 @@ class MainAppViewModel(application: Application) : AndroidViewModel(application)
     private val _isAccountActive = MutableStateFlow(false)
     val isAccountActive: StateFlow<Boolean> = _isAccountActive.asStateFlow()
 
-    private val _isGuestUser = MutableStateFlow(false)
+    private val _isGuestUser = MutableStateFlow(true)
     val isGuestUser: StateFlow<Boolean> = _isGuestUser.asStateFlow()
 
     fun loadUserAccount() {
