@@ -4,6 +4,7 @@ import android.util.Log
 import androidx.lifecycle.ViewModel
 import com.google.firebase.FirebaseApp
 import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.Query
 import com.marsa.smarttrackerhub.domain.MonthlySummary
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -22,20 +23,40 @@ class HomeScreenViewModel(firebaseApp: FirebaseApp) : ViewModel() {
     private val trackerFireStore = FirebaseFirestore.getInstance(firebaseApp)
 
     fun loadScreenData() {
-        loadSummary()
+        trackerFireStore.collection("shops")
+            .get()
+            .addOnSuccessListener { snapshot ->
+                val shopIds = snapshot.documents.map { it.id }
+                shopIds.forEach { shopId ->
+                    loadLatestSummary(shopId)
+                }
+            }
+            .addOnFailureListener { e ->
+                Log.e("HomeViewModel", "Failed to fetch shops", e)
+            }
     }
 
-    private fun loadSummary() {
+    private fun loadLatestSummary(shopId: String) {
         trackerFireStore.collection("summary")
+            .document(shopId)
+            .collection("months")
+            .orderBy("monthYear", Query.Direction.DESCENDING)
+            .limit(1)
             .addSnapshotListener { snapshot, error ->
                 if (error != null) {
-                    Log.e("HomeViewModel", "Error fetching summary", error)
+                    Log.e("HomeViewModel", "Error fetching summary for $shopId", error)
                     return@addSnapshotListener
                 }
-                if (snapshot != null && !snapshot.isEmpty) {
-                    _summary.value = snapshot.documents.mapNotNull {
-                        it.toObject(MonthlySummary::class.java)
+
+                val latestSummary = snapshot?.documents?.firstOrNull()?.toObject(MonthlySummary::class.java)
+                latestSummary?.let { summary ->
+                    // Merge into current list (replace if shop already exists)
+                    val updatedList = _summary.value.toMutableList().apply {
+                        removeAll { it.shopId == shopId }
+                        add(summary)
                     }
+                    _summary.value = updatedList
+                    Log.d("HomeViewModel", "Loaded latest summary: ${summary.monthYear} for $shopId")
                 }
             }
     }
