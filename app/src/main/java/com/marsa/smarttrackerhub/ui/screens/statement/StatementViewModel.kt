@@ -10,7 +10,6 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.google.android.gms.tasks.Tasks
 import com.google.firebase.FirebaseApp
-import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.storage.FirebaseStorage
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -27,67 +26,51 @@ class ShopsViewModel(private val firebaseApp: FirebaseApp) : ViewModel() {
     private val _shops = MutableStateFlow<List<StatementDto>>(emptyList())
     val shops: StateFlow<List<StatementDto>> = _shops
 
-    private val trackerFireStore = FirebaseFirestore.getInstance(firebaseApp)
     private val storage = FirebaseStorage.getInstance(firebaseApp)
 
+    // Hardcoded shops list
+    private val hardcodedShops = listOf(
+        StatementDto(name = "Al Marsa Masfout", address = "Masfout, UAE", shopId = "MARSA_102"),
+        StatementDto(name = "Al Marsa Muzeira", address = "Muzeira, UAE", shopId = "MARSA_101"),
+        StatementDto(name = "AL Wadi Muzeira", address = "Wadi Muzeira, UAE", shopId = "WADI_101")
+    )
+
     fun loadScreenData() {
-        loadShops()
+        _shops.value = hardcodedShops
         loadStatements()
     }
 
     private fun loadStatements() {
         viewModelScope.launch(Dispatchers.IO) {
-            val folders = listOf(
-                "gs://smart-tracker-8012f.firebasestorage.app/marsa/masfout",
-                "gs://smart-tracker-8012f.firebasestorage.app/marsa/muzeira",
-                "gs://smart-tracker-8012f.firebasestorage.app/wadi/muzeira"
+            val folders = mapOf(
+                "MARSA_102" to "gs://smart-tracker-8012f.firebasestorage.app/marsa/masfout",
+                "MARSA_101" to "gs://smart-tracker-8012f.firebasestorage.app/marsa/muzeira",
+                "WADI_101" to "gs://smart-tracker-8012f.firebasestorage.app/wadi/muzeira"
             )
 
-            val urlMap = mutableMapOf<String, String>() // Map<shopId, pdfUrl>
+            val shopFilesMap = mutableMapOf<String, List<StatementFile>>()
 
-            for (folderUrl in folders) {
+            for ((shopId, folderUrl) in folders) {
                 val folderRef = storage.getReferenceFromUrl(folderUrl)
                 try {
                     val listResult = Tasks.await(folderRef.listAll())
-                    for (fileRef in listResult.items) {
+                    val files = listResult.items.map { fileRef ->
                         val url = Tasks.await(fileRef.downloadUrl).toString()
-                        if (folderUrl.contains("marsa/masfout")) {
-                            urlMap["MARSA_102"] = url
-                        } else if (folderUrl.contains("marsa/muzeira")) {
-                            urlMap["MARSA_101"] = url
-                        } else if (folderUrl.contains("wadi/muzeira")) {
-                            urlMap["WADI_101"] = url
-                        }
+                        val month = parseMonthFromFilename(fileRef.name)
+                        StatementFile(month = month, url = url)
                     }
+                    shopFilesMap[shopId] = files
                 } catch (e: Exception) {
-                    Log.e("StatementsViewModel", "Error listing files in $folderUrl", e)
+                    Log.e("ShopsViewModel", "Error listing files in $folderUrl", e)
+                    shopFilesMap[shopId] = emptyList()
                 }
             }
 
-            // Update shops with PDF URLs
-            val updatedShops = _shops.value.map { shop ->
-                val pdfUrl = shop.shopId?.let { urlMap[it] }
-                shop.copy(pdfUrl = pdfUrl ?: shop.pdfUrl)
+            _shops.value = hardcodedShops.map { shop ->
+                val files = shop.shopId?.let { shopFilesMap[it] } ?: emptyList()
+                shop.copy(statementFiles = files)
             }
-
-            _shops.value = updatedShops
         }
-    }
-
-
-    private fun loadShops() {
-        trackerFireStore.collection("shops")
-            .addSnapshotListener { snapshot, error ->
-                if (error != null) {
-                    Log.e("ShopsViewModel", "Error fetching shops", error)
-                    return@addSnapshotListener
-                }
-                if (snapshot != null) {
-                    _shops.value = snapshot.documents.mapNotNull {
-                        it.toObject(StatementDto::class.java)?.copy(shopId = it.id)
-                    }
-                }
-            }
     }
 }
 
@@ -100,5 +83,22 @@ fun openPdf(context: Context, url: String) {
         context.startActivity(intent)
     } catch (e: ActivityNotFoundException) {
         Toast.makeText(context, "No PDF viewer found", Toast.LENGTH_SHORT).show()
+    }
+}
+
+private fun parseMonthFromFilename(filename: String): String {
+    // Example: "August - 2025-statement.pdf"
+    return try {
+        val regex = "([A-Za-z]+)\\s*-\\s*(\\d{4})".toRegex()
+        val match = regex.find(filename)
+        if (match != null) {
+            val month = match.groupValues[1]
+            val year = match.groupValues[2]
+            "$month $year"
+        } else {
+            "Statement"
+        }
+    } catch (e: Exception) {
+        "Statement"
     }
 }

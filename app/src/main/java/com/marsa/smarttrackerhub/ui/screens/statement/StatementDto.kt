@@ -10,6 +10,5 @@ data class StatementDto(
     val name: String? = null,
     val address: String? = null,
     val shopId: String? = null,
-    val token: String? = null,
-    val pdfUrl: String? = null
+    val statementFiles: List<StatementFile> = emptyList()
 )
