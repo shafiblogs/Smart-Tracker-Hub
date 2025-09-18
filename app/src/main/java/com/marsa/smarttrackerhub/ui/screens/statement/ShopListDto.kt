@@ -6,7 +6,7 @@ package com.marsa.smarttrackerhub.ui.screens.statement
  * Moro Hub
  * muhammed.poyil@morohub.com
  */
-data class StatementDto(
+data class ShopListDto(
     val name: String? = null,
     val address: String? = null,
     val shopId: String? = null,

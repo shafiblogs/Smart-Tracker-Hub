@@ -2,6 +2,7 @@ package com.marsa.smarttrackerhub.ui.screens.home
 
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -15,9 +16,15 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Divider
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExposedDropdownMenuBox
+import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -25,6 +32,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -33,6 +41,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.google.firebase.FirebaseApp
 import com.marsa.smarttrackerhub.domain.MonthlySummary
 import com.marsa.smarttrackerhub.ui.components.InfoRow
+import com.marsa.smarttrackerhub.ui.screens.statement.ShopListDto
 
 
 /**
@@ -41,29 +50,116 @@ import com.marsa.smarttrackerhub.ui.components.InfoRow
  * muhammed.poyil@morohub.com
  */
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeScreen(isGuestUser: Boolean) {
     val firebaseApp = FirebaseApp.getInstance("SmartTrackerApp")
     val viewModel: HomeScreenViewModel =
         viewModel(factory = HomeScreenViewModelFactory(firebaseApp))
 
-    if (!isGuestUser) {
-        viewModel.loadScreenData()
+    // Load once when screen is shown
+    LaunchedEffect(isGuestUser) {
+        if (!isGuestUser) viewModel.loadScreenData()
     }
 
-    val summary by viewModel.summary.collectAsState()
-    var selectedItem by remember { mutableStateOf<MonthlySummary?>(null) }
+    val shops by viewModel.shops.collectAsState()
+    val summariesMap by viewModel.summaries.collectAsState()
 
-    LazyColumn(
+    var selectedShop by remember { mutableStateOf<ShopListDto?>(null) }
+    var expanded by remember { mutableStateOf(false) }
+
+    Column(
         modifier = Modifier
             .fillMaxSize()
-            .padding(12.dp)
+            .padding(horizontal = 16.dp, vertical = 12.dp)
     ) {
-        items(summary) { entry ->
-            DailySummaryCard(entry, onDelete = {
-                selectedItem = entry
-            })
-            Spacer(modifier = Modifier.height(8.dp))
+        // Dropdown to select a shop
+        ExposedDropdownMenuBox(
+            expanded = expanded,
+            onExpandedChange = { expanded = !expanded }
+        ) {
+            OutlinedTextField(
+                value = selectedShop?.name ?: "",
+                onValueChange = {},
+                readOnly = true,
+                label = { Text("Select Shop") },
+                placeholder = { Text("Choose a shop...") },
+                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded) },
+                modifier = Modifier
+                    .menuAnchor()
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(12.dp))
+            )
+
+            ExposedDropdownMenu(
+                expanded = expanded,
+                onDismissRequest = { expanded = false }
+            ) {
+                shops.forEach { shop ->
+                    DropdownMenuItem(
+                        text = {
+                            Column {
+                                Text(shop.name ?: "-", style = MaterialTheme.typography.bodyLarge)
+                                shop.address?.let {
+                                    Text(
+                                        text = it,
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+                            }
+                        },
+                        onClick = {
+                            selectedShop = shop
+                            expanded = false
+                        }
+                    )
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(12.dp))
+
+        // Lookup summaries for selected shop
+        val selectedSummaries = selectedShop?.shopId?.let { summariesMap[it] }.orEmpty()
+
+        when {
+            selectedShop == null -> {
+                Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = "Select a shop to view its monthly summaries",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+
+            selectedSummaries.isEmpty() -> {
+                Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = "No summaries available for ${selectedShop?.name}",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+
+            else -> {
+                LazyColumn(
+                    modifier = Modifier.fillMaxSize(),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    items(selectedSummaries) { entry ->
+                        DailySummaryCard(entry, onDelete = { /* handle delete or more actions */ })
+                    }
+                }
+            }
         }
     }
 }
@@ -83,17 +179,8 @@ fun DailySummaryCard(
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
-
-            // Shop Name - bigger and bold
-            val shopName = when (entry.shopId) {
-                "MARSA_101" -> "Al Marsa Grocery - Muzeira"
-                "MARSA_102" -> "Al Marsa Grocery - Masfooth"
-                "WADI_101" -> "Al Wadi Cafe - Muzeira"
-                else -> "Al Wadi Cafe - Muzeira"
-            }
-
             Text(
-                text = shopName,
+                text = entry.monthYear + " (${entry.shopId})",
                 style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
                 color = MaterialTheme.colorScheme.primary
             )

@@ -173,7 +173,7 @@ fun SmartTrackerNavHost(navController: NavHostController) {
                         TopAppBar(
                             title = {
                                 CommonTextField(
-                                    value = "Today's Track",
+                                    value = "Monthly Track",
                                     style = sTypography.titleLarge.copy(
                                         fontWeight = FontWeight.Bold,
                                         fontSize = 22.sp

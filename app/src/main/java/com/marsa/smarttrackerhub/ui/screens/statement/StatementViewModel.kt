@@ -23,15 +23,15 @@ import kotlinx.coroutines.launch
  * muhammed.poyil@morohub.com
  */
 class StatementViewModel(firebaseApp: FirebaseApp) : ViewModel() {
-    private val _shops = MutableStateFlow<List<StatementDto>>(emptyList())
-    val shops: StateFlow<List<StatementDto>> = _shops
+    private val _shops = MutableStateFlow<List<ShopListDto>>(emptyList())
+    val shops: StateFlow<List<ShopListDto>> = _shops
 
     private val storage = FirebaseStorage.getInstance(firebaseApp)
 
     private val hardcodedShops = listOf(
-        StatementDto(name = "Al Marsa Masfout", address = "Masfout, UAE", shopId = "MARSA_102"),
-        StatementDto(name = "Al Marsa Muzeira", address = "Muzeira, UAE", shopId = "MARSA_101"),
-        StatementDto(name = "AL Wadi Muzeira", address = "Muzeira, UAE", shopId = "WADI_101")
+        ShopListDto(name = "Al Marsa Grocery", address = "Masfout, UAE", shopId = "MARSA_102"),
+        ShopListDto(name = "Al Marsa Grocery", address = "Muzeira, UAE", shopId = "MARSA_101"),
+        ShopListDto(name = "AL Wadi Cafe", address = "Muzeira, UAE", shopId = "WADI_101")
     )
 
     fun loadScreenData() {

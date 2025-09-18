@@ -6,6 +6,7 @@ import com.google.firebase.FirebaseApp
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.Query
 import com.marsa.smarttrackerhub.domain.MonthlySummary
+import com.marsa.smarttrackerhub.ui.screens.statement.ShopListDto
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 
@@ -17,12 +18,21 @@ import kotlinx.coroutines.flow.StateFlow
  */
 
 class HomeScreenViewModel(firebaseApp: FirebaseApp) : ViewModel() {
-    private val _summary = MutableStateFlow<List<MonthlySummary>>(emptyList())
-    val summary: StateFlow<List<MonthlySummary>> = _summary
+    private val _shops = MutableStateFlow<List<ShopListDto>>(emptyList())
+    val shops: StateFlow<List<ShopListDto>> = _shops
+
+    private val _summaries = MutableStateFlow<Map<String, List<MonthlySummary>>>(emptyMap())
+    val summaries: StateFlow<Map<String, List<MonthlySummary>>> = _summaries
 
     private val trackerFireStore = FirebaseFirestore.getInstance(firebaseApp)
 
-    fun loadScreenData() {
+    private val hardcodedShops = listOf(
+        ShopListDto(name = "Al Marsa Grocery", address = "Masfout, UAE", shopId = "MARSA_102"),
+        ShopListDto(name = "Al Marsa Grocery", address = "Muzeira, UAE", shopId = "MARSA_101"),
+        ShopListDto(name = "AL Wadi Cafe", address = "Muzeira, UAE", shopId = "WADI_101")
+    )
+
+    /*fun loadScreenData() {
         trackerFireStore.collection("shops")
             .get()
             .addOnSuccessListener { snapshot ->
@@ -34,30 +44,38 @@ class HomeScreenViewModel(firebaseApp: FirebaseApp) : ViewModel() {
             .addOnFailureListener { e ->
                 Log.e("HomeViewModel", "Failed to fetch shops", e)
             }
+    }*/
+
+    fun loadScreenData() {
+        _shops.value = hardcodedShops
+        hardcodedShops.forEach { shop ->
+            loadAllSummariesForShop(shop.shopId!!)
+        }
     }
 
-    private fun loadLatestSummary(shopId: String) {
+    private fun loadAllSummariesForShop(shopId: String) {
         trackerFireStore.collection("summary")
             .document(shopId)
             .collection("months")
             .orderBy("monthYear", Query.Direction.DESCENDING)
-            .limit(1)
             .addSnapshotListener { snapshot, error ->
                 if (error != null) {
-                    Log.e("HomeViewModel", "Error fetching summary for $shopId", error)
+                    Log.e("HomeViewModel", "Error fetching summaries for $shopId", error)
                     return@addSnapshotListener
                 }
 
-                val latestSummary = snapshot?.documents?.firstOrNull()?.toObject(MonthlySummary::class.java)
-                latestSummary?.let { summary ->
-                    // Merge into current list (replace if shop already exists)
-                    val updatedList = _summary.value.toMutableList().apply {
-                        removeAll { it.shopId == shopId }
-                        add(summary)
-                    }
-                    _summary.value = updatedList
-                    Log.d("HomeViewModel", "Loaded latest summary: ${summary.monthYear} for $shopId")
+                val allSummaries = snapshot?.documents
+                    ?.mapNotNull { it.toObject(MonthlySummary::class.java) }
+                    .orEmpty()
+
+                _summaries.value = _summaries.value.toMutableMap().apply {
+                    put(shopId, allSummaries)
                 }
+
+                Log.d(
+                    "HomeViewModel",
+                    "Loaded ${allSummaries.size} summaries for $shopId"
+                )
             }
     }
 }
