@@ -157,7 +157,10 @@ fun HomeScreen(isGuestUser: Boolean) {
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     items(selectedSummaries) { entry ->
-                        DailySummaryCard(entry, onDelete = { /* handle delete or more actions */ })
+                        DailySummaryCard(
+                            entry,
+                            selectedShop?.address?:"",
+                            onDelete = { /* handle delete or more actions */ })
                     }
                 }
             }
@@ -168,6 +171,7 @@ fun HomeScreen(isGuestUser: Boolean) {
 @Composable
 fun DailySummaryCard(
     entry: MonthlySummary,
+    shopAddress: String,
     onDelete: () -> Unit
 ) {
     Card(
@@ -181,7 +185,7 @@ fun DailySummaryCard(
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             Text(
-                text = entry.monthYear + " (${entry.shopId})",
+                text = entry.monthYear + " ($shopAddress)",
                 style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
                 color = MaterialTheme.colorScheme.primary
             )
@@ -224,6 +228,9 @@ fun DailySummaryCard(
             InfoRow("💰 Total Sale", entry.totalSales)
             InfoRow("🛒 Total Purchase", entry.totalPurchases)
             InfoRow("💳 Total Expense", entry.totalExpenses)
+            InfoRow("💰 Total Cash In", entry.totalCashIn, isHighlight = true)
+            InfoRow("🛒 Total Cash Out", entry.totalCashOut, isHighlight = false)
+            InfoRow("💳 Credit Sale Total", entry.totalCreditSale)
             InfoRow("💰 Credit Sale Payment", entry.creditSalePayment, isHighlight = true)
         }
     }
@@ -278,7 +285,10 @@ fun InfoRow(label: String, value: Double, isHighlight: Boolean = false) {
                     color = MaterialTheme.colorScheme.primary
                 )
             } else {
-                MaterialTheme.typography.bodyMedium
+                MaterialTheme.typography.bodyMedium.copy(
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.error
+                )
             }
         )
     }

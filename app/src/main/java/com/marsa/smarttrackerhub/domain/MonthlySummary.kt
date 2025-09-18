@@ -20,5 +20,8 @@ data class MonthlySummary(
     val openingCashBalance: Double = 0.0,
     val openingCreditBalance: Double = 0.0,
     val openingAccountBalance: Double = 0.0,
+    val totalCashIn: Double = 0.0,
+    val totalCashOut: Double = 0.0,
+    val totalCreditSale: Double = 0.0,
     val updatedDate: String = ""
 )

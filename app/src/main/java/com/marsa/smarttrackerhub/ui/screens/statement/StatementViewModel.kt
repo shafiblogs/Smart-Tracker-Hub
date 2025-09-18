@@ -43,9 +43,9 @@ class StatementViewModel(firebaseApp: FirebaseApp) : ViewModel() {
     private val storage = FirebaseStorage.getInstance(firebaseApp)
 
     private val hardcodedShops = listOf(
-        ShopListDto(name = "Al Marsa Grocery", address = "Masfout, UAE", shopId = "MARSA_102"),
-        ShopListDto(name = "Al Marsa Grocery", address = "Muzeira, UAE", shopId = "MARSA_101"),
-        ShopListDto(name = "AL Wadi Cafe", address = "Muzeira, UAE", shopId = "WADI_101")
+        ShopListDto(name = "Al Marsa Grocery", address = "Masfout", shopId = "MARSA_102"),
+        ShopListDto(name = "Al Marsa Grocery", address = "Muzeira", shopId = "MARSA_101"),
+        ShopListDto(name = "AL Wadi Cafe", address = "Muzeira", shopId = "WADI_101")
     )
 
     fun loadScreenData() {
