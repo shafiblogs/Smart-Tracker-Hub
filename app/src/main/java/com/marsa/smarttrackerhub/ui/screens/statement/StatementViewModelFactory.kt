@@ -14,9 +14,9 @@ class StatementViewModelFactory(
     private val firebaseApp: FirebaseApp
 ) : ViewModelProvider.Factory {
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
-        if (modelClass.isAssignableFrom(ShopsViewModel::class.java)) {
+        if (modelClass.isAssignableFrom(StatementViewModel::class.java)) {
             @Suppress("UNCHECKED_CAST")
-            return ShopsViewModel(firebaseApp) as T
+            return StatementViewModel(firebaseApp) as T
         }
         throw IllegalArgumentException("Unknown ViewModel class")
     }

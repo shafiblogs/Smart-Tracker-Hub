@@ -41,7 +41,7 @@ import com.google.firebase.FirebaseApp
 @Composable
 fun StatementScreen(isGuestUser: Boolean) {
     val firebaseApp = FirebaseApp.getInstance("SmartTrackerApp")
-    val viewModel: ShopsViewModel = viewModel(factory = StatementViewModelFactory(firebaseApp))
+    val viewModel: StatementViewModel = viewModel(factory = StatementViewModelFactory(firebaseApp))
     val context = LocalContext.current
 
     val shops by viewModel.shops.collectAsState()

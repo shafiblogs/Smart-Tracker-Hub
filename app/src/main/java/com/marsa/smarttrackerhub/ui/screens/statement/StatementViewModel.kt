@@ -22,7 +22,7 @@ import kotlinx.coroutines.launch
  * Moro Hub
  * muhammed.poyil@morohub.com
  */
-class ShopsViewModel(firebaseApp: FirebaseApp) : ViewModel() {
+class StatementViewModel(firebaseApp: FirebaseApp) : ViewModel() {
     private val _shops = MutableStateFlow<List<StatementDto>>(emptyList())
     val shops: StateFlow<List<StatementDto>> = _shops
 
