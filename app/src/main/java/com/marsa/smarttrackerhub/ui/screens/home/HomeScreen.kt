@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -64,9 +65,8 @@ fun HomeScreen(isGuestUser: Boolean) {
 
     val shops by viewModel.shops.collectAsState()
     val summariesMap by viewModel.summaries.collectAsState()
-
-    var selectedShop by remember { mutableStateOf<ShopListDto?>(null) }
-    var expanded by remember { mutableStateOf(false) }
+    val selectedShop by viewModel.selectedShop.collectAsState()
+    val expanded by viewModel.expanded.collectAsState()
 
     Column(
         modifier = Modifier
@@ -76,7 +76,7 @@ fun HomeScreen(isGuestUser: Boolean) {
         // Dropdown to select a shop
         ExposedDropdownMenuBox(
             expanded = expanded,
-            onExpandedChange = { expanded = !expanded }
+            onExpandedChange = { viewModel.setExpanded(!expanded) }
         ) {
             OutlinedTextField(
                 value = selectedShop?.name ?: "",
@@ -93,16 +93,17 @@ fun HomeScreen(isGuestUser: Boolean) {
 
             ExposedDropdownMenu(
                 expanded = expanded,
-                onDismissRequest = { expanded = false }
+                onDismissRequest = { viewModel.setExpanded(false) },
+                modifier = Modifier.heightIn(max = 300.dp)
             ) {
                 shops.forEach { shop ->
                     DropdownMenuItem(
                         text = {
                             Column {
                                 Text(shop.name ?: "-", style = MaterialTheme.typography.bodyLarge)
-                                shop.address?.let {
+                                if (!shop.address.isNullOrBlank()) {
                                     Text(
-                                        text = it,
+                                        text = shop.address,
                                         style = MaterialTheme.typography.bodySmall,
                                         color = MaterialTheme.colorScheme.onSurfaceVariant
                                     )
@@ -110,8 +111,8 @@ fun HomeScreen(isGuestUser: Boolean) {
                             }
                         },
                         onClick = {
-                            selectedShop = shop
-                            expanded = false
+                            viewModel.setSelectedShop(shop)
+                            viewModel.setExpanded(false)
                         }
                     )
                 }

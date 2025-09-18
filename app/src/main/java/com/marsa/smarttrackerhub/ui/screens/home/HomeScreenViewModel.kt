@@ -26,6 +26,20 @@ class HomeScreenViewModel(firebaseApp: FirebaseApp) : ViewModel() {
 
     private val trackerFireStore = FirebaseFirestore.getInstance(firebaseApp)
 
+    private val _selectedShop = MutableStateFlow<ShopListDto?>(null)
+    val selectedShop: StateFlow<ShopListDto?> = _selectedShop
+
+    private val _expanded = MutableStateFlow(false)
+    val expanded: StateFlow<Boolean> = _expanded
+
+    fun setSelectedShop(shop: ShopListDto?) {
+        _selectedShop.value = shop
+    }
+
+    fun setExpanded(value: Boolean) {
+        _expanded.value = value
+    }
+
     private val hardcodedShops = listOf(
         ShopListDto(name = "Al Marsa Grocery", address = "Masfout, UAE", shopId = "MARSA_102"),
         ShopListDto(name = "Al Marsa Grocery", address = "Muzeira, UAE", shopId = "MARSA_101"),

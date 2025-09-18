@@ -57,8 +57,8 @@ fun StatementScreen(isGuestUser: Boolean) {
     val context = LocalContext.current
 
     val shops by viewModel.shops.collectAsState()
-    var selectedShop by remember { mutableStateOf<ShopListDto?>(null) }
-    var expanded by remember { mutableStateOf(false) }
+    val selectedShop by viewModel.selectedShop.collectAsState()
+    val expanded by viewModel.expanded.collectAsState()
 
     LaunchedEffect(isGuestUser) {
         if (!isGuestUser) viewModel.loadScreenData()
@@ -71,7 +71,7 @@ fun StatementScreen(isGuestUser: Boolean) {
     ) {
         ExposedDropdownMenuBox(
             expanded = expanded,
-            onExpandedChange = { expanded = !expanded }
+            onExpandedChange = { viewModel.setExpanded(!expanded) }
         ) {
             OutlinedTextField(
                 value = selectedShop?.name ?: "",
@@ -88,7 +88,7 @@ fun StatementScreen(isGuestUser: Boolean) {
 
             ExposedDropdownMenu(
                 expanded = expanded,
-                onDismissRequest = { expanded = false },
+                onDismissRequest = { viewModel.setExpanded(false) },
                 modifier = Modifier.heightIn(max = 300.dp)
             ) {
                 shops.forEach { shop ->
@@ -106,8 +106,8 @@ fun StatementScreen(isGuestUser: Boolean) {
                             }
                         },
                         onClick = {
-                            selectedShop = shop
-                            expanded = false
+                            viewModel.setSelectedShop(shop)
+                            viewModel.setExpanded(false)
                         }
                     )
                 }

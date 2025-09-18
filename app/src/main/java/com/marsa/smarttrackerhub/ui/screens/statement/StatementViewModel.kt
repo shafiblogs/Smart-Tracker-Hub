@@ -26,6 +26,20 @@ class StatementViewModel(firebaseApp: FirebaseApp) : ViewModel() {
     private val _shops = MutableStateFlow<List<ShopListDto>>(emptyList())
     val shops: StateFlow<List<ShopListDto>> = _shops
 
+    private val _selectedShop = MutableStateFlow<ShopListDto?>(null)
+    val selectedShop: StateFlow<ShopListDto?> = _selectedShop
+
+    private val _expanded = MutableStateFlow(false)
+    val expanded: StateFlow<Boolean> = _expanded
+
+    fun setSelectedShop(shop: ShopListDto?) {
+        _selectedShop.value = shop
+    }
+
+    fun setExpanded(value: Boolean) {
+        _expanded.value = value
+    }
+
     private val storage = FirebaseStorage.getInstance(firebaseApp)
 
     private val hardcodedShops = listOf(
