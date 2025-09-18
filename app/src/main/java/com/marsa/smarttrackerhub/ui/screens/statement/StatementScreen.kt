@@ -80,10 +80,10 @@ fun StatementScreen(isGuestUser: Boolean) {
                 label = { Text("Select Shop") },
                 placeholder = { if (selectedShop == null) Text("Choose a shop...") },
                 trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded) },
+                shape = RoundedCornerShape(12.dp),
                 modifier = Modifier
                     .menuAnchor()
                     .fillMaxWidth()
-                    .clip(RoundedCornerShape(12.dp))
             )
 
             ExposedDropdownMenu(

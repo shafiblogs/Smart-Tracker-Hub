@@ -83,12 +83,12 @@ fun HomeScreen(isGuestUser: Boolean) {
                 onValueChange = {},
                 readOnly = true,
                 label = { Text("Select Shop") },
-                placeholder = { Text("Choose a shop...") },
+                placeholder = { if (selectedShop == null) Text("Choose a shop...") },
                 trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded) },
+                shape = RoundedCornerShape(12.dp),
                 modifier = Modifier
                     .menuAnchor()
                     .fillMaxWidth()
-                    .clip(RoundedCornerShape(12.dp))
             )
 
             ExposedDropdownMenu(
