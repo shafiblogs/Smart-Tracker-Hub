@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -129,17 +130,10 @@ fun StatementScreen(isGuestUser: Boolean) {
                 )
             }
         } else {
-            LazyColumn(
-                modifier = Modifier.fillMaxSize(),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                item {
-                    StatementCard(
-                        statement = selectedShop!!,
-                        onViewPdf = { url -> openPdf(context, url) }
-                    )
-                }
-            }
+            StatementCard(
+                statement = selectedShop!!,
+                onViewPdf = { url -> openPdf(context, url) }
+            )
         }
     }
 }
@@ -156,19 +150,23 @@ fun StatementCard(
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         if (statement.statementFiles.isEmpty()) {
-            // Empty state
-            Text(
-                text = "No statements available",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
+            Box(
+                modifier = Modifier.fillMaxSize(),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = "No statements available",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
         } else {
             // Statement list
-            Column(
-                verticalArrangement = Arrangement.spacedBy(12.dp),
-                modifier = Modifier.fillMaxWidth()
+            LazyColumn(
+                modifier = Modifier.fillMaxSize(),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                statement.statementFiles.forEach { file ->
+                items(statement.statementFiles) { file ->
                     Card(
                         modifier = Modifier
                             .fillMaxWidth()
