@@ -67,7 +67,7 @@ fun StatementScreen(isGuestUser: Boolean) {
                 value = selectedShop?.name ?: "Select Shop",
                 onValueChange = {},
                 readOnly = true,
-                label = { Text("Shop") },
+                label = { Text("Shop Name") },
                 trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded) },
                 modifier = Modifier
                     .menuAnchor()

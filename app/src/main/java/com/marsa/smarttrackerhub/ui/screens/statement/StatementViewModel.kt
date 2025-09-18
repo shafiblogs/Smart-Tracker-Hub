@@ -22,17 +22,16 @@ import kotlinx.coroutines.launch
  * Moro Hub
  * muhammed.poyil@morohub.com
  */
-class ShopsViewModel(private val firebaseApp: FirebaseApp) : ViewModel() {
+class ShopsViewModel(firebaseApp: FirebaseApp) : ViewModel() {
     private val _shops = MutableStateFlow<List<StatementDto>>(emptyList())
     val shops: StateFlow<List<StatementDto>> = _shops
 
     private val storage = FirebaseStorage.getInstance(firebaseApp)
 
-    // Hardcoded shops list
     private val hardcodedShops = listOf(
         StatementDto(name = "Al Marsa Masfout", address = "Masfout, UAE", shopId = "MARSA_102"),
         StatementDto(name = "Al Marsa Muzeira", address = "Muzeira, UAE", shopId = "MARSA_101"),
-        StatementDto(name = "AL Wadi Muzeira", address = "Wadi Muzeira, UAE", shopId = "WADI_101")
+        StatementDto(name = "AL Wadi Muzeira", address = "Muzeira, UAE", shopId = "WADI_101")
     )
 
     fun loadScreenData() {
@@ -87,7 +86,6 @@ fun openPdf(context: Context, url: String) {
 }
 
 private fun parseMonthFromFilename(filename: String): String {
-    // Example: "August - 2025-statement.pdf"
     return try {
         val regex = "([A-Za-z]+)\\s*-\\s*(\\d{4})".toRegex()
         val match = regex.find(filename)
