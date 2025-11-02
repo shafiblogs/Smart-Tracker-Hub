@@ -45,6 +45,7 @@ class StatementViewModel(firebaseApp: FirebaseApp) : ViewModel() {
     private val hardcodedShops = listOf(
         ShopListDto(name = "Al Marsa Grocery", address = "Masfout", shopId = "MARSA_102"),
         ShopListDto(name = "Al Marsa Grocery", address = "Muzeira", shopId = "MARSA_101"),
+        ShopListDto(name = "AL Masa Super Market", address = "Ajman", shopId = "MASA_103"),
         ShopListDto(name = "AL Wadi Cafe", address = "Muzeira", shopId = "WADI_101")
     )
 
@@ -58,6 +59,7 @@ class StatementViewModel(firebaseApp: FirebaseApp) : ViewModel() {
             val folders = mapOf(
                 "MARSA_102" to "gs://smart-tracker-8012f.firebasestorage.app/marsa/masfout",
                 "MARSA_101" to "gs://smart-tracker-8012f.firebasestorage.app/marsa/muzeira",
+                "MASA_103" to "gs://smart-tracker-8012f.firebasestorage.app/masa/ajman",
                 "WADI_101" to "gs://smart-tracker-8012f.firebasestorage.app/wadi/muzeira"
             )
 
