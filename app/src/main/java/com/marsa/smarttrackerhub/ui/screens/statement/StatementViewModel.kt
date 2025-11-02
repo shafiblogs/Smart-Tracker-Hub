@@ -43,8 +43,8 @@ class StatementViewModel(firebaseApp: FirebaseApp) : ViewModel() {
     private val storage = FirebaseStorage.getInstance(firebaseApp)
 
     private val hardcodedShops = listOf(
-        ShopListDto(name = "Al Marsa Grocery", address = "Masfout", shopId = "MARSA_102"),
-        ShopListDto(name = "Al Marsa Grocery", address = "Muzeira", shopId = "MARSA_101"),
+        ShopListDto(name = "AL Marsa Grocery", address = "Masfout", shopId = "MARSA_102"),
+        ShopListDto(name = "AL Marsa Grocery", address = "Muzeira", shopId = "MARSA_101"),
         ShopListDto(name = "AL Masa Super Market", address = "Ajman", shopId = "MASA_103"),
         ShopListDto(name = "AL Wadi Cafe", address = "Muzeira", shopId = "WADI_101")
     )
