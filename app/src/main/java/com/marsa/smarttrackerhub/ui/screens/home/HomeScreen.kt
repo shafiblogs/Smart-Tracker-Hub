@@ -225,6 +225,7 @@ fun DailySummaryCard(
             Divider(Modifier.padding(vertical = 8.dp))
 
             // Totals Section
+            InfoRow("💰 Average Sale", entry.averageSale?:0.0)
             InfoRow("💰 Total Sale", entry.totalSales)
             InfoRow("🛒 Total Purchase", entry.totalPurchases)
             InfoRow("💳 Total Expense", entry.totalExpenses)

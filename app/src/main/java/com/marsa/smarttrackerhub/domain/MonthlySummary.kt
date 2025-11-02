@@ -23,5 +23,6 @@ data class MonthlySummary(
     val totalCashIn: Double = 0.0,
     val totalCashOut: Double = 0.0,
     val totalCreditSale: Double = 0.0,
+    val averageSale: Double? = 0.0,
     val updatedDate: String = ""
 )
