@@ -11,6 +11,8 @@ import androidx.lifecycle.viewModelScope
 import com.google.android.gms.tasks.Tasks
 import com.google.firebase.FirebaseApp
 import com.google.firebase.storage.FirebaseStorage
+import com.marsa.smarttrackerhub.domain.AccessCode
+import com.marsa.smarttrackerhub.domain.getShopsForUser
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -42,15 +44,8 @@ class StatementViewModel(firebaseApp: FirebaseApp) : ViewModel() {
 
     private val storage = FirebaseStorage.getInstance(firebaseApp)
 
-    private val hardcodedShops = listOf(
-        ShopListDto(name = "AL Marsa Grocery", address = "Masfout", shopId = "MARSA_102"),
-        ShopListDto(name = "AL Marsa Grocery", address = "Muzeira", shopId = "MARSA_101"),
-        ShopListDto(name = "AL Masa Super Market", address = "Ajman", shopId = "MASA_103"),
-        ShopListDto(name = "AL Wadi Cafe", address = "Muzeira", shopId = "WADI_101")
-    )
-
-    fun loadScreenData() {
-        _shops.value = hardcodedShops
+    fun loadScreenData(userAccessCode: AccessCode) {
+        _shops.value = getShopsForUser(userAccessCode)
         loadStatements()
     }
 
@@ -81,9 +76,11 @@ class StatementViewModel(firebaseApp: FirebaseApp) : ViewModel() {
                 }
             }
 
-            _shops.value = hardcodedShops.map { shop ->
-                val files = shop.shopId?.let { shopFilesMap[it] } ?: emptyList()
-                shop.copy(statementFiles = files)
+            _shops.value.forEach { shop ->
+                shop.shopId?.let { shopId ->
+                    val files = shop.shopId.let { shopFilesMap[it] } ?: emptyList()
+                    shop.copy(statementFiles = files)
+                }
             }
         }
     }

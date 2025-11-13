@@ -28,21 +28,17 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.google.firebase.FirebaseApp
+import com.marsa.smarttrackerhub.domain.AccessCode
 import com.marsa.smarttrackerhub.domain.MonthlySummary
 import com.marsa.smarttrackerhub.ui.components.InfoRow
-import com.marsa.smarttrackerhub.ui.screens.statement.ShopListDto
 
 
 /**
@@ -53,14 +49,14 @@ import com.marsa.smarttrackerhub.ui.screens.statement.ShopListDto
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun HomeScreen(isGuestUser: Boolean) {
+fun HomeScreen(userAccessCode: AccessCode) {
     val firebaseApp = FirebaseApp.getInstance("SmartTrackerApp")
     val viewModel: HomeScreenViewModel =
         viewModel(factory = HomeScreenViewModelFactory(firebaseApp))
 
     // Load once when screen is shown
-    LaunchedEffect(isGuestUser) {
-        if (!isGuestUser) viewModel.loadScreenData()
+    LaunchedEffect(userAccessCode) {
+        viewModel.loadScreenData(userAccessCode)
     }
 
     val shops by viewModel.shops.collectAsState()
@@ -159,7 +155,7 @@ fun HomeScreen(isGuestUser: Boolean) {
                     items(selectedSummaries) { entry ->
                         DailySummaryCard(
                             entry,
-                            selectedShop?.address?:"",
+                            selectedShop?.address ?: "",
                             onDelete = { /* handle delete or more actions */ })
                     }
                 }
@@ -225,7 +221,7 @@ fun DailySummaryCard(
             Divider(Modifier.padding(vertical = 8.dp))
 
             // Totals Section
-            InfoRow("💰 Average Sale", entry.averageSale?:0.0)
+            InfoRow("💰 Average Sale", entry.averageSale ?: 0.0)
             InfoRow("💰 Total Sale", entry.totalSales)
             InfoRow("🛒 Total Purchase", entry.totalPurchases)
             InfoRow("💳 Total Expense", entry.totalExpenses)

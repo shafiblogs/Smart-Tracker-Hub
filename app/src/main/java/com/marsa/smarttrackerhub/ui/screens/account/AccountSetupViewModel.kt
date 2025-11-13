@@ -6,6 +6,7 @@ import androidx.lifecycle.viewModelScope
 import com.marsa.smarttrackerhub.data.AppDatabase
 import com.marsa.smarttrackerhub.data.entity.UserAccount
 import com.marsa.smarttrackerhub.data.repository.UserAccountRepository
+import com.marsa.smarttrackerhub.domain.AccessCode
 import com.marsa.smarttrackerhub.helper.AuthHelper
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -55,10 +56,14 @@ class AccountSetupViewModel : ViewModel() {
     fun loadExistingAccount(context: Context) = viewModelScope.launch(Dispatchers.IO) {
         val db = AppDatabase.getDatabase(context)
         val account = db.userAccountDao().getFirstAccount()
+
         if (account != null) {
             editingAccountId = account.id
+
+            val accessCode = AccessCode.fromRole(account.userRole)
+
             _formState.value = AccountFormState(
-                accessCode = if (account.userRole == "admin") ADMIN_CODE else if(account.userRole == "user") USER_CODE else GUEST_CODE,
+                accessCode = accessCode.code,
                 userName = account.userName,
                 password = account.password,
                 confirmPassword = account.password
@@ -100,15 +105,6 @@ class AccountSetupViewModel : ViewModel() {
             return@launch
         }
 
-        val code = state.accessCode.trim()
-        val userRole = when (code) {
-            ADMIN_CODE -> "admin"
-            USER_CODE -> "user"
-            else -> {
-                "guest"
-            }
-        }
-
         if (state.userName.length < 4) {
             onFail("Username must be at least 4 characters")
             return@launch
@@ -122,10 +118,12 @@ class AccountSetupViewModel : ViewModel() {
         try {
             val db = AppDatabase.getDatabase(context)
             val repo = UserAccountRepository(db.userAccountDao())
+            // Get AccessCode - automatically defaults to GUEST for any invalid code
+            val accessCode = AccessCode.fromCode(state.accessCode.trim())
 
             val account = UserAccount(
                 id = editingAccountId ?: 0,
-                userRole = userRole,
+                userRole = accessCode.roleName,
                 userName = state.userName,
                 password = state.password
             )

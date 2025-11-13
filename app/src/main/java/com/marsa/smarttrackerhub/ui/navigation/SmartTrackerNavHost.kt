@@ -45,6 +45,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import com.marsa.smarttracker.ui.theme.sTypography
+import com.marsa.smarttrackerhub.domain.AccessCode
 import com.marsa.smarttrackerhub.ui.components.CommonTextField
 import com.marsa.smarttrackerhub.ui.components.SmallTextField
 import com.marsa.smarttrackerhub.ui.screens.SplashScreen
@@ -87,8 +88,7 @@ fun SmartTrackerNavHost(navController: NavHostController) {
 
     val showBottomBar = currentRoute in bottomNavRoutes
     val isAccountActive by viewModel.isAccountActive.collectAsState()
-    val isAdminUser by viewModel.isAdminUser.collectAsState()
-    val isGuestUser by viewModel.isGuestUser.collectAsState()
+    val userAccessCode by viewModel.userAccessCode.collectAsState()
 
     fun navigateToRoute(route: String) {
         if (currentRoute != route) {
@@ -134,9 +134,9 @@ fun SmartTrackerNavHost(navController: NavHostController) {
                 })
             }
             composable(Screen.Home.route) {
-                HomeScreen(isGuestUser = isGuestUser)
+                HomeScreen(userAccessCode = userAccessCode)
             }
-            composable(Screen.Statement.route) { StatementScreen(isGuestUser = isGuestUser) }
+            composable(Screen.Statement.route) { StatementScreen(userAccessCode = userAccessCode) }
             composable(Screen.Summary.route) { SummaryScreen() }
             composable(Screen.AddShop.route) { AddShopScreen(onShopCreated = { navController.popBackStack() }) }
             composable(Screen.AddInvestor.route) { AddInvestorScreen(onSaveSuccess = { navController.popBackStack() }) }
@@ -311,7 +311,7 @@ fun SmartTrackerNavHost(navController: NavHostController) {
                             style = MaterialTheme.typography.titleMedium
                         )
 
-                        val drawerItems = if (isAdminUser) listOf(
+                        val drawerItems = if (userAccessCode == AccessCode.ADMIN) listOf(
                             Screen.AccountSetup.route to "My Account",
                             Screen.Investors.route to "Investors",
                             Screen.ShopList.route to "Shops",

@@ -4,6 +4,7 @@ import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.marsa.smarttrackerhub.data.AppDatabase
+import com.marsa.smarttrackerhub.domain.AccessCode
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -17,22 +18,24 @@ import kotlinx.coroutines.launch
  */
 
 class MainAppViewModel(application: Application) : AndroidViewModel(application) {
-    private val _isAdminUser = MutableStateFlow(false)
-    val isAdminUser: StateFlow<Boolean> = _isAdminUser.asStateFlow()
+    private val _userAccessCode = MutableStateFlow<AccessCode>(AccessCode.GUEST)
+    val userAccessCode: StateFlow<AccessCode> = _userAccessCode.asStateFlow()
 
     private val _isAccountActive = MutableStateFlow(false)
     val isAccountActive: StateFlow<Boolean> = _isAccountActive.asStateFlow()
-
-    private val _isGuestUser = MutableStateFlow(true)
-    val isGuestUser: StateFlow<Boolean> = _isGuestUser.asStateFlow()
 
     fun loadUserAccount() {
         viewModelScope.launch {
             val db = AppDatabase.getDatabase(getApplication())
             val account = db.userAccountDao().getFirstAccount()
-            _isAccountActive.value = account != null
-            _isAdminUser.value = account?.userRole.equals("admin", ignoreCase = true)
-            _isGuestUser.value = account?.userRole.equals("guest", ignoreCase = true)
+
+            if (account != null) {
+                _isAccountActive.value = true
+                _userAccessCode.value = AccessCode.fromRole(account.userRole)
+            } else {
+                _isAccountActive.value = false
+                _userAccessCode.value = AccessCode.GUEST
+            }
         }
     }
 

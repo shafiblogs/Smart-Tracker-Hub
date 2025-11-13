@@ -29,9 +29,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -42,6 +39,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.google.firebase.FirebaseApp
 import com.marsa.smarttrackerhub.R
+import com.marsa.smarttrackerhub.domain.AccessCode
 
 
 /**
@@ -51,7 +49,7 @@ import com.marsa.smarttrackerhub.R
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun StatementScreen(isGuestUser: Boolean) {
+fun StatementScreen(userAccessCode: AccessCode) {
     val firebaseApp = FirebaseApp.getInstance("SmartTrackerApp")
     val viewModel: StatementViewModel = viewModel(factory = StatementViewModelFactory(firebaseApp))
     val context = LocalContext.current
@@ -60,8 +58,8 @@ fun StatementScreen(isGuestUser: Boolean) {
     val selectedShop by viewModel.selectedShop.collectAsState()
     val expanded by viewModel.expanded.collectAsState()
 
-    LaunchedEffect(isGuestUser) {
-        if (!isGuestUser) viewModel.loadScreenData()
+    LaunchedEffect(userAccessCode) {
+        viewModel.loadScreenData(userAccessCode)
     }
 
     Column(

@@ -5,7 +5,9 @@ import androidx.lifecycle.ViewModel
 import com.google.firebase.FirebaseApp
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.Query
+import com.marsa.smarttrackerhub.domain.AccessCode
 import com.marsa.smarttrackerhub.domain.MonthlySummary
+import com.marsa.smarttrackerhub.domain.getShopsForUser
 import com.marsa.smarttrackerhub.ui.screens.statement.ShopListDto
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -40,12 +42,6 @@ class HomeScreenViewModel(firebaseApp: FirebaseApp) : ViewModel() {
         _expanded.value = value
     }
 
-    private val hardcodedShops = listOf(
-        ShopListDto(name = "AL Marsa Grocery", address = "Masfout", shopId = "MARSA_102"),
-        ShopListDto(name = "AL Marsa Grocery", address = "Muzeira", shopId = "MARSA_101"),
-        ShopListDto(name = "AL Masa Super Market", address = "Ajman", shopId = "MASA_103"),
-        ShopListDto(name = "AL Wadi Cafe", address = "Muzeira", shopId = "WADI_101")
-    )
 
     /*fun loadScreenData() {
         trackerFireStore.collection("shops")
@@ -61,10 +57,13 @@ class HomeScreenViewModel(firebaseApp: FirebaseApp) : ViewModel() {
             }
     }*/
 
-    fun loadScreenData() {
-        _shops.value = hardcodedShops
-        hardcodedShops.forEach { shop ->
-            loadAllSummariesForShop(shop.shopId!!)
+
+    fun loadScreenData(userAccessCode: AccessCode) {
+        _shops.value = getShopsForUser(userAccessCode)
+        _shops.value.forEach { shop ->
+            shop.shopId?.let { shopId ->
+                loadAllSummariesForShop(shopId)
+            }
         }
     }
 
