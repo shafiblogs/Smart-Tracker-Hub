@@ -19,6 +19,6 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "Smart Tracker Hub"
+rootProject.name = "Tracker Hub"
 include(":app")
  

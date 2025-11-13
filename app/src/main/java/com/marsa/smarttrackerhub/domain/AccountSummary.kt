@@ -8,14 +8,14 @@ package com.marsa.smarttrackerhub.domain
  */
 
 data class AccountSummary(
-    val monthYear: String,
-    val totalCollection: Double,
-    val totalPurchases: Double,
-    val totalExpenses: Double,
-    val outstandingPayments: Double,
-    val cashBalance: Double,
-    val outstandingBalance: Double,
-    val profitMargin: Double,
-    val openingCashBalance: Double,
-    val openingOutstandingBalance: Double
+    val monthYear: String = "",
+    val totalCollection: Double = 0.0,
+    val totalPurchases: Double = 0.0,
+    val totalExpenses: Double = 0.0,
+    val outstandingPayments: Double = 0.0,
+    val cashBalance: Double = 0.0,
+    val outstandingBalance: Double = 0.0,
+    val profitMargin: Double = 0.0,
+    val openingCashBalance: Double = 0.0,
+    val openingOutstandingBalance: Double = 0.0
 )
