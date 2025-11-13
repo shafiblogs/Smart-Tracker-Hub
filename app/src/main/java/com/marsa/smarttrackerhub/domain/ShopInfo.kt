@@ -61,8 +61,8 @@ fun getHomeShopUser(userAccessCode: AccessCode): List<ShopListDto> {
         AccessCode.SUPERMARKET -> shopList.filter { it.category == ShopCategory.SUPERMARKET }
 
         // Operations users see all categories but only their region
-        AccessCode.OPS_UAE -> shopList.filter { it.region == ShopRegion.UAE }
-        AccessCode.OPS_KUWAIT -> shopList.filter { it.region == ShopRegion.KUWAIT }
+        AccessCode.OPS_UAE -> shopList.filter { it.region == ShopRegion.UAE && it.category != ShopCategory.OPS }
+        AccessCode.OPS_KUWAIT -> shopList.filter { it.region == ShopRegion.KUWAIT && it.category != ShopCategory.OPS }
 
         // Admin sees everything
         AccessCode.ADMIN -> shopList.filter { it.category != ShopCategory.OPS }
@@ -76,8 +76,8 @@ fun getHomeShopUser(userAccessCode: AccessCode): List<ShopListDto> {
 fun getSummaryShopList(userAccessCode: AccessCode): List<ShopListDto> {
     return when (userAccessCode) {
         AccessCode.ADMIN -> shopList.filter { it.category == ShopCategory.OPS }
-        AccessCode.OPS_UAE -> shopList.filter { it.region == ShopRegion.UAE }
-        AccessCode.OPS_KUWAIT -> shopList.filter { it.region == ShopRegion.KUWAIT }
+        AccessCode.OPS_UAE -> shopList.filter { it.region == ShopRegion.UAE && it.category == ShopCategory.OPS }
+        AccessCode.OPS_KUWAIT -> shopList.filter { it.region == ShopRegion.KUWAIT && it.category == ShopCategory.OPS }
         else -> emptyList()
     }
 }
@@ -85,8 +85,8 @@ fun getSummaryShopList(userAccessCode: AccessCode): List<ShopListDto> {
 fun getStatementShopList(userAccessCode: AccessCode): List<ShopListDto> {
     return when (userAccessCode) {
         AccessCode.ADMIN -> shopList
-        AccessCode.OPS_UAE -> shopList.filter { it.region == ShopRegion.UAE }
-        AccessCode.OPS_KUWAIT -> shopList.filter { it.region == ShopRegion.KUWAIT }
+        AccessCode.OPS_UAE -> shopList.filter { it.region == ShopRegion.UAE && it.category != ShopCategory.OPS }
+        AccessCode.OPS_KUWAIT -> shopList.filter { it.region == ShopRegion.KUWAIT && it.category != ShopCategory.OPS }
         else -> emptyList()
     }
 }
