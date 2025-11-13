@@ -7,7 +7,7 @@ import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.Query
 import com.marsa.smarttrackerhub.domain.AccessCode
 import com.marsa.smarttrackerhub.domain.AccountSummary
-import com.marsa.smarttrackerhub.domain.getSummaryListUser
+import com.marsa.smarttrackerhub.domain.getSummaryShopList
 import com.marsa.smarttrackerhub.ui.screens.statement.ShopListDto
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -59,7 +59,7 @@ class SummaryViewModel(firebaseApp: FirebaseApp) : ViewModel() {
 
 
     fun loadScreenData(userAccessCode: AccessCode) {
-        _shops.value = getSummaryListUser(userAccessCode)
+        _shops.value = getSummaryShopList(userAccessCode)
         _shops.value.forEach { shop ->
             shop.shopId?.let { shopId ->
                 loadAllSummariesForShop(shopId)

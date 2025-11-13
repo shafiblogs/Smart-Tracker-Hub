@@ -40,10 +40,6 @@ class AccountSetupViewModel : ViewModel() {
 
     private var editingAccountId: Int? = null
 
-    private val ADMIN_CODE = "4243"
-    private val USER_CODE = "1011"
-    private val GUEST_CODE = "100"
-
     val isFormValid: StateFlow<Boolean> = formState
         .map {
             it.accessCode.isNotBlank() &&
@@ -135,9 +131,9 @@ class AccountSetupViewModel : ViewModel() {
             }
             _isSaved.value = true
 
-            AuthHelper.updateFireStore(context, account, onSuccess = {
-                onSuccess()
-            }, onFail)
+//            AuthHelper.updateFireStore(context, account, onSuccess = {
+//                onSuccess()
+//            }, onFail)
 
         } catch (e: Exception) {
             onFail("Failed to save account: ${e.localizedMessage}")

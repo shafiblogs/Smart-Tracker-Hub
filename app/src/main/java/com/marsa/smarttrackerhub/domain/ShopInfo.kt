@@ -37,20 +37,23 @@ private val shopList = listOf(
         shopId = "WADI_101",
         category = ShopCategory.CAFE,
         region = ShopRegion.UAE
-    )
-)
-
-private val summaryList = listOf(
-    ShopListDto(
+    ), ShopListDto(
         name = "Shops In UAE",
         address = "Region - UAE",
-        shopId = "",
-        category = ShopCategory.GROCERY,
+        shopId = "ops_uae",
+        category = ShopCategory.OPS,
         region = ShopRegion.UAE
+    ),
+    ShopListDto(
+        name = "Shops In Kuwait",
+        address = "Region - Kuwait",
+        shopId = "ops_kuwait",
+        category = ShopCategory.OPS,
+        region = ShopRegion.KUWAIT
     )
 )
 
-fun getShopsForUser(userAccessCode: AccessCode): List<ShopListDto> {
+fun getHomeShopUser(userAccessCode: AccessCode): List<ShopListDto> {
     return when (userAccessCode) {
         // Category-specific users see only their category (all regions)
         AccessCode.GROCERY -> shopList.filter { it.category == ShopCategory.GROCERY }
@@ -62,13 +65,28 @@ fun getShopsForUser(userAccessCode: AccessCode): List<ShopListDto> {
         AccessCode.OPS_KUWAIT -> shopList.filter { it.region == ShopRegion.KUWAIT }
 
         // Admin sees everything
-        AccessCode.ADMIN -> shopList
+        AccessCode.ADMIN -> shopList.filter { it.category != ShopCategory.OPS }
+
 
         // Guest sees nothing
         AccessCode.GUEST -> emptyList()
     }
 }
 
-fun getSummaryListUser(userAccessCode: AccessCode): List<ShopListDto> {
-    return summaryList
+fun getSummaryShopList(userAccessCode: AccessCode): List<ShopListDto> {
+    return when (userAccessCode) {
+        AccessCode.ADMIN -> shopList.filter { it.category == ShopCategory.OPS }
+        AccessCode.OPS_UAE -> shopList.filter { it.region == ShopRegion.UAE }
+        AccessCode.OPS_KUWAIT -> shopList.filter { it.region == ShopRegion.KUWAIT }
+        else -> emptyList()
+    }
+}
+
+fun getStatementShopList(userAccessCode: AccessCode): List<ShopListDto> {
+    return when (userAccessCode) {
+        AccessCode.ADMIN -> shopList
+        AccessCode.OPS_UAE -> shopList.filter { it.region == ShopRegion.UAE }
+        AccessCode.OPS_KUWAIT -> shopList.filter { it.region == ShopRegion.KUWAIT }
+        else -> emptyList()
+    }
 }

@@ -7,7 +7,7 @@ import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.Query
 import com.marsa.smarttrackerhub.domain.AccessCode
 import com.marsa.smarttrackerhub.domain.MonthlySummary
-import com.marsa.smarttrackerhub.domain.getShopsForUser
+import com.marsa.smarttrackerhub.domain.getHomeShopUser
 import com.marsa.smarttrackerhub.ui.screens.statement.ShopListDto
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -59,7 +59,7 @@ class HomeScreenViewModel(firebaseApp: FirebaseApp) : ViewModel() {
 
 
     fun loadScreenData(userAccessCode: AccessCode) {
-        _shops.value = getShopsForUser(userAccessCode)
+        _shops.value = getHomeShopUser(userAccessCode)
         _shops.value.forEach { shop ->
             shop.shopId?.let { shopId ->
                 loadAllSummariesForShop(shopId)

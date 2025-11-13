@@ -9,5 +9,6 @@ package com.marsa.smarttrackerhub.domain
 enum class ShopCategory {
     GROCERY,
     CAFE,
-    SUPERMARKET
+    SUPERMARKET,
+    OPS
 }

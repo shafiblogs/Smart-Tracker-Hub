@@ -12,10 +12,11 @@ import com.google.android.gms.tasks.Tasks
 import com.google.firebase.FirebaseApp
 import com.google.firebase.storage.FirebaseStorage
 import com.marsa.smarttrackerhub.domain.AccessCode
-import com.marsa.smarttrackerhub.domain.getShopsForUser
+import com.marsa.smarttrackerhub.domain.getStatementShopList
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 
@@ -45,7 +46,7 @@ class StatementViewModel(firebaseApp: FirebaseApp) : ViewModel() {
     private val storage = FirebaseStorage.getInstance(firebaseApp)
 
     fun loadScreenData(userAccessCode: AccessCode) {
-        _shops.value = getShopsForUser(userAccessCode)
+        _shops.value = getStatementShopList(userAccessCode)
         loadStatements()
     }
 
@@ -55,32 +56,45 @@ class StatementViewModel(firebaseApp: FirebaseApp) : ViewModel() {
                 "MARSA_102" to "gs://smart-tracker-8012f.firebasestorage.app/marsa/masfout",
                 "MARSA_101" to "gs://smart-tracker-8012f.firebasestorage.app/marsa/muzeira",
                 "MASA_103" to "gs://smart-tracker-8012f.firebasestorage.app/masa/ajman",
-                "WADI_101" to "gs://smart-tracker-8012f.firebasestorage.app/wadi/muzeira"
+                "WADI_101" to "gs://smart-tracker-8012f.firebasestorage.app/wadi/muzeira",
+                "ops_uae" to "gs://accounts-tracker-16f93.firebasestorage.app/shop/uae",
+                "ops_kuwait" to "gs://accounts-tracker-16f93.firebasestorage.app/shop/kuwait"
             )
 
-            val shopFilesMap = mutableMapOf<String, List<StatementFile>>()
-
-            for ((shopId, folderUrl) in folders) {
-                val folderRef = storage.getReferenceFromUrl(folderUrl)
-                try {
-                    val listResult = Tasks.await(folderRef.listAll())
-                    val files = listResult.items.map { fileRef ->
-                        val url = Tasks.await(fileRef.downloadUrl).toString()
-                        val month = parseMonthFromFilename(fileRef.name)
-                        StatementFile(month = month, url = url)
-                    }
-                    shopFilesMap[shopId] = files
-                } catch (e: Exception) {
-                    Log.e("ShopsViewModel", "Error listing files in $folderUrl", e)
-                    shopFilesMap[shopId] = emptyList()
-                }
+            val shopFilesMap = folders.mapValues { (shopId, folderUrl) ->
+                fetchStatementFiles(shopId, folderUrl)
             }
 
-            _shops.value.forEach { shop ->
+            updateShopsWithStatements(shopFilesMap)
+        }
+    }
+
+    private fun fetchStatementFiles(
+        shopId: String,
+        folderUrl: String
+    ): List<StatementFile> {
+        return try {
+            val folderRef = storage.getReferenceFromUrl(folderUrl)
+            val listResult = Tasks.await(folderRef.listAll())
+
+            listResult.items.map { fileRef ->
+                val url = Tasks.await(fileRef.downloadUrl).toString()
+                val month = parseMonthFromFilename(fileRef.name)
+                StatementFile(month = month, url = url)
+            }
+        } catch (e: Exception) {
+            Log.e("Exception", "Error loading statement files for shop $shopId from $folderUrl", e)
+            emptyList()
+        }
+    }
+
+    private fun updateShopsWithStatements(shopFilesMap: Map<String, List<StatementFile>>) {
+        _shops.update { currentShops ->
+            currentShops.map { shop ->
                 shop.shopId?.let { shopId ->
-                    val files = shop.shopId.let { shopFilesMap[it] } ?: emptyList()
-                    shop.copy(statementFiles = files)
-                }
+                    val statementFiles = shopFilesMap[shopId] ?: emptyList()
+                    shop.copy(statementFiles = statementFiles)
+                } ?: shop
             }
         }
     }

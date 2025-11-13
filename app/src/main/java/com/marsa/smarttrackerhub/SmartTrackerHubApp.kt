@@ -31,7 +31,7 @@ class SmartTrackerHubApp : Application() {
             .setApplicationId("com.marsa.accountstracker")
             .setApiKey(BuildConfig.api_key_account)
             .setProjectId(BuildConfig.project_id_account)
-            //.setStorageBucket(BuildConfig.storage_bucket_account)
+            .setStorageBucket(BuildConfig.storage_bucket_account)
             .build()
         FirebaseApp.initializeApp(this, accountOptions, "AccountTrackerApp")
     }
