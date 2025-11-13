@@ -69,7 +69,7 @@ class SummaryViewModel(firebaseApp: FirebaseApp) : ViewModel() {
 
     private fun loadAllSummariesForShop(shopId: String) {
         trackerFireStore.collection("summary")
-            .document("USER_ACCOUNT")
+            .document(shopId)
             .collection("months")
             .orderBy("monthYear", Query.Direction.DESCENDING)
             .addSnapshotListener { snapshot, error ->
