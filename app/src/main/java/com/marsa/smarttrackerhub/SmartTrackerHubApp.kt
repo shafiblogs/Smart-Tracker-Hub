@@ -1,6 +1,7 @@
 package com.marsa.smarttrackerhub
 
 import android.app.Application
+import android.util.Log
 import com.google.firebase.FirebaseApp
 import com.google.firebase.FirebaseOptions
 
@@ -24,5 +25,14 @@ class SmartTrackerHubApp : Application() {
             .setStorageBucket(BuildConfig.storage_bucket)
             .build()
         FirebaseApp.initializeApp(this, trackerOptions, "SmartTrackerApp")
+
+        // Initialize Firebase App (Smart Tracker)
+        val accountOptions = FirebaseOptions.Builder()
+            .setApplicationId("com.marsa.accountstracker")
+            .setApiKey(BuildConfig.api_key_account)
+            .setProjectId(BuildConfig.project_id_account)
+            //.setStorageBucket(BuildConfig.storage_bucket_account)
+            .build()
+        FirebaseApp.initializeApp(this, accountOptions, "AccountTrackerApp")
     }
 }

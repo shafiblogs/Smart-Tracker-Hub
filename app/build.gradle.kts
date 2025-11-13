@@ -29,6 +29,9 @@ android {
         buildConfigField("String", "api_key", "\"${localProperties["api_key"]}\"")
         buildConfigField("String", "project_id", "\"${localProperties["project_id"]}\"")
         buildConfigField("String", "storage_bucket", "\"${localProperties["storage_bucket"]}\"")
+        buildConfigField("String", "api_key_account", "\"${localProperties["api_key_account"]}\"")
+        buildConfigField("String", "project_id_account", "\"${localProperties["project_id_account"]}\"")
+        buildConfigField("String", "storage_bucket_account", "\"${localProperties["storage_bucket_account"]}\"")
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
