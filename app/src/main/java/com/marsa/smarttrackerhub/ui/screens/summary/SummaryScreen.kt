@@ -84,8 +84,8 @@ fun SummaryScreen(userAccessCode: AccessCode) {
                 value = selectedShop?.name ?: "",
                 onValueChange = {},
                 readOnly = true,
-                label = { Text("Select Shop") },
-                placeholder = { if (selectedShop == null) Text("Choose a shop...") },
+                label = { Text("Select Region") },
+                placeholder = { if (selectedShop == null) Text("Choose a region...") },
                 trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded) },
                 shape = RoundedCornerShape(12.dp),
                 modifier = Modifier
@@ -133,7 +133,7 @@ fun SummaryScreen(userAccessCode: AccessCode) {
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
-                        text = "Select a shop to view its monthly summaries",
+                        text = "Select a region to view its monthly summaries",
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -221,15 +221,16 @@ fun DailySummaryCard(
             Divider(Modifier.padding(vertical = 6.dp))
 
             BalanceComparisonRow("Cash", entry.openingCashBalance, entry.cashBalance)
-            BalanceComparisonRow("Cash", entry.openingOutstandingBalance, entry.outstandingBalance)
+            BalanceComparisonRow("Outstanding", entry.openingOutstandingBalance, entry.outstandingBalance)
 
             Divider(Modifier.padding(vertical = 8.dp))
 
             // Totals Section
             InfoRow("💰 Profit Margin", entry.profitMargin)
-            InfoRow("💰 Total Sale", entry.totalCollection)
             InfoRow("🛒 Total Purchase", entry.totalPurchases)
             InfoRow("💳 Total Expense", entry.totalExpenses)
+            InfoRow("💰 Total Sale", entry.totalCollection)
+            InfoRow("💳 Outstanding Payment", entry.outstandingPayments)
         }
     }
 }

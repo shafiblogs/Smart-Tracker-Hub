@@ -40,6 +40,16 @@ private val shopList = listOf(
     )
 )
 
+private val summaryList = listOf(
+    ShopListDto(
+        name = "Shops In UAE",
+        address = "Region - UAE",
+        shopId = "",
+        category = ShopCategory.GROCERY,
+        region = ShopRegion.UAE
+    )
+)
+
 fun getShopsForUser(userAccessCode: AccessCode): List<ShopListDto> {
     return when (userAccessCode) {
         // Category-specific users see only their category (all regions)
@@ -57,4 +67,8 @@ fun getShopsForUser(userAccessCode: AccessCode): List<ShopListDto> {
         // Guest sees nothing
         AccessCode.GUEST -> emptyList()
     }
+}
+
+fun getSummaryListUser(userAccessCode: AccessCode): List<ShopListDto> {
+    return summaryList
 }
