@@ -1,7 +1,20 @@
 package com.marsa.smarttrackerhub.ui.screens.summary
 
 import android.app.Application
+import android.util.Log
 import androidx.lifecycle.AndroidViewModel
+import androidx.lifecycle.ViewModel
+import com.google.firebase.FirebaseApp
+import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.Query
+import com.marsa.smarttrackerhub.domain.AccessCode
+import com.marsa.smarttrackerhub.domain.AccountSummary
+import com.marsa.smarttrackerhub.domain.MonthlySummary
+import com.marsa.smarttrackerhub.domain.getShopsForUser
+import com.marsa.smarttrackerhub.ui.screens.statement.ShopListDto
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlin.collections.orEmpty
 
 
 /**
@@ -9,38 +22,78 @@ import androidx.lifecycle.AndroidViewModel
  * Moro Hub
  * muhammed.poyil@morohub.com
  */
-class SummaryViewModel(application: Application) : AndroidViewModel(application) {
+class SummaryViewModel(firebaseApp: FirebaseApp) : ViewModel() {
 
-//    private val summaryRepository: SummaryRepository by lazy {
-//        SummaryRepository(
-//            AppDatabase.getDatabase(application).summaryDao(),
-//            AppDatabase.getDatabase(application).entryDao(),
-//            AppDatabase.getDatabase(application).salesDao()
-//        )
-//    }
-//
-//    private val currentMonth = LocalDate.now().format(DateTimeFormatter.ofPattern("yyyy-MM"))
-//
-//    @OptIn(ExperimentalCoroutinesApi::class)
-//    val dailySummaries: StateFlow<List<DailySummary>> =
-//        summaryRepository.observeDatesForMonth(currentMonth)
-//            .mapLatest { dates ->
-//                val openingBalance = summaryRepository.getCashBalanceByMonth(currentMonth) ?: 0.0
-//
-//                val summaries = mutableListOf<DailySummary>()
-//                var balance = openingBalance
-//
-//                for (date in dates.sorted()) {
-//                    val summary = summaryRepository.generateDailySummary(currentMonth,date, balance)
-//                    summaries.add(summary)
-//                    balance = summary.closingBalance
-//                }
-//
-//                summaries
-//            }
-//            .stateIn(
-//                scope = viewModelScope,
-//                started = SharingStarted.WhileSubscribed(5000),
-//                initialValue = emptyList()
-//            )
+    private val _shops = MutableStateFlow<List<ShopListDto>>(emptyList())
+    val shops: StateFlow<List<ShopListDto>> = _shops
+
+    private val _summaries = MutableStateFlow<Map<String, List<AccountSummary>>>(emptyMap())
+    val summaries: StateFlow<Map<String, List<AccountSummary>>> = _summaries
+
+    private val trackerFireStore = FirebaseFirestore.getInstance(firebaseApp)
+
+    private val _selectedShop = MutableStateFlow<ShopListDto?>(null)
+    val selectedShop: StateFlow<ShopListDto?> = _selectedShop
+
+    private val _expanded = MutableStateFlow(false)
+    val expanded: StateFlow<Boolean> = _expanded
+
+    fun setSelectedShop(shop: ShopListDto?) {
+        _selectedShop.value = shop
+    }
+
+    fun setExpanded(value: Boolean) {
+        _expanded.value = value
+    }
+
+
+    /*fun loadScreenData() {
+        trackerFireStore.collection("shops")
+            .get()
+            .addOnSuccessListener { snapshot ->
+                val shopIds = snapshot.documents.map { it.id }
+                shopIds.forEach { shopId ->
+                    loadLatestSummary(shopId)
+                }
+            }
+            .addOnFailureListener { e ->
+                Log.e("SummaryViewModel", "Failed to fetch shops", e)
+            }
+    }*/
+
+
+    fun loadScreenData(userAccessCode: AccessCode) {
+        _shops.value = getShopsForUser(userAccessCode)
+        _shops.value.forEach { shop ->
+            shop.shopId?.let { shopId ->
+                loadAllSummariesForShop(shopId)
+            }
+        }
+    }
+
+    private fun loadAllSummariesForShop(shopId: String) {
+        trackerFireStore.collection("summary")
+            .document("USER_ACCOUNT")
+            .collection("months")
+            .orderBy("monthYear", Query.Direction.DESCENDING)
+            .addSnapshotListener { snapshot, error ->
+                if (error != null) {
+                    Log.e("SummaryViewModel", "Error fetching summaries for $shopId", error)
+                    return@addSnapshotListener
+                }
+
+                val allSummaries = snapshot?.documents
+                    ?.mapNotNull { it.toObject(AccountSummary::class.java) }
+                    .orEmpty()
+
+                _summaries.value = _summaries.value.toMutableMap().apply {
+                    put(shopId, allSummaries)
+                }
+
+                Log.d(
+                    "SummaryViewModel",
+                    "Loaded ${allSummaries.size} summaries for $shopId"
+                )
+            }
+    }
 }

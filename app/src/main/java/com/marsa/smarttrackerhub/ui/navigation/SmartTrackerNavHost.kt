@@ -137,7 +137,7 @@ fun SmartTrackerNavHost(navController: NavHostController) {
                 HomeScreen(userAccessCode = userAccessCode)
             }
             composable(Screen.Statement.route) { StatementScreen(userAccessCode = userAccessCode) }
-            composable(Screen.Summary.route) { SummaryScreen() }
+            composable(Screen.Summary.route) { SummaryScreen(userAccessCode = userAccessCode) }
             composable(Screen.AddShop.route) { AddShopScreen(onShopCreated = { navController.popBackStack() }) }
             composable(Screen.AddInvestor.route) { AddInvestorScreen(onSaveSuccess = { navController.popBackStack() }) }
             composable(Screen.AddEmployee.route) { AddEmployeeScreen(onEmployeeCreated = { navController.popBackStack() }) }
