@@ -87,6 +87,10 @@ fun getStatementShopList(userAccessCode: AccessCode): List<ShopListDto> {
         AccessCode.ADMIN -> shopList
         AccessCode.OPS_UAE -> shopList.filter { it.region == ShopRegion.UAE && it.category != ShopCategory.OPS }
         AccessCode.OPS_KUWAIT -> shopList.filter { it.region == ShopRegion.KUWAIT && it.category != ShopCategory.OPS }
+        // Category-specific users see only their category (all regions)
+        AccessCode.GROCERY -> shopList.filter { it.category == ShopCategory.GROCERY }
+        AccessCode.CAFE -> shopList.filter { it.category == ShopCategory.CAFE }
+        AccessCode.SUPERMARKET -> shopList.filter { it.category == ShopCategory.SUPERMARKET }
         else -> emptyList()
     }
 }
