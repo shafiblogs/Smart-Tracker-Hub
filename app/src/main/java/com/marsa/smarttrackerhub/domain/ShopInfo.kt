@@ -48,7 +48,7 @@ private val shopList = listOf(
         shopId = "ops_uae",
         category = ShopCategory.OPS,
         region = ShopRegion.UAE,
-        folderPath = "gs://accounts-tracker-16f93.firebasestorage.app/shop/uae"
+        folderPath = "gs://accounts-tracker-16f93.firebasestorage.app/shop/ops_uae"
     ),
     ShopListDto(
         name = "Shops In Kuwait",
@@ -56,7 +56,7 @@ private val shopList = listOf(
         shopId = "ops_kuwait",
         category = ShopCategory.OPS,
         region = ShopRegion.KUWAIT,
-        folderPath = "gs://accounts-tracker-16f93.firebasestorage.app/shop/kuwait"
+        folderPath = "gs://accounts-tracker-16f93.firebasestorage.app/shop/ops_kuwait"
     )
 )
 

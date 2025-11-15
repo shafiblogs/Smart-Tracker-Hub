@@ -50,8 +50,9 @@ import com.marsa.smarttrackerhub.domain.AccessCode
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun StatementScreen(userAccessCode: AccessCode) {
-    val firebaseApp = FirebaseApp.getInstance("SmartTrackerApp")
-    val viewModel: StatementViewModel = viewModel(factory = StatementViewModelFactory(firebaseApp))
+    val firebaseSmartTracker = FirebaseApp.getInstance("SmartTrackerApp")
+    val firebaseAccountTracker = FirebaseApp.getInstance("AccountTrackerApp")
+    val viewModel: StatementViewModel = viewModel(factory = StatementViewModelFactory(firebaseSmartTracker,firebaseAccountTracker))
     val context = LocalContext.current
 
     val shops by viewModel.shops.collectAsState()

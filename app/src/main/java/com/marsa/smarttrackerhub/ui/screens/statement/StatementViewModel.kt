@@ -25,7 +25,8 @@ import kotlinx.coroutines.launch
  * Moro Hub
  * muhammed.poyil@morohub.com
  */
-class StatementViewModel(firebaseApp: FirebaseApp) : ViewModel() {
+class StatementViewModel(firebaseSmartTracker: FirebaseApp, firebaseAccountTracker: FirebaseApp) :
+    ViewModel() {
     private val _shops = MutableStateFlow<List<ShopListDto>>(emptyList())
     val shops: StateFlow<List<ShopListDto>> = _shops
 
@@ -43,7 +44,8 @@ class StatementViewModel(firebaseApp: FirebaseApp) : ViewModel() {
         _expanded.value = value
     }
 
-    private val storage = FirebaseStorage.getInstance(firebaseApp)
+    private val storageSmartTracker = FirebaseStorage.getInstance(firebaseSmartTracker)
+    private val storageAccountTracker = FirebaseStorage.getInstance(firebaseAccountTracker)
 
     fun loadScreenData(userAccessCode: AccessCode) {
         _shops.value = getStatementShopList(userAccessCode)
@@ -67,6 +69,9 @@ class StatementViewModel(firebaseApp: FirebaseApp) : ViewModel() {
         folderUrl: String
     ): List<StatementFile> {
         return try {
+            val storage =
+                if (shopId.startsWith("ops_")) storageAccountTracker else storageSmartTracker
+
             val folderRef = storage.getReferenceFromUrl(folderUrl)
             val listResult = Tasks.await(folderRef.listAll())
 

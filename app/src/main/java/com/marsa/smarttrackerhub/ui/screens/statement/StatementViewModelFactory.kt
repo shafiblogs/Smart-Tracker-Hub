@@ -11,12 +11,13 @@ import com.google.firebase.FirebaseApp
  * muhammed.poyil@morohub.com
  */
 class StatementViewModelFactory(
-    private val firebaseApp: FirebaseApp
+    private val firebaseSmartTracker: FirebaseApp,
+    private val firebaseAccountTracker: FirebaseApp
 ) : ViewModelProvider.Factory {
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
         if (modelClass.isAssignableFrom(StatementViewModel::class.java)) {
             @Suppress("UNCHECKED_CAST")
-            return StatementViewModel(firebaseApp) as T
+            return StatementViewModel(firebaseSmartTracker,firebaseAccountTracker) as T
         }
         throw IllegalArgumentException("Unknown ViewModel class")
     }
