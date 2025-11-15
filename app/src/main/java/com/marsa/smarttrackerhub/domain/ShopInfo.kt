@@ -15,41 +15,48 @@ private val shopList = listOf(
         address = "Masfout",
         shopId = "MARSA_102",
         category = ShopCategory.GROCERY,
-        region = ShopRegion.UAE
+        region = ShopRegion.UAE,
+        folderPath = "gs://smart-tracker-8012f.firebasestorage.app/marsa/masfout"
     ),
     ShopListDto(
         name = "AL Marsa Grocery",
         address = "Muzeira",
         shopId = "MARSA_101",
         category = ShopCategory.GROCERY,
-        region = ShopRegion.UAE
+        region = ShopRegion.UAE,
+        folderPath = "gs://smart-tracker-8012f.firebasestorage.app/marsa/muzeira"
     ),
     ShopListDto(
         name = "AL Masa Super Market",
         address = "Ajman",
         shopId = "MASA_103",
         category = ShopCategory.SUPERMARKET,
-        region = ShopRegion.UAE
+        region = ShopRegion.UAE,
+        folderPath = "gs://smart-tracker-8012f.firebasestorage.app/masa/ajman"
     ),
     ShopListDto(
         name = "AL Wadi Cafe",
         address = "Muzeira",
         shopId = "WADI_101",
         category = ShopCategory.CAFE,
-        region = ShopRegion.UAE
-    ), ShopListDto(
+        region = ShopRegion.UAE,
+        folderPath = "gs://smart-tracker-8012f.firebasestorage.app/wadi/muzeira"
+    ),
+    ShopListDto(
         name = "Shops In UAE",
         address = "Region - UAE",
         shopId = "ops_uae",
         category = ShopCategory.OPS,
-        region = ShopRegion.UAE
+        region = ShopRegion.UAE,
+        folderPath = "gs://accounts-tracker-16f93.firebasestorage.app/shop/uae"
     ),
     ShopListDto(
         name = "Shops In Kuwait",
         address = "Region - Kuwait",
         shopId = "ops_kuwait",
         category = ShopCategory.OPS,
-        region = ShopRegion.KUWAIT
+        region = ShopRegion.KUWAIT,
+        folderPath = "gs://accounts-tracker-16f93.firebasestorage.app/shop/kuwait"
     )
 )
 

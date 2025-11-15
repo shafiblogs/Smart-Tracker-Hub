@@ -52,22 +52,15 @@ class StatementViewModel(firebaseApp: FirebaseApp) : ViewModel() {
 
     private fun loadStatements() {
         viewModelScope.launch(Dispatchers.IO) {
-            val folders = mapOf(
-                "MARSA_102" to "gs://smart-tracker-8012f.firebasestorage.app/marsa/masfout",
-                "MARSA_101" to "gs://smart-tracker-8012f.firebasestorage.app/marsa/muzeira",
-                "MASA_103" to "gs://smart-tracker-8012f.firebasestorage.app/masa/ajman",
-                "WADI_101" to "gs://smart-tracker-8012f.firebasestorage.app/wadi/muzeira",
-                "ops_uae" to "gs://accounts-tracker-16f93.firebasestorage.app/shop/uae",
-                "ops_kuwait" to "gs://accounts-tracker-16f93.firebasestorage.app/shop/kuwait"
-            )
-
-            val shopFilesMap = folders.mapValues { (shopId, folderUrl) ->
-                fetchStatementFiles(shopId, folderUrl)
-            }
-
+            val shopFilesMap = _shops.value
+                .filter { !it.shopId.isNullOrEmpty() && !it.folderPath.isNullOrEmpty() }
+                .associate { shop ->
+                    shop.shopId!! to fetchStatementFiles(shop.shopId, shop.folderPath!!)
+                }
             updateShopsWithStatements(shopFilesMap)
         }
     }
+
 
     private fun fetchStatementFiles(
         shopId: String,

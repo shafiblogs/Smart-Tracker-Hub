@@ -15,5 +15,6 @@ data class ShopListDto(
     val shopId: String? = null,
     val category: ShopCategory,
     val region: ShopRegion,
-    val statementFiles: List<StatementFile> = emptyList()
+    val statementFiles: List<StatementFile> = emptyList(),
+    val folderPath: String? = ""
 )
