@@ -15,7 +15,10 @@ data class AccountSummary(
     val outstandingPayments: Double = 0.0,
     val cashBalance: Double = 0.0,
     val outstandingBalance: Double = 0.0,
-    val profitMargin: Double = 0.0,
+    val grossProfit: Double = 0.0,
+    val grossMargin: Double = 0.0,
+    val netProfit: Double = 0.0,
+    val netProfitMargin: Double = 0.0,
     val openingCashBalance: Double = 0.0,
     val openingOutstandingBalance: Double = 0.0
 )

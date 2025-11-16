@@ -221,15 +221,26 @@ fun DailySummaryCard(
             Divider(Modifier.padding(vertical = 6.dp))
 
             BalanceComparisonRow("Cash", entry.openingCashBalance, entry.cashBalance)
-            BalanceComparisonRow("Outstanding", entry.openingOutstandingBalance, entry.outstandingBalance)
+            BalanceComparisonRow(
+                "Outstanding",
+                entry.openingOutstandingBalance,
+                entry.outstandingBalance
+            )
 
             Divider(Modifier.padding(vertical = 8.dp))
 
             // Totals Section
-            InfoRow("💰 Profit Margin", entry.profitMargin)
-            InfoRow("🛒 Total Purchase", entry.totalPurchases)
-            InfoRow("💳 Total Expense", entry.totalExpenses)
+            InfoRow(
+                "💰 Profit Margin",
+                entry.netProfitMargin,
+                color = MaterialTheme.colorScheme.primary
+            )
+            InfoRow("💳 Sales Margin", entry.grossMargin, color = MaterialTheme.colorScheme.primary)
+            InfoRow("💰 Net Profit", entry.netProfit)
+            InfoRow("🛒 Gross Profit", entry.grossProfit)
             InfoRow("💰 Total Sale", entry.totalCollection)
+            InfoRow("💳 Total Expense", entry.totalExpenses)
+            InfoRow("🛒 Total Purchase", entry.totalPurchases)
             InfoRow("💳 Outstanding Payment", entry.outstandingPayments)
         }
     }

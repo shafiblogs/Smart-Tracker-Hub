@@ -29,11 +29,19 @@ fun InfoRow(label: String, amount: Double, color: Color = MaterialTheme.colorSch
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
             Text(text = label, style = MaterialTheme.typography.bodyMedium, color = color)
-            Text(
-                text = "₹%.2f".format(amount),
-                style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Medium),
-                color = color
-            )
+            if (label.contains("Margin")) {
+                Text(
+                    text = "${"%.2f".format(amount)}%",
+                    style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
+                    color = color
+                )
+            } else {
+                Text(
+                    text = "₹%.2f".format(amount),
+                    style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Medium),
+                    color = color
+                )
+            }
         }
     }
 }
