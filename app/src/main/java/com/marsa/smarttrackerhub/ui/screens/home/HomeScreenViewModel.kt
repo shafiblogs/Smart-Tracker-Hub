@@ -19,6 +19,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
+import java.util.Calendar
 import java.util.Locale
 
 class HomeScreenViewModel(
@@ -94,8 +95,19 @@ class HomeScreenViewModel(
         // Clean up old cache on app start
         viewModelScope.launch(Dispatchers.IO) {
             val expiryTime = System.currentTimeMillis() - CACHE_EXPIRY_MS
-            summaryDao.deleteOldSummaries(expiryTime)
+            val currentMonthId = getCurrentMonthId()
+            summaryDao.deleteExpiredCurrentMonth(
+                currentMonthId = currentMonthId,
+                expiryTime = expiryTime
+            )
         }
+    }
+
+    private fun getCurrentMonthId(): String {
+        val calendar = Calendar.getInstance()
+        val year = calendar.get(Calendar.YEAR)
+        val month = calendar.get(Calendar.MONTH) + 1
+        return "%04d-%02d".format(year, month)
     }
 
     private fun loadMonthListForShop(shopId: String) {

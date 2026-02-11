@@ -23,6 +23,17 @@ interface SummaryDao {
     @Query("DELETE FROM summary WHERE lastUpdated < :timestamp")
     suspend fun deleteOldSummaries(timestamp: Long)
 
+    @Query("""
+    DELETE FROM summary
+    WHERE monthId = :currentMonthId
+    AND lastUpdated < :expiryTime
+""")
+    suspend fun deleteExpiredCurrentMonth(
+        currentMonthId: String,
+        expiryTime: Long
+    )
+
+
     @Query("DELETE FROM summary")
     suspend fun clearAll()
 }
