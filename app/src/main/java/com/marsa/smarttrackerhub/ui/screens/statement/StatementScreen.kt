@@ -1,5 +1,9 @@
 package com.marsa.smarttrackerhub.ui.screens.statement
 
+import android.content.ActivityNotFoundException
+import android.content.Context
+import android.content.Intent
+import android.widget.Toast
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -17,6 +21,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExposedDropdownMenuBox
@@ -36,27 +41,26 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.core.net.toUri
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.google.firebase.FirebaseApp
 import com.marsa.smarttrackerhub.R
 import com.marsa.smarttrackerhub.domain.AccessCode
 
-
-/**
- * Created by Muhammed Shafi on 31/05/2025.
- * Moro Hub
- * muhammed.poyil@morohub.com
- */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun StatementScreen(userAccessCode: AccessCode) {
     val firebaseSmartTracker = FirebaseApp.getInstance("SmartTrackerApp")
     val firebaseAccountTracker = FirebaseApp.getInstance("AccountTrackerApp")
-    val viewModel: StatementViewModel = viewModel(factory = StatementViewModelFactory(firebaseSmartTracker,firebaseAccountTracker))
+    val viewModel: StatementViewModel = viewModel(
+        factory = StatementViewModelFactory(firebaseSmartTracker, firebaseAccountTracker)
+    )
     val context = LocalContext.current
 
     val shops by viewModel.shops.collectAsState()
     val selectedShop by viewModel.selectedShop.collectAsState()
+    val statementFiles by viewModel.statementFiles.collectAsState()
+    val isLoadingStatements by viewModel.isLoadingStatements.collectAsState()
     val expanded by viewModel.expanded.collectAsState()
 
     LaunchedEffect(userAccessCode) {
@@ -115,93 +119,100 @@ fun StatementScreen(userAccessCode: AccessCode) {
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        if (selectedShop == null) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(24.dp),
-                contentAlignment = Alignment.Center
-            ) {
-                Text(
-                    text = "Select a shop to view available statements",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
+        when {
+            selectedShop == null -> {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(24.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = "Select a shop to view available statements",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
             }
-        } else {
-            StatementCard(
-                statement = selectedShop!!,
-                onViewPdf = { url -> openPdf(context, url) }
-            )
-        }
-    }
-}
 
-@Composable
-fun StatementCard(
-    statement: ShopListDto,
-    onViewPdf: (String) -> Unit
-) {
-    Column(
-        modifier = Modifier
-            .fillMaxSize(),
-        verticalArrangement = Arrangement.Center,
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        if (statement.statementFiles.isEmpty()) {
-            Box(
-                modifier = Modifier.fillMaxSize(),
-                contentAlignment = Alignment.Center
-            ) {
-                Text(
-                    text = "No statements available",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-        } else {
-            // Statement list
-            LazyColumn(
-                modifier = Modifier.fillMaxSize(),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                items(statement.statementFiles) { file ->
-                    Card(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clickable { onViewPdf(file.url) },
-                        elevation = CardDefaults.cardElevation(4.dp),
-                        shape = RoundedCornerShape(12.dp),
-                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+            isLoadingStatements -> {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(24.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.Center
                     ) {
-                        Row(
+                        CircularProgressIndicator()
+                        Spacer(modifier = Modifier.height(16.dp))
+                        Text(
+                            text = "Loading statements...",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+            }
+
+            statementFiles.isEmpty() -> {
+                Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = "No statements available for ${selectedShop?.name}",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+
+            else -> {
+                LazyColumn(
+                    modifier = Modifier.fillMaxSize(),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    items(statementFiles) { file ->
+                        Card(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(horizontal = 16.dp, vertical = 12.dp),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
+                                .clickable { openPdf(context, file.url) },
+                            elevation = CardDefaults.cardElevation(4.dp),
+                            shape = RoundedCornerShape(12.dp),
+                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
                         ) {
-                            Column {
-                                Text(
-                                    text = file.month,
-                                    style = MaterialTheme.typography.titleMedium,
-                                    fontWeight = FontWeight.Medium
-                                )
-                                if (!statement.address.isNullOrBlank()) {
-                                    Spacer(modifier = Modifier.height(4.dp))
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 16.dp, vertical = 12.dp),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Column {
                                     Text(
-                                        text = statement.address,
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        text = file.month,
+                                        style = MaterialTheme.typography.titleMedium,
+                                        fontWeight = FontWeight.Medium
                                     )
+                                    if (!selectedShop?.address.isNullOrBlank()) {
+                                        Spacer(modifier = Modifier.height(4.dp))
+                                        Text(
+                                            text = selectedShop!!.address ?: "",
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                    }
                                 }
+                                Icon(
+                                    painter = painterResource(id = R.drawable.ic_file_pdf),
+                                    contentDescription = "PDF File",
+                                    tint = Color.Unspecified,
+                                    modifier = Modifier.size(24.dp)
+                                )
                             }
-                            Icon(
-                                painter = painterResource(id = R.drawable.ic_file_pdf),
-                                contentDescription = "PDF File",
-                                tint = Color.Unspecified,
-                                modifier = Modifier.size(24.dp)
-                            )
                         }
                     }
                 }
@@ -210,5 +221,14 @@ fun StatementCard(
     }
 }
 
-
-
+private fun openPdf(context: Context, url: String) {
+    val intent = Intent(Intent.ACTION_VIEW).apply {
+        setDataAndType(url.toUri(), "application/pdf")
+        flags = Intent.FLAG_ACTIVITY_NO_HISTORY or Intent.FLAG_GRANT_READ_URI_PERMISSION
+    }
+    try {
+        context.startActivity(intent)
+    } catch (e: ActivityNotFoundException) {
+        Toast.makeText(context, "No PDF viewer found", Toast.LENGTH_SHORT).show()
+    }
+}

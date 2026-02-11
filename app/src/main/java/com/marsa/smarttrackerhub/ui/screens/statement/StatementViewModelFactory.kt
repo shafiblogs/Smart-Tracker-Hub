@@ -17,7 +17,7 @@ class StatementViewModelFactory(
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
         if (modelClass.isAssignableFrom(StatementViewModel::class.java)) {
             @Suppress("UNCHECKED_CAST")
-            return StatementViewModel(firebaseSmartTracker,firebaseAccountTracker) as T
+            return StatementViewModel(firebaseSmartTracker, firebaseAccountTracker) as T
         }
         throw IllegalArgumentException("Unknown ViewModel class")
     }

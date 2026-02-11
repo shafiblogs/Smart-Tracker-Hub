@@ -1,11 +1,6 @@
 package com.marsa.smarttrackerhub.ui.screens.statement
 
-import android.content.ActivityNotFoundException
-import android.content.Context
-import android.content.Intent
 import android.util.Log
-import android.widget.Toast
-import androidx.core.net.toUri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.google.android.gms.tasks.Tasks
@@ -16,53 +11,78 @@ import com.marsa.smarttrackerhub.domain.getStatementShopList
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import java.text.SimpleDateFormat
+import java.util.Locale
 
+class StatementViewModel(
+    firebaseSmartTracker: FirebaseApp,
+    firebaseAccountTracker: FirebaseApp
+) : ViewModel() {
 
-/**
- * Created by Muhammed Shafi on 31/05/2025.
- * Moro Hub
- * muhammed.poyil@morohub.com
- */
-class StatementViewModel(firebaseSmartTracker: FirebaseApp, firebaseAccountTracker: FirebaseApp) :
-    ViewModel() {
     private val _shops = MutableStateFlow<List<ShopListDto>>(emptyList())
     val shops: StateFlow<List<ShopListDto>> = _shops
 
     private val _selectedShop = MutableStateFlow<ShopListDto?>(null)
     val selectedShop: StateFlow<ShopListDto?> = _selectedShop
 
+    private val _statementFiles = MutableStateFlow<List<StatementFile>>(emptyList())
+    val statementFiles: StateFlow<List<StatementFile>> = _statementFiles
+
+    private val _isLoadingStatements = MutableStateFlow(false)
+    val isLoadingStatements: StateFlow<Boolean> = _isLoadingStatements
+
     private val _expanded = MutableStateFlow(false)
     val expanded: StateFlow<Boolean> = _expanded
 
+    private val storageSmartTracker = FirebaseStorage.getInstance(firebaseSmartTracker)
+    private val storageAccountTracker = FirebaseStorage.getInstance(firebaseAccountTracker)
+
+    // Cache to avoid reloading
+    private val statementsCache = mutableMapOf<String, List<StatementFile>>()
+
     fun setSelectedShop(shop: ShopListDto?) {
         _selectedShop.value = shop
+        _statementFiles.value = emptyList()
+
+        shop?.let {
+            if (!it.shopId.isNullOrEmpty() && !it.folderPath.isNullOrEmpty()) {
+                loadStatementsForShop(it.shopId, it.folderPath)
+            }
+        }
     }
 
     fun setExpanded(value: Boolean) {
         _expanded.value = value
     }
 
-    private val storageSmartTracker = FirebaseStorage.getInstance(firebaseSmartTracker)
-    private val storageAccountTracker = FirebaseStorage.getInstance(firebaseAccountTracker)
-
     fun loadScreenData(userAccessCode: AccessCode) {
         _shops.value = getStatementShopList(userAccessCode)
-        loadStatements()
+        // Don't load statements here - wait for shop selection
     }
 
-    private fun loadStatements() {
+    private fun loadStatementsForShop(shopId: String, folderPath: String) {
+        // Check cache first
+        if (statementsCache.containsKey(shopId)) {
+            _statementFiles.value = statementsCache[shopId] ?: emptyList()
+            return
+        }
+
         viewModelScope.launch(Dispatchers.IO) {
-            val shopFilesMap = _shops.value
-                .filter { !it.shopId.isNullOrEmpty() && !it.folderPath.isNullOrEmpty() }
-                .associate { shop ->
-                    shop.shopId!! to fetchStatementFiles(shop.shopId, shop.folderPath!!)
-                }
-            updateShopsWithStatements(shopFilesMap)
+            _isLoadingStatements.value = true
+
+            try {
+                val files = fetchStatementFiles(shopId, folderPath)
+                statementsCache[shopId] = files
+                _statementFiles.value = files
+            } catch (e: Exception) {
+                Log.e("StatementViewModel", "Error loading statements for $shopId", e)
+                _statementFiles.value = emptyList()
+            } finally {
+                _isLoadingStatements.value = false
+            }
         }
     }
-
 
     private fun fetchStatementFiles(
         shopId: String,
@@ -75,38 +95,31 @@ class StatementViewModel(firebaseSmartTracker: FirebaseApp, firebaseAccountTrack
             val folderRef = storage.getReferenceFromUrl(folderUrl)
             val listResult = Tasks.await(folderRef.listAll())
 
-            listResult.items.map { fileRef ->
-                val url = Tasks.await(fileRef.downloadUrl).toString()
-                val month = parseMonthFromFilename(fileRef.name)
-                StatementFile(month = month, url = url)
-            }
+            listResult.items
+                .map { fileRef ->
+                    val url = Tasks.await(fileRef.downloadUrl).toString()
+                    val month = parseMonthFromFilename(fileRef.name)
+                    StatementFile(month = month, url = url)
+                }
+                .sortedByDescending { parseMonthYear(it.month) }
         } catch (e: Exception) {
-            Log.e("Exception", "Error loading statement files for shop $shopId from $folderUrl", e)
+            Log.e(
+                "StatementViewModel",
+                "Error loading statement files for shop $shopId from $folderUrl",
+                e
+            )
             emptyList()
         }
     }
 
-    private fun updateShopsWithStatements(shopFilesMap: Map<String, List<StatementFile>>) {
-        _shops.update { currentShops ->
-            currentShops.map { shop ->
-                shop.shopId?.let { shopId ->
-                    val statementFiles = shopFilesMap[shopId] ?: emptyList()
-                    shop.copy(statementFiles = statementFiles)
-                } ?: shop
-            }
+    private fun parseMonthYear(monthYear: String): Long {
+        return try {
+            val formatter = SimpleDateFormat("MMMM yyyy", Locale.ENGLISH)
+            formatter.parse(monthYear)?.time ?: 0L
+        } catch (e: Exception) {
+            Log.e("StatementViewModel", "Error parsing monthYear: $monthYear", e)
+            0L
         }
-    }
-}
-
-fun openPdf(context: Context, url: String) {
-    val intent = Intent(Intent.ACTION_VIEW).apply {
-        setDataAndType(url.toUri(), "application/pdf")
-        flags = Intent.FLAG_ACTIVITY_NO_HISTORY or Intent.FLAG_GRANT_READ_URI_PERMISSION
-    }
-    try {
-        context.startActivity(intent)
-    } catch (e: ActivityNotFoundException) {
-        Toast.makeText(context, "No PDF viewer found", Toast.LENGTH_SHORT).show()
     }
 }
 
