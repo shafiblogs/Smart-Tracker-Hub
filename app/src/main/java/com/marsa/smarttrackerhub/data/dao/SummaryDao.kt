@@ -4,30 +4,25 @@ import androidx.room.Dao
 import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
-import androidx.room.Update
 import com.marsa.smarttrackerhub.data.entity.SummaryEntity
-import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface SummaryDao {
+    @Query("SELECT * FROM summary WHERE shopId = :shopId AND monthId = :monthId")
+    suspend fun getSummary(shopId: String, monthId: String): SummaryEntity?
+
+    @Query("SELECT * FROM summary WHERE shopId = :shopId")
+    suspend fun getAllSummariesForShop(shopId: String): List<SummaryEntity>
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun insert(entry: SummaryEntity)
+    suspend fun insertSummary(summary: SummaryEntity)
 
-    @Query("SELECT * FROM summary WHERE monthName = :month")
-    suspend fun getSummary(month: String): SummaryEntity?
+    @Query("DELETE FROM summary WHERE shopId = :shopId")
+    suspend fun deleteSummariesForShop(shopId: String)
 
-    @Query("SELECT * FROM summary WHERE monthName = :month")
-    fun getSummaryFlow(month: String): Flow<SummaryEntity?>
+    @Query("DELETE FROM summary WHERE lastUpdated < :timestamp")
+    suspend fun deleteOldSummaries(timestamp: Long)
 
-    @Query("SELECT IFNULL(cashBalance, 0.0) FROM summary WHERE monthName = :month")
-    suspend fun getCashBalanceByMonth(month: String): Double
-
-    @Update
-    suspend fun update(summary: SummaryEntity)
-
-    @Query("SELECT monthName FROM summary")
-    suspend fun getAllMonthNames(): List<String>
-
-    @Query("SELECT monthName FROM summary ORDER BY monthName DESC LIMIT 1")
-    suspend fun getLatestMonthName(): String
+    @Query("DELETE FROM summary")
+    suspend fun clearAll()
 }

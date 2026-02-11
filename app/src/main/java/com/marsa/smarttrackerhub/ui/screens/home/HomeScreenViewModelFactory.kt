@@ -1,5 +1,6 @@
 package com.marsa.smarttrackerhub.ui.screens.home
 
+import android.app.Application
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import com.google.firebase.FirebaseApp
@@ -11,12 +12,13 @@ import com.google.firebase.FirebaseApp
  * muhammed.poyil@morohub.com
  */
 class HomeScreenViewModelFactory(
+    private val application: Application,
     private val firebaseApp: FirebaseApp
 ) : ViewModelProvider.Factory {
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
         if (modelClass.isAssignableFrom(HomeScreenViewModel::class.java)) {
             @Suppress("UNCHECKED_CAST")
-            return HomeScreenViewModel(firebaseApp) as T
+            return HomeScreenViewModel(application, firebaseApp) as T
         }
         throw IllegalArgumentException("Unknown ViewModel class")
     }

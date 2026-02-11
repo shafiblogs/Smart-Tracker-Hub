@@ -1,5 +1,6 @@
 package com.marsa.smarttrackerhub.ui.screens.home
 
+import android.app.Application
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -35,6 +36,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -47,9 +49,14 @@ import com.marsa.smarttrackerhub.ui.components.InfoRow
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeScreen(userAccessCode: AccessCode) {
+    val context = LocalContext.current
     val firebaseApp = FirebaseApp.getInstance("SmartTrackerApp")
-    val viewModel: HomeScreenViewModel =
-        viewModel(factory = HomeScreenViewModelFactory(firebaseApp))
+    val viewModel: HomeScreenViewModel = viewModel(
+        factory = HomeScreenViewModelFactory(
+            context.applicationContext as Application,
+            firebaseApp
+        )
+    )
 
     LaunchedEffect(userAccessCode) {
         viewModel.loadScreenData(userAccessCode)
@@ -294,14 +301,26 @@ fun SummaryContent(summary: MonthlySummary) {
         Divider(Modifier.padding(vertical = 8.dp))
 
         // Totals Section
-        InfoRow("💰 Average Sale", summary.averageSale ?: 0.0, color = MaterialTheme.colorScheme.primary)
+        InfoRow(
+            "💰 Average Sale",
+            summary.averageSale ?: 0.0,
+            color = MaterialTheme.colorScheme.primary
+        )
         InfoRow("💰 Total Sale", summary.totalSales, color = MaterialTheme.colorScheme.primary)
         InfoRow("🛒 Total Purchase", summary.totalPurchases, color = MaterialTheme.colorScheme.error)
         InfoRow("💳 Total Expense", summary.totalExpenses, color = MaterialTheme.colorScheme.error)
         InfoRow("💰 Total Cash In", summary.totalCashIn, color = MaterialTheme.colorScheme.primary)
         InfoRow("🛒 Total Cash Out", summary.totalCashOut, color = MaterialTheme.colorScheme.error)
-        InfoRow("💳 Credit Sale Total", summary.totalCreditSale, color = MaterialTheme.colorScheme.error)
-        InfoRow("💰 Credit Sale Payment", summary.creditSalePayment, color = MaterialTheme.colorScheme.primary)
+        InfoRow(
+            "💳 Credit Sale Total",
+            summary.totalCreditSale,
+            color = MaterialTheme.colorScheme.error
+        )
+        InfoRow(
+            "💰 Credit Sale Payment",
+            summary.creditSalePayment,
+            color = MaterialTheme.colorScheme.primary
+        )
     }
 }
 

@@ -1,33 +1,43 @@
 package com.marsa.smarttrackerhub.ui.screens.home
 
+import android.app.Application
 import android.util.Log
-import androidx.lifecycle.ViewModel
+import androidx.lifecycle.AndroidViewModel
+import androidx.lifecycle.viewModelScope
 import com.google.firebase.FirebaseApp
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.ListenerRegistration
+import com.marsa.smarttrackerhub.data.AppDatabase
+import com.marsa.smarttrackerhub.data.entity.toDomain
+import com.marsa.smarttrackerhub.data.entity.toEntity
 import com.marsa.smarttrackerhub.domain.AccessCode
 import com.marsa.smarttrackerhub.domain.MonthlySummary
 import com.marsa.smarttrackerhub.domain.getHomeShopUser
 import com.marsa.smarttrackerhub.ui.screens.statement.ShopListDto
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.Locale
 
-class HomeScreenViewModel(firebaseApp: FirebaseApp) : ViewModel() {
+class HomeScreenViewModel(
+    application: Application,
+    firebaseApp: FirebaseApp
+) : AndroidViewModel(application) {
 
     private val _shops = MutableStateFlow<List<ShopListDto>>(emptyList())
     val shops: StateFlow<List<ShopListDto>> = _shops
 
-    // Store month list instead of full summaries
     private val _availableMonths = MutableStateFlow<List<MonthItem>>(emptyList())
     val availableMonths: StateFlow<List<MonthItem>> = _availableMonths
 
-    // Cache for loaded summaries
     private val _summariesCache = MutableStateFlow<Map<String, MonthlySummary>>(emptyMap())
     val summariesCache: StateFlow<Map<String, MonthlySummary>> = _summariesCache
 
     private val trackerFireStore = FirebaseFirestore.getInstance(firebaseApp)
+    private val database = AppDatabase.getDatabase(application)
+    private val summaryDao = database.summaryDao()
 
     private val _selectedShop = MutableStateFlow<ShopListDto?>(null)
     val selectedShop: StateFlow<ShopListDto?> = _selectedShop
@@ -43,8 +53,10 @@ class HomeScreenViewModel(firebaseApp: FirebaseApp) : ViewModel() {
 
     private var monthsListenerRegistration: ListenerRegistration? = null
 
+    // Cache expiry time (e.g., 24 hours)
+    private val CACHE_EXPIRY_MS = 24 * 60 * 60 * 1000L
+
     fun setSelectedShop(shop: ShopListDto?) {
-        // Clean up previous listener
         monthsListenerRegistration?.remove()
 
         _selectedShop.value = shop
@@ -52,7 +64,6 @@ class HomeScreenViewModel(firebaseApp: FirebaseApp) : ViewModel() {
         _availableMonths.value = emptyList()
         _summariesCache.value = emptyMap()
 
-        // Load ONLY the month list, not the actual data
         shop?.shopId?.let { shopId ->
             loadMonthListForShop(shopId)
         }
@@ -63,7 +74,6 @@ class HomeScreenViewModel(firebaseApp: FirebaseApp) : ViewModel() {
 
         val shopId = _selectedShop.value?.shopId
         if (shopId != null) {
-            // Check if already loaded in cache
             if (!_summariesCache.value.containsKey(monthId)) {
                 loadSummaryForMonth(shopId, monthId)
             }
@@ -76,6 +86,16 @@ class HomeScreenViewModel(firebaseApp: FirebaseApp) : ViewModel() {
 
     fun loadScreenData(userAccessCode: AccessCode) {
         _shops.value = getHomeShopUser(userAccessCode)
+
+        if (_shops.value.isNotEmpty()) {
+            setSelectedShop(_shops.value.first())
+        }
+
+        // Clean up old cache on app start
+        viewModelScope.launch(Dispatchers.IO) {
+            val expiryTime = System.currentTimeMillis() - CACHE_EXPIRY_MS
+            summaryDao.deleteOldSummaries(expiryTime)
+        }
     }
 
     private fun loadMonthListForShop(shopId: String) {
@@ -88,7 +108,6 @@ class HomeScreenViewModel(firebaseApp: FirebaseApp) : ViewModel() {
                     return@addSnapshotListener
                 }
 
-                // Get month list and sort with current month first
                 val monthsList = snapshot?.documents
                     ?.map { doc ->
                         MonthItem(
@@ -110,6 +129,31 @@ class HomeScreenViewModel(firebaseApp: FirebaseApp) : ViewModel() {
     private fun loadSummaryForMonth(shopId: String, monthId: String) {
         _isLoadingMonth.value = true
 
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                // First, try to load from local database
+                val cachedEntity = summaryDao.getSummary(shopId, monthId)
+
+                if (cachedEntity != null && !isCacheExpired(cachedEntity.lastUpdated)) {
+                    // Use cached data
+                    val summary = cachedEntity.toDomain()
+                    _summariesCache.value = _summariesCache.value.toMutableMap().apply {
+                        put(monthId, summary)
+                    }
+                    _isLoadingMonth.value = false
+                    Log.d("HomeViewModel", "Loaded summary from cache for $shopId - $monthId")
+                } else {
+                    // Load from Firestore
+                    loadFromFirestore(shopId, monthId)
+                }
+            } catch (e: Exception) {
+                Log.e("HomeViewModel", "Error loading from cache", e)
+                loadFromFirestore(shopId, monthId)
+            }
+        }
+    }
+
+    private fun loadFromFirestore(shopId: String, monthId: String) {
         trackerFireStore.collection("summary")
             .document(shopId)
             .collection("months")
@@ -119,11 +163,26 @@ class HomeScreenViewModel(firebaseApp: FirebaseApp) : ViewModel() {
                 val summary = document.toObject(MonthlySummary::class.java)
 
                 if (summary != null) {
-                    // Add to cache
+                    // Add to in-memory cache
                     _summariesCache.value = _summariesCache.value.toMutableMap().apply {
                         put(monthId, summary)
                     }
-                    Log.d("HomeViewModel", "Loaded summary for $shopId - $monthId")
+
+                    // Save to local database
+                    viewModelScope.launch(Dispatchers.IO) {
+                        try {
+                            val entity = summary.toEntity(shopId, monthId)
+                            summaryDao.insertSummary(entity)
+                            Log.d(
+                                "HomeViewModel",
+                                "Saved summary to local DB for $shopId - $monthId"
+                            )
+                        } catch (e: Exception) {
+                            Log.e("HomeViewModel", "Error saving to local DB", e)
+                        }
+                    }
+
+                    Log.d("HomeViewModel", "Loaded summary from Firestore for $shopId - $monthId")
                 }
 
                 _isLoadingMonth.value = false
@@ -132,6 +191,11 @@ class HomeScreenViewModel(firebaseApp: FirebaseApp) : ViewModel() {
                 Log.e("HomeViewModel", "Error fetching month $monthId", error)
                 _isLoadingMonth.value = false
             }
+    }
+
+    private fun isCacheExpired(lastUpdated: Long): Boolean {
+        val currentTime = System.currentTimeMillis()
+        return (currentTime - lastUpdated) > CACHE_EXPIRY_MS
     }
 
     private fun parseMonthYear(monthYear: String): Long {
@@ -150,7 +214,6 @@ class HomeScreenViewModel(firebaseApp: FirebaseApp) : ViewModel() {
     }
 }
 
-// Simple data class to represent a month in the list
 data class MonthItem(
     val id: String,
     val displayName: String
