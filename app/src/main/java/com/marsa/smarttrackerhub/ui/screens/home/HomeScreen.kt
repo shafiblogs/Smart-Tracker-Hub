@@ -131,7 +131,7 @@ fun HomeScreen(
         // Statistics Card (Last 3 Months Only)
         statistics?.let { stats ->
             StatisticsCard(statistics = stats, selectedShop?.address ?: "")
-            Spacer(modifier = Modifier.height(24.dp))
+            Spacer(modifier = Modifier.height(16.dp))
         }
 
         // Chart Title with Share Button
@@ -220,31 +220,7 @@ fun HomeScreen(
                 modifier = Modifier.fillMaxWidth()
             )
         }
-
         Spacer(modifier = Modifier.height(16.dp))
-
-        // Chart Help Text
-        Card(
-            modifier = Modifier.fillMaxWidth(),
-            colors = CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.surfaceVariant
-            )
-        ) {
-            Row(
-                modifier = Modifier.padding(12.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = "💡",
-                    style = MaterialTheme.typography.titleMedium
-                )
-                Spacer(modifier = Modifier.width(8.dp))
-                Text(
-                    text = "Tap on any point to see detailed information",
-                    style = MaterialTheme.typography.bodySmall
-                )
-            }
-        }
     }
 }
 
