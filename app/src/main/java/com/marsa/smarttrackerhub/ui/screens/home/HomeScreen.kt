@@ -47,7 +47,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.marsa.smarttrackerhub.domain.AccessCode
 
 /**
- * Home screen with sales chart
+ * Home screen with sales chart and statistics
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -65,8 +65,9 @@ fun HomeScreen(
     val statistics by viewModel.statistics.collectAsState()
     val expanded by viewModel.expanded.collectAsState()
 
-    // Reference to the chart card for screenshot
+    // References for screenshot
     var chartView by remember { mutableStateOf<View?>(null) }
+    var statsView by remember { mutableStateOf<View?>(null) }
 
     LaunchedEffect(Unit) {
         viewModel.loadScreenData(userAccessCode)
@@ -125,12 +126,41 @@ fun HomeScreen(
             }
         }
 
-        Spacer(modifier = Modifier.height(20.dp))
+        Spacer(modifier = Modifier.height(16.dp))
 
-        // Statistics Card (Last 3 Months Only)
+        // Statistics Card with Share (Last 3 Months Only)
         statistics?.let { stats ->
-            StatisticsCard(statistics = stats, selectedShop?.address ?: "")
-            Spacer(modifier = Modifier.height(8.dp))
+            AndroidView(
+                factory = { ctx ->
+                    androidx.compose.ui.platform.ComposeView(ctx).apply {
+                        setContent {
+                            StatisticsCard(
+                                statistics = stats,
+                                shopAddress = selectedShop?.address ?: "",
+                                onShareClick = {
+                                    statsView?.let { view ->
+                                        ShareUtil.shareViewAsImage(
+                                            view = view,
+                                            context = context,
+                                            fileName = "sales_stats_${
+                                                selectedShop?.name?.replace(
+                                                    " ",
+                                                    "_"
+                                                )
+                                            }.png",
+                                            shareTitle = "Share Sales Statistics"
+                                        )
+                                    }
+                                }
+                            )
+                        }
+                    }.also { composeView ->
+                        statsView = composeView
+                    }
+                },
+                modifier = Modifier.fillMaxWidth()
+            )
+            Spacer(modifier = Modifier.height(24.dp))
         }
 
         // Chart Title with Share Button
@@ -140,19 +170,20 @@ fun HomeScreen(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text(
-                text = " Sales Trend",
+                text = "4 Months Trend",
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.SemiBold
             )
 
-            // Share button
+            // Share chart button
             IconButton(
                 onClick = {
                     chartView?.let { view ->
-                        ChartShareUtil.shareChartImage(
+                        ShareUtil.shareViewAsImage(
                             view = view,
                             context = context,
-                            fileName = "sales_chart_${selectedShop?.name?.replace(" ", "_")}.png"
+                            fileName = "sales_chart_${selectedShop?.name?.replace(" ", "_")}.png",
+                            shareTitle = "Share Sales Chart"
                         )
                     }
                 },
@@ -164,7 +195,7 @@ fun HomeScreen(
                     tint = if (chartData.isNotEmpty())
                         MaterialTheme.colorScheme.primary
                     else
-                        MaterialTheme.colorScheme.onSurfaceVariant
+                        Color.Gray
                 )
             }
         }
@@ -176,7 +207,6 @@ fun HomeScreen(
             modifier = Modifier.fillMaxWidth(),
             elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
         ) {
-            // Wrap in AndroidView to get View reference for screenshot
             AndroidView(
                 factory = { ctx ->
                     androidx.compose.ui.platform.ComposeView(ctx).apply {
@@ -219,116 +249,10 @@ fun HomeScreen(
                 modifier = Modifier.fillMaxWidth()
             )
         }
+
         Spacer(modifier = Modifier.height(16.dp))
+
     }
 }
 
-/**
- * Statistics summary card
- * Shows last 3 months only (excluding current month)
- */
-@Composable
-private fun StatisticsCard(
-    statistics: ChartStatistics,
-    shopAddress: String,
-    modifier: Modifier = Modifier
-) {
-    val colors = MaterialTheme.colorScheme
-
-    Card(
-        modifier = modifier.fillMaxWidth(),
-        elevation = CardDefaults.cardElevation(defaultElevation = 3.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = colors.secondaryContainer
-        )
-    ) {
-        Column(
-            modifier = Modifier.padding(16.dp)
-        ) {
-
-            Text(
-                text = "$shopAddress (${statistics.totalMonths} Months)",
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.SemiBold,
-                color = colors.onSecondaryContainer
-            )
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                StatItem(
-                    label = "Avg Target",
-                    value = String.format("%.1f", statistics.totalTarget / statistics.totalMonths),
-                    valueColor = colors.onSecondaryContainer
-                )
-
-                StatItem(
-                    label = "Avg Sale",
-                    value = String.format("%.1f", statistics.totalAverage / statistics.totalMonths),
-                    valueColor = if (statistics.averageAchievementPercentage >= 100)
-                        colors.tertiary
-                    else
-                        colors.error
-                )
-            }
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                StatItem(
-                    label = "Achievement",
-                    value = String.format("%.1f%%", statistics.averageAchievementPercentage),
-                    valueColor = if (statistics.averageAchievementPercentage >= 100)
-                        colors.tertiary
-                    else
-                        colors.error
-                )
-
-                StatItem(
-                    label = "Targets",
-                    value = "${statistics.monthsTargetMet}/${statistics.totalMonths}",
-                    valueColor = colors.onSecondaryContainer
-                )
-            }
-        }
-    }
-}
-
-
-/**
- * Individual stat item
- */
-@Composable
-private fun StatItem(
-    label: String,
-    value: String,
-    valueColor: Color,
-    modifier: Modifier = Modifier
-) {
-    val colors = MaterialTheme.colorScheme
-
-    Column(modifier = modifier) {
-
-        Text(
-            text = label,
-            style = MaterialTheme.typography.labelMedium,
-            color = colors.onSurfaceVariant
-        )
-
-        Spacer(modifier = Modifier.height(6.dp))
-
-        Text(
-            text = value,
-            style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.Bold,
-            color = valueColor
-        )
-    }
-}
 
