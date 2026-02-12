@@ -8,10 +8,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.ColorScheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Path
@@ -26,9 +22,9 @@ import androidx.compose.ui.unit.sp
 import kotlin.math.max
 
 /**
- * Chart displaying target vs average sales for last 4 months
- * 
- * @param data List of monthly data (max 4 months)
+ * Chart displaying target vs average sales for last 4-6 months
+ *
+ * @param data List of monthly data (max 6 months)
  * @param modifier Modifier for the chart
  * @param onShareClick Callback when share button is clicked
  */
@@ -55,18 +51,25 @@ fun MonthlySalesChart(
 
             val chartWidth = size.width
             val chartHeight = size.height
-            val bottomPadding = 80f
-            val topPadding = 70f
-            val leftPadding = 60f
+            val bottomPadding = 80f // Enough space for month labels
+            val topPadding = 70f // Enough space for legend
+            val leftPadding = 60f // Space for Y-axis labels
             val rightPadding = 30f
             val availableHeight = chartHeight - bottomPadding - topPadding
             val availableWidth = chartWidth - leftPadding - rightPadding
 
+            // Calculate max value for Y-axis scaling
             val maxValue = data.maxOfOrNull { max(it.targetSale, it.averageSale) } ?: 1.0
             val yScale = availableHeight / maxValue.toFloat()
-            val xScale =
-                if (data.size > 1) availableWidth / (data.size - 1) else availableWidth / 2f
 
+            // Fix for proper spacing: ensure we divide by (size - 1) for proper point distribution
+            val xScale = if (data.size > 1) {
+                availableWidth / (data.size - 1).toFloat()
+            } else {
+                availableWidth / 2f
+            }
+
+            // Draw grid and Y-axis
             drawGridAndYAxis(
                 maxValue,
                 chartHeight,
@@ -78,16 +81,18 @@ fun MonthlySalesChart(
                 colors
             )
 
+            // Draw target line (dashed)
             drawTargetLine(data, leftPadding, chartHeight, bottomPadding, xScale, yScale, colors)
 
+            // Draw average line (solid)
             drawAverageLine(data, leftPadding, chartHeight, bottomPadding, xScale, yScale, colors)
 
-            // Draw points
+            // Draw data points
             data.forEachIndexed { index, monthData ->
                 val x = leftPadding + (index * xScale)
 
-                val targetY =
-                    chartHeight - bottomPadding - (monthData.targetSale * yScale).toFloat()
+                // Target point
+                val targetY = chartHeight - bottomPadding - (monthData.targetSale * yScale).toFloat()
 
                 drawCircle(
                     color = colors.primary,
@@ -101,11 +106,9 @@ fun MonthlySalesChart(
                     center = Offset(x, targetY)
                 )
 
-                val avgY =
-                    chartHeight - bottomPadding - (monthData.averageSale * yScale).toFloat()
-
-                val avgColor =
-                    if (monthData.isTargetMet) colors.tertiary else colors.error
+                // Average point
+                val avgY = chartHeight - bottomPadding - (monthData.averageSale * yScale).toFloat()
+                val avgColor = if (monthData.isTargetMet) colors.tertiary else colors.error
 
                 drawCircle(
                     color = avgColor,
@@ -120,6 +123,17 @@ fun MonthlySalesChart(
                 )
             }
 
+            // Draw month labels (with proper spacing)
+            drawMonthLabels(
+                data = data,
+                chartHeight = chartHeight,
+                bottomPadding = bottomPadding,
+                leftPadding = leftPadding,
+                xScale = xScale,
+                colors = colors
+            )
+
+            // Draw legend
             drawLegend(chartWidth, topPadding, colors)
         }
     }
@@ -147,6 +161,7 @@ private fun DrawScope.drawGridAndYAxis(
         val value = step * i
         val y = chartHeight - bottomPadding - ((value / maxValue) * availableHeight).toFloat()
 
+        // Draw horizontal grid line
         drawLine(
             color = colors.outlineVariant,
             start = Offset(leftPadding, y),
@@ -154,10 +169,14 @@ private fun DrawScope.drawGridAndYAxis(
             strokeWidth = 1f
         )
 
+        // Draw Y-axis value label
+        // Move "0" label up slightly to avoid overlap with month names
+        val labelY = if (i == 0) y - 5f else y + 5f
+
         drawContext.canvas.nativeCanvas.drawText(
             String.format("%.0f", value),
             leftPadding - 15f,
-            y + 5f,
+            labelY,
             Paint().apply {
                 color = colors.onSurfaceVariant.toArgb()
                 textSize = 11.sp.toPx()
@@ -169,7 +188,7 @@ private fun DrawScope.drawGridAndYAxis(
 
 
 /**
- * Draws target line (dashed blue)
+ * Draws target line (dashed)
  */
 private fun DrawScope.drawTargetLine(
     data: List<MonthlyChartData>,
@@ -218,12 +237,14 @@ private fun DrawScope.drawAverageLine(
 ) {
     if (data.size < 2) return
 
+    // Draw each segment with color based on achievement
     for (i in 0 until data.size - 1) {
         val startX = leftPadding + (i * xScale)
         val startY = chartHeight - bottomPadding - (data[i].averageSale * yScale).toFloat()
         val endX = leftPadding + ((i + 1) * xScale)
         val endY = chartHeight - bottomPadding - (data[i + 1].averageSale * yScale).toFloat()
 
+        // Color based on next point's achievement status
         val color = if (data[i + 1].isTargetMet) colors.tertiary else colors.error
 
         drawLine(
@@ -258,15 +279,15 @@ private fun DrawScope.drawLegend(
     val lineWidth = 30f
     val spacing = 60f
 
+    // Measure text widths for proper centering
     val targetWidth = paint.measureText(targetText)
     val avgWidth = paint.measureText(avgText)
 
-    val totalWidth =
-        lineWidth + 5f + targetWidth + spacing + lineWidth + 5f + avgWidth
+    val totalWidth = lineWidth + 5f + targetWidth + spacing + lineWidth + 5f + avgWidth
 
     val startX = (chartWidth - totalWidth) / 2
 
-    // Target
+    // Draw Target legend
     drawLine(
         color = colors.primary,
         start = Offset(startX, legendY),
@@ -282,7 +303,7 @@ private fun DrawScope.drawLegend(
         paint
     )
 
-    // Average
+    // Draw Average legend
     val avgStart = startX + lineWidth + 5f + targetWidth + spacing
 
     drawLine(
@@ -300,9 +321,64 @@ private fun DrawScope.drawLegend(
     )
 }
 
+/**
+ * Draws month labels below the chart with proper spacing
+ * FIXED: Increased spacing and proper alignment for 4-6 months
+ */
+private fun DrawScope.drawMonthLabels(
+    data: List<MonthlyChartData>,
+    chartHeight: Float,
+    bottomPadding: Float,
+    leftPadding: Float,
+    xScale: Float,
+    colors: ColorScheme
+) {
+    val textSizePx = 12.sp.toPx()
+
+    val paint = Paint().apply {
+        color = colors.onSurface.toArgb()
+        textSize = textSizePx
+        textAlign = Paint.Align.CENTER
+        isAntiAlias = true
+    }
+
+    data.forEachIndexed { index, monthData ->
+        val x = leftPadding + (index * xScale)
+
+        // FIXED: Increased spacing from 18f to 35f for better separation from graph
+        // This ensures labels don't overlap with the bottom line of the chart
+        val labelY = chartHeight - bottomPadding + 35f
+
+        drawContext.canvas.nativeCanvas.drawText(
+            getShortMonthName(monthData.monthYear),
+            x,
+            labelY,
+            paint
+        )
+    }
+}
+
 
 /**
- * Draws empty state
+ * Gets short month name from full monthYear string
+ */
+private fun getShortMonthName(monthYear: String): String {
+    return try {
+        val parts = monthYear.split(" - ")
+        if (parts.isNotEmpty()) {
+            val month = parts[0].trim()
+            month.take(3) // First 3 letters
+        } else {
+            monthYear
+        }
+    } catch (e: Exception) {
+        monthYear
+    }
+}
+
+
+/**
+ * Draws empty state message
  */
 private fun DrawScope.drawEmptyState(colors: ColorScheme) {
     drawContext.canvas.nativeCanvas.drawText(
