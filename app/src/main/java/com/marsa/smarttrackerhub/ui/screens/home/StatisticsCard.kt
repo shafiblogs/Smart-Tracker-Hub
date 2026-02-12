@@ -60,7 +60,7 @@ fun StatisticsCard(
                     text = shopAddress,
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.SemiBold,
-                    color = colors.onSecondaryContainer // adapts to dark/light mode
+                    color = colors.primary // adapts to dark/light mode
                 )
 
                 Spacer(modifier = Modifier.height(16.dp))
