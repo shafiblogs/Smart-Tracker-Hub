@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.DateRange
+import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material3.DrawerValue
@@ -53,6 +54,7 @@ import com.marsa.smarttrackerhub.ui.screens.account.AccountSetupScreen
 import com.marsa.smarttrackerhub.ui.screens.employees.AddEmployeeScreen
 import com.marsa.smarttrackerhub.ui.screens.employees.EmployeesScreen
 import com.marsa.smarttrackerhub.ui.screens.home.HomeScreen
+import com.marsa.smarttrackerhub.ui.screens.sale.SaleScreen
 import com.marsa.smarttrackerhub.ui.screens.investers.AddInvestorScreen
 import com.marsa.smarttrackerhub.ui.screens.investers.InvestorsScreen
 import com.marsa.smarttrackerhub.ui.screens.login.LoginScreen
@@ -83,7 +85,7 @@ fun SmartTrackerNavHost(navController: NavHostController) {
     }
 
     val bottomNavRoutes = mutableListOf(
-        Screen.Home.route, Screen.Statement.route, Screen.Summary.route
+        Screen.Home.route, Screen.Sale.route, Screen.Statement.route, Screen.Summary.route
     )
 
     val showBottomBar = currentRoute in bottomNavRoutes
@@ -132,6 +134,9 @@ fun SmartTrackerNavHost(navController: NavHostController) {
                         popUpTo(Screen.AccountSetup.route) { inclusive = true }
                     }
                 })
+            }
+            composable(Screen.Sale.route) {
+                SaleScreen(userAccessCode = userAccessCode)
             }
             composable(Screen.Home.route) {
                 HomeScreen(userAccessCode = userAccessCode)
@@ -208,12 +213,13 @@ fun SmartTrackerNavHost(navController: NavHostController) {
                         )
                     }
 
-                    Screen.Statement.route, Screen.ShopList.route, Screen.AddShop.route,
+                    Screen.Statement.route, Screen.ShopList.route, Screen.AddShop.route, Screen.Sale.route,
                     Screen.Investors.route, Screen.AddInvestor.route, Screen.Employees.route, Screen.AddEmployee.route,
                     Screen.AccountSetup.route, Screen.Summary.route -> {
                         val titleText = when (currentRoute) {
                             Screen.AccountSetup.route -> "My Account"
                             Screen.Investors.route -> "Investors"
+                            Screen.Sale.route -> "Sales"
                             Screen.Statement.route -> "Statements"
                             Screen.ShopList.route -> "Shops"
                             Screen.Summary.route -> "Summary"
@@ -263,6 +269,16 @@ fun SmartTrackerNavHost(navController: NavHostController) {
                                     text = "Home",
                                     style = sTypography.bodySmall.copy(fontWeight = FontWeight.Medium)
                                 )
+                            })
+
+                        NavigationBarItem(
+                            selected = currentRoute == Screen.Sale.route,
+                            onClick = { navigateToRoute(Screen.Sale.route) },
+                            icon = {
+                                Icon(Icons.Default.FavoriteBorder, contentDescription = "Sales")
+                            },
+                            label = {
+                                SmallTextField("Sales")
                             })
 
                         NavigationBarItem(

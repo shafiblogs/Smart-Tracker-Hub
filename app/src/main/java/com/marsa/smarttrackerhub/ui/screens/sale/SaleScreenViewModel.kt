@@ -1,4 +1,4 @@
-package com.marsa.smarttrackerhub.ui.screens.home
+package com.marsa.smarttrackerhub.ui.screens.sale
 
 import android.app.Application
 import android.util.Log
@@ -22,7 +22,7 @@ import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Locale
 
-class HomeScreenViewModel(
+class SaleScreenViewModel(
     application: Application,
     firebaseApp: FirebaseApp
 ) : AndroidViewModel(application) {

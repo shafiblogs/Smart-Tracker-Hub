@@ -1,4 +1,4 @@
-package com.marsa.smarttrackerhub.ui.screens.home
+package com.marsa.smarttrackerhub.ui.screens.sale
 
 import android.util.Log
 import com.marsa.smarttrackerhub.data.entity.SummaryEntity
