@@ -180,15 +180,16 @@ class HomeScreenViewModel(
                         put(monthId, summary)
                     }
 
-                    // Save to local database
+                    // Save to local database and recalculate averages
                     viewModelScope.launch(Dispatchers.IO) {
                         try {
                             val entity = summary.toEntity(shopId, monthId)
                             summaryDao.insertSummary(entity)
-                            Log.d(
-                                "HomeViewModel",
-                                "Saved summary to local DB for $shopId - $monthId"
-                            )
+
+                            // Recalculate average sales for all months in this shop
+                            recalculateAverageSales(shopId)
+
+                            Log.d("HomeViewModel", "Saved summary to local DB for $shopId - $monthId")
                         } catch (e: Exception) {
                             Log.e("HomeViewModel", "Error saving to local DB", e)
                         }
@@ -203,6 +204,33 @@ class HomeScreenViewModel(
                 Log.e("HomeViewModel", "Error fetching month $monthId", error)
                 _isLoadingMonth.value = false
             }
+    }
+
+    private suspend fun recalculateAverageSales(shopId: String) {
+        try {
+            // Get all summaries for this shop
+            val allSummaries = summaryDao.getAllSummariesForShopAscending(shopId)
+
+            // Calculate average sales
+            val updatedSummaries = AverageSaleCalculator.calculateAverageSalesForShop(allSummaries)
+
+            // Save back to database
+            summaryDao.insertSummaries(updatedSummaries)
+
+            Log.d("HomeViewModel", "Recalculated average sales for $shopId")
+
+            // Update in-memory cache if the selected month is affected
+            _selectedMonthId.value?.let { selectedMonth ->
+                val updatedSummary = updatedSummaries.find { it.monthId == selectedMonth }
+                if (updatedSummary != null) {
+                    _summariesCache.value = _summariesCache.value.toMutableMap().apply {
+                        put(selectedMonth, updatedSummary.toDomain())
+                    }
+                }
+            }
+        } catch (e: Exception) {
+            Log.e("HomeViewModel", "Error recalculating average sales", e)
+        }
     }
 
     private fun isCacheExpired(lastUpdated: Long): Boolean {

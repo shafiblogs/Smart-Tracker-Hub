@@ -3,6 +3,7 @@ package com.marsa.smarttrackerhub.data.entity
 import androidx.room.Entity
 import androidx.room.PrimaryKey
 import com.marsa.smarttrackerhub.domain.MonthlySummary
+import com.marsa.smarttrackerhub.ui.screens.home.AverageSaleCalculator
 
 
 /**
@@ -17,13 +18,15 @@ data class SummaryEntity(
     val shopId: String,
     val monthId: String,
     val monthYear: String,
+    val monthTimestamp: Long, // Add this for proper sorting
     val openingCashBalance: Double,
     val cashBalance: Double,
     val openingAccountBalance: Double,
     val accountBalance: Double,
     val openingCreditBalance: Double,
     val creditSaleBalance: Double,
-    val averageSale: Double?,
+    val averageSale: Double?, // This will be auto-calculated
+    val calculatedAverageSale: Double, // New field for the calculated average
     val totalSales: Double,
     val totalPurchases: Double,
     val totalExpenses: Double,
@@ -44,7 +47,7 @@ fun SummaryEntity.toDomain(): MonthlySummary {
         accountBalance = accountBalance,
         openingCreditBalance = openingCreditBalance,
         creditSaleBalance = creditSaleBalance,
-        averageSale = averageSale,
+        averageSale = calculatedAverageSale, // Use calculated average
         totalSales = totalSales,
         totalPurchases = totalPurchases,
         totalExpenses = totalExpenses,
@@ -56,11 +59,14 @@ fun SummaryEntity.toDomain(): MonthlySummary {
 }
 
 fun MonthlySummary.toEntity(shopId: String, monthId: String): SummaryEntity {
+    val monthTimestamp = AverageSaleCalculator.parseMonthYearToTimestamp(monthYear)
+
     return SummaryEntity(
         id = "$shopId-$monthId",
         shopId = shopId,
         monthId = monthId,
         monthYear = monthYear,
+        monthTimestamp = monthTimestamp,
         openingCashBalance = openingCashBalance,
         cashBalance = cashBalance,
         openingAccountBalance = openingAccountBalance,
@@ -68,6 +74,7 @@ fun MonthlySummary.toEntity(shopId: String, monthId: String): SummaryEntity {
         openingCreditBalance = openingCreditBalance,
         creditSaleBalance = creditSaleBalance,
         averageSale = averageSale,
+        calculatedAverageSale = averageSale ?: 0.0, // Will be recalculated
         totalSales = totalSales,
         totalPurchases = totalPurchases,
         totalExpenses = totalExpenses,
