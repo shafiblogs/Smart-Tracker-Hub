@@ -160,7 +160,7 @@ fun HomeScreen(
                 },
                 modifier = Modifier.fillMaxWidth()
             )
-            Spacer(modifier = Modifier.height(24.dp))
+            Spacer(modifier = Modifier.height(12.dp))
         }
 
         // Chart Title with Share Button
