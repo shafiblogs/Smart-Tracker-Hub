@@ -1,14 +1,33 @@
 package com.marsa.smarttrackerhub.ui.screens.home
 
-import android.graphics.Bitmap
 import android.graphics.Paint
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.gestures.detectTapGestures
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Share
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Divider
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
@@ -20,21 +39,13 @@ import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.viewinterop.AndroidView
-import androidx.core.content.FileProvider
-import java.io.File
-import java.io.FileOutputStream
 import kotlin.math.abs
 import kotlin.math.max
 import kotlin.math.pow
 import kotlin.math.sqrt
-import android.content.Intent
-import android.view.View
 
 /**
  * Chart displaying target vs average sales for last 4 months
@@ -128,7 +139,8 @@ fun MonthlySalesChart(
                 val x = leftPadding + (index * xScale)
 
                 // Target point
-                val targetY = chartHeight - bottomPadding - (monthData.targetSale * yScale).toFloat()
+                val targetY =
+                    chartHeight - bottomPadding - (monthData.targetSale * yScale).toFloat()
                 drawCircle(
                     color = Color(0xFF2196F3), // Blue
                     radius = 8f,
@@ -340,75 +352,83 @@ private fun DrawScope.drawLegend(
     chartWidth: Float,
     topPadding: Float
 ) {
-    val legendY = topPadding / 3 // Better vertical position
+    val legendY = topPadding / 3
 
-    // Calculate total legend width
-    val targetLineWidth = 30f
-    val targetTextWidth = 50f // Approximate width for "Target"
-    val spacing = 30f // Space between two legends
-    val avgLineWidth = 30f
-    val avgTextWidth = 90f // Approximate width for "Average Sale"
+    val textSizePx = 13.sp.toPx()
 
-    val totalLegendWidth = targetLineWidth + targetTextWidth + spacing + avgLineWidth + avgTextWidth
+    val targetPaint = Paint().apply {
+        color = android.graphics.Color.BLACK
+        textSize = textSizePx
+    }
 
-    // Center the legend
+    val avgPaint = Paint().apply {
+        color = android.graphics.Color.BLACK
+        textSize = textSizePx
+    }
+
+    val targetText = "Target"
+    val avgText = "Average Sale"
+
+    val lineWidth = 30f
+    val spacingBetweenItems = 60f   // 👈 increase this safely
+
+    val targetTextWidth = targetPaint.measureText(targetText)
+    val avgTextWidth = avgPaint.measureText(avgText)
+
+    val totalLegendWidth =
+        lineWidth + 5f + targetTextWidth +
+                spacingBetweenItems +
+                lineWidth + 5f + avgTextWidth
+
     val legendStartX = (chartWidth - totalLegendWidth) / 2
 
-    // Target legend
+    // ----- Target -----
     drawLine(
         color = Color(0xFF2196F3),
         start = Offset(legendStartX, legendY),
-        end = Offset(legendStartX + 30f, legendY),
+        end = Offset(legendStartX + lineWidth, legendY),
         strokeWidth = 3f,
         pathEffect = PathEffect.dashPathEffect(floatArrayOf(8f, 8f))
     )
+
     drawCircle(
         color = Color(0xFF2196F3),
         radius = 5f,
-        center = Offset(legendStartX + 15f, legendY)
+        center = Offset(legendStartX + lineWidth / 2, legendY)
     )
 
-    drawContext.canvas.nativeCanvas.apply {
-        drawText(
-            "Target",
-            legendStartX + 35f,
-            legendY + 5f,
-            Paint().apply {
-                color = android.graphics.Color.BLACK
-                textSize = 13.sp.toPx()
-                isFakeBoldText = false
-            }
-        )
-    }
+    drawContext.canvas.nativeCanvas.drawText(
+        targetText,
+        legendStartX + lineWidth + 5f,
+        legendY + 5f,
+        targetPaint
+    )
 
-    // Average legend
-    val avgStartX = legendStartX + targetLineWidth + targetTextWidth + spacing
+    // ----- Average -----
+    val avgStartX =
+        legendStartX + lineWidth + 5f + targetTextWidth + spacingBetweenItems
 
     drawLine(
         color = Color(0xFF4CAF50),
         start = Offset(avgStartX, legendY),
-        end = Offset(avgStartX + 30f, legendY),
+        end = Offset(avgStartX + lineWidth, legendY),
         strokeWidth = 3f
     )
+
     drawCircle(
         color = Color(0xFF4CAF50),
         radius = 5f,
-        center = Offset(avgStartX + 15f, legendY)
+        center = Offset(avgStartX + lineWidth / 2, legendY)
     )
 
-    drawContext.canvas.nativeCanvas.apply {
-        drawText(
-            "Average Sale",
-            avgStartX + 35f,
-            legendY + 5f,
-            Paint().apply {
-                color = android.graphics.Color.BLACK
-                textSize = 13.sp.toPx()
-                isFakeBoldText = false
-            }
-        )
-    }
+    drawContext.canvas.nativeCanvas.drawText(
+        avgText,
+        avgStartX + lineWidth + 5f,
+        legendY + 5f,
+        avgPaint
+    )
 }
+
 
 /**
  * Draws empty state
@@ -564,7 +584,9 @@ private fun ChartTooltip(
                     ) {
                         Canvas(modifier = Modifier.fillMaxSize()) {
                             drawCircle(
-                                color = if (touchInfo.isTargetMet) Color(0xFF4CAF50) else Color(0xFFF44336)
+                                color = if (touchInfo.isTargetMet) Color(0xFF4CAF50) else Color(
+                                    0xFFF44336
+                                )
                             )
                         }
                     }
@@ -619,7 +641,8 @@ private fun ChartTooltip(
                 )
 
                 val icon = if (touchInfo.difference >= 0) "↑" else "↓"
-                val diffColor = if (touchInfo.difference >= 0) Color(0xFF4CAF50) else Color(0xFFF44336)
+                val diffColor =
+                    if (touchInfo.difference >= 0) Color(0xFF4CAF50) else Color(0xFFF44336)
 
                 Text(
                     text = "$icon ${String.format("%.2f", abs(touchInfo.difference))}",

@@ -1,7 +1,6 @@
 package com.marsa.smarttrackerhub.ui.screens.home
 
 import android.app.Application
-import android.graphics.Bitmap
 import android.view.View
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -42,11 +41,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
-import androidx.core.view.drawToBitmap
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.marsa.smarttrackerhub.domain.AccessCode
 
@@ -165,9 +162,9 @@ fun HomeScreen(
                 Icon(
                     imageVector = Icons.Default.Share,
                     contentDescription = "Share Chart",
-                    tint = if (chartData.isNotEmpty()) 
-                        MaterialTheme.colorScheme.primary 
-                    else 
+                    tint = if (chartData.isNotEmpty())
+                        MaterialTheme.colorScheme.primary
+                    else
                         Color.Gray
                 )
             }
