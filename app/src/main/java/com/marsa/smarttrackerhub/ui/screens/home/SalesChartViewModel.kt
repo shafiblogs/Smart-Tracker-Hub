@@ -56,7 +56,6 @@ class SalesChartViewModel(
     /**
      * Selects a shop and loads its data
      */
-
     fun setSelectedShop(shop: ShopListDto?) {
         _selectedShop.value = shop
 
@@ -72,18 +71,21 @@ class SalesChartViewModel(
     }
 
     /**
-     * Loads chart data for selected shop (last 6 months)
+     * Loads chart data for selected shop
+     * - Displays last 4 months in chart
+     * - Calculates statistics for last 3 months only (excluding current month)
      */
     private fun loadChartData(shopId: String) {
         viewModelScope.launch(Dispatchers.IO) {
             allSummaries = summaryDao.getAllSummariesForShop(shopId = shopId)
 
-            val shopData = allSummaries
-                .sortedByDescending { it.monthTimestamp }
-                .take(4)
-                .reversed()
+            // Sort by timestamp descending (newest first)
+            val sortedData = allSummaries.sortedByDescending { it.monthTimestamp }
+            
+            // Take last 4 months for chart display
+            val chartMonths = sortedData.take(4).reversed() // Reverse to show oldest to newest
 
-            _chartData.value = shopData.map { summary ->
+            _chartData.value = chartMonths.map { summary ->
                 MonthlyChartData(
                     monthYear = summary.monthYear,
                     monthShortName = getShortMonthName(summary.monthYear),
@@ -93,13 +95,21 @@ class SalesChartViewModel(
                 )
             }
 
-            // Calculate statistics
-            calculateStatistics(shopData)
+            // Calculate statistics for last 3 months only (skip current/most recent month)
+            // Skip index 0 (most recent) and take next 3
+            val statsMonths = if (sortedData.size > 1) {
+                sortedData.drop(1).take(3) // Skip current month, take next 3
+            } else {
+                emptyList() // Not enough data
+            }
+            
+            calculateStatistics(statsMonths)
         }
     }
 
     /**
      * Calculates summary statistics
+     * Now uses only last 3 months (excluding current month)
      */
     private fun calculateStatistics(data: List<SummaryEntity>) {
         if (data.isEmpty()) {
@@ -123,14 +133,6 @@ class SalesChartViewModel(
                 (monthsTargetMet.toDouble() / data.size) * 100.0
             } else 0.0
         )
-    }
-
-    /**
-     * Formats shop ID to display name
-     */
-    private fun formatShopName(shopId: String): String {
-        // Convert MARSA_102 to "MARSA 102"
-        return shopId.replace("_", " ")
     }
 
     /**

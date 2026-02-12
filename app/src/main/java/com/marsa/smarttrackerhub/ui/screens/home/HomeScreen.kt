@@ -1,6 +1,8 @@
 package com.marsa.smarttrackerhub.ui.screens.home
 
 import android.app.Application
+import android.graphics.Bitmap
+import android.view.View
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -15,6 +17,8 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -22,9 +26,10 @@ import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -37,8 +42,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.viewinterop.AndroidView
+import androidx.core.view.drawToBitmap
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.marsa.smarttrackerhub.domain.AccessCode
 
@@ -61,6 +69,8 @@ fun HomeScreen(
     val statistics by viewModel.statistics.collectAsState()
     val expanded by viewModel.expanded.collectAsState()
 
+    // Reference to the chart card for screenshot
+    var chartView by remember { mutableStateOf<View?>(null) }
 
     LaunchedEffect(Unit) {
         viewModel.loadScreenData(userAccessCode)
@@ -121,56 +131,97 @@ fun HomeScreen(
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        // Statistics Card
+        // Statistics Card (Last 3 Months Only)
         statistics?.let { stats ->
             StatisticsCard(statistics = stats, selectedShop?.address ?: "")
             Spacer(modifier = Modifier.height(24.dp))
         }
 
-        // Chart Title
-        Text(
-            text = "4 Months Trend",
-            style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.SemiBold
-        )
+        // Chart Title with Share Button
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = "Sales Trend",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold
+            )
+
+            // Share button
+            IconButton(
+                onClick = {
+                    chartView?.let { view ->
+                        ChartShareUtil.shareChartImage(
+                            view = view,
+                            context = context,
+                            fileName = "sales_chart_${selectedShop?.name?.replace(" ", "_")}.png"
+                        )
+                    }
+                },
+                enabled = chartData.isNotEmpty()
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Share,
+                    contentDescription = "Share Chart",
+                    tint = if (chartData.isNotEmpty()) 
+                        MaterialTheme.colorScheme.primary 
+                    else 
+                        Color.Gray
+                )
+            }
+        }
 
         Spacer(modifier = Modifier.height(12.dp))
 
-        // Chart
+        // Chart Card
         Card(
             modifier = Modifier.fillMaxWidth(),
             elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
         ) {
-            if (isLoading) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(350.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    CircularProgressIndicator()
-                }
-            } else if (chartData.isEmpty()) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(350.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        text = "No data available for selected shop",
-                        style = MaterialTheme.typography.bodyLarge,
-                        color = Color.Gray
-                    )
-                }
-            } else {
-                MonthlySalesChart(
-                    data = chartData,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(350.dp)
-                )
-            }
+            // Wrap in AndroidView to get View reference for screenshot
+            AndroidView(
+                factory = { ctx ->
+                    androidx.compose.ui.platform.ComposeView(ctx).apply {
+                        setContent {
+                            if (isLoading) {
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .height(350.dp),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    CircularProgressIndicator()
+                                }
+                            } else if (chartData.isEmpty()) {
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .height(350.dp),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Text(
+                                        text = "No data available for selected shop",
+                                        style = MaterialTheme.typography.bodyLarge,
+                                        color = Color.Gray
+                                    )
+                                }
+                            } else {
+                                MonthlySalesChart(
+                                    data = chartData,
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .height(350.dp)
+                                )
+                            }
+                        }
+                    }.also { composeView ->
+                        chartView = composeView
+                    }
+                },
+                modifier = Modifier.fillMaxWidth()
+            )
         }
 
         Spacer(modifier = Modifier.height(16.dp))
@@ -201,57 +252,8 @@ fun HomeScreen(
 }
 
 /**
- * Shop selector dropdown
- */
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun ShopSelector(
-    selectedShopId: String?,
-    shops: List<ShopInfo>,
-    onShopSelected: (String) -> Unit,
-    modifier: Modifier = Modifier
-) {
-    var expanded by remember { mutableStateOf(false) }
-    val selectedShop = shops.find { it.shopId == selectedShopId }
-
-    ExposedDropdownMenuBox(
-        expanded = expanded,
-        onExpandedChange = { expanded = it },
-        modifier = modifier.fillMaxWidth()
-    ) {
-        OutlinedTextField(
-            value = selectedShop?.displayName ?: "Select Shop",
-            onValueChange = {},
-            readOnly = true,
-            label = { Text("Shop") },
-            trailingIcon = {
-                ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded)
-            },
-            modifier = Modifier
-                .fillMaxWidth()
-                .menuAnchor(),
-            colors = OutlinedTextFieldDefaults.colors()
-        )
-
-        ExposedDropdownMenu(
-            expanded = expanded,
-            onDismissRequest = { expanded = false }
-        ) {
-            shops.forEach { shop ->
-                DropdownMenuItem(
-                    text = { Text(shop.displayName) },
-                    onClick = {
-                        onShopSelected(shop.shopId)
-                        expanded = false
-                    }
-                )
-            }
-        }
-    }
-}
-
-/**
  * Statistics summary card
+ * Shows last 3 months only (excluding current month)
  */
 @Composable
 private fun StatisticsCard(
