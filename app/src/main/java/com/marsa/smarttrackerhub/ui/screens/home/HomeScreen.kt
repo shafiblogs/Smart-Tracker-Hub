@@ -12,7 +12,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -126,12 +125,12 @@ fun HomeScreen(
             }
         }
 
-        Spacer(modifier = Modifier.height(16.dp))
+        Spacer(modifier = Modifier.height(20.dp))
 
         // Statistics Card (Last 3 Months Only)
         statistics?.let { stats ->
             StatisticsCard(statistics = stats, selectedShop?.address ?: "")
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(8.dp))
         }
 
         // Chart Title with Share Button
@@ -141,7 +140,7 @@ fun HomeScreen(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text(
-                text = "Sales Trend",
+                text = " Sales Trend",
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.SemiBold
             )
@@ -165,7 +164,7 @@ fun HomeScreen(
                     tint = if (chartData.isNotEmpty())
                         MaterialTheme.colorScheme.primary
                     else
-                        Color.Gray
+                        MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
         }
@@ -234,25 +233,28 @@ private fun StatisticsCard(
     shopAddress: String,
     modifier: Modifier = Modifier
 ) {
+    val colors = MaterialTheme.colorScheme
+
     Card(
         modifier = modifier.fillMaxWidth(),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 3.dp),
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.secondaryContainer
+            containerColor = colors.secondaryContainer
         )
     ) {
         Column(
             modifier = Modifier.padding(16.dp)
         ) {
+
             Text(
                 text = "$shopAddress (${statistics.totalMonths} Months)",
                 style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold
+                fontWeight = FontWeight.SemiBold,
+                color = colors.onSecondaryContainer
             )
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // First Row
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween
@@ -260,20 +262,21 @@ private fun StatisticsCard(
                 StatItem(
                     label = "Avg Target",
                     value = String.format("%.1f", statistics.totalTarget / statistics.totalMonths),
-                    color = Color.Gray
+                    valueColor = colors.onSecondaryContainer
                 )
 
                 StatItem(
                     label = "Avg Sale",
                     value = String.format("%.1f", statistics.totalAverage / statistics.totalMonths),
-                    color = if (statistics.averageAchievementPercentage >= 100)
-                        Color(0xFF4CAF50) else Color(0xFFF44336)
+                    valueColor = if (statistics.averageAchievementPercentage >= 100)
+                        colors.tertiary
+                    else
+                        colors.error
                 )
             }
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Second Row
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween
@@ -281,19 +284,22 @@ private fun StatisticsCard(
                 StatItem(
                     label = "Achievement",
                     value = String.format("%.1f%%", statistics.averageAchievementPercentage),
-                    color = if (statistics.averageAchievementPercentage >= 100)
-                        Color(0xFF4CAF50) else Color(0xFFF44336)
+                    valueColor = if (statistics.averageAchievementPercentage >= 100)
+                        colors.tertiary
+                    else
+                        colors.error
                 )
 
                 StatItem(
-                    label = "Targets Met",
+                    label = "Targets",
                     value = "${statistics.monthsTargetMet}/${statistics.totalMonths}",
-                    color = Color.Gray
+                    valueColor = colors.onSecondaryContainer
                 )
             }
         }
     }
 }
+
 
 /**
  * Individual stat item
@@ -302,21 +308,27 @@ private fun StatisticsCard(
 private fun StatItem(
     label: String,
     value: String,
-    color: Color,
+    valueColor: Color,
     modifier: Modifier = Modifier
 ) {
+    val colors = MaterialTheme.colorScheme
+
     Column(modifier = modifier) {
+
         Text(
             text = label,
-            style = MaterialTheme.typography.bodySmall,
-            color = Color.Gray
+            style = MaterialTheme.typography.labelMedium,
+            color = colors.onSurfaceVariant
         )
-        Spacer(modifier = Modifier.height(4.dp))
+
+        Spacer(modifier = Modifier.height(6.dp))
+
         Text(
             text = value,
-            style = MaterialTheme.typography.titleLarge,
+            style = MaterialTheme.typography.titleMedium,
             fontWeight = FontWeight.Bold,
-            color = color
+            color = valueColor
         )
     }
 }
+

@@ -83,7 +83,7 @@ class SalesChartViewModel(
             val sortedData = allSummaries.sortedByDescending { it.monthTimestamp }
             
             // Take last 4 months for chart display
-            val chartMonths = sortedData.take(4).reversed() // Reverse to show oldest to newest
+            val chartMonths = sortedData.take(6).reversed() // Reverse to show oldest to newest
 
             _chartData.value = chartMonths.map { summary ->
                 MonthlyChartData(
