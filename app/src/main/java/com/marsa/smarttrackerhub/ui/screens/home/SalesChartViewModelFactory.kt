@@ -1,5 +1,6 @@
 package com.marsa.smarttrackerhub.ui.screens.home
 
+import android.app.Application
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 
@@ -9,11 +10,11 @@ import androidx.lifecycle.ViewModelProvider
  * Moro Hub
  * muhammed.poyil@morohub.com
  */
-class SalesChartViewModelFactory : ViewModelProvider.Factory {
+class SalesChartViewModelFactory(private val application: Application) : ViewModelProvider.Factory {
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
         if (modelClass.isAssignableFrom(SalesChartViewModel::class.java)) {
             @Suppress("UNCHECKED_CAST")
-            return SalesChartViewModel() as T
+            return SalesChartViewModel(application) as T
         }
         throw IllegalArgumentException("Unknown ViewModel class")
     }

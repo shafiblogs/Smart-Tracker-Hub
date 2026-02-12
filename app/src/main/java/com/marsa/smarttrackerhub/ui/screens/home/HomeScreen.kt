@@ -1,5 +1,6 @@
 package com.marsa.smarttrackerhub.ui.screens.home
 
+import android.app.Application
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -8,9 +9,11 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -33,6 +36,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -46,19 +50,20 @@ import com.marsa.smarttrackerhub.domain.AccessCode
 fun HomeScreen(
     userAccessCode: AccessCode
 ) {
+    val context = LocalContext.current
     val viewModel: SalesChartViewModel = viewModel(
-        factory = SalesChartViewModelFactory()
+        factory = SalesChartViewModelFactory(context.applicationContext as Application)
     )
-    val selectedShopId by viewModel.selectedShopId.collectAsState()
+    val selectedShop by viewModel.selectedShop.collectAsState()
     val chartData by viewModel.chartData.collectAsState()
-    val availableShops by viewModel.availableShops.collectAsState()
+    val shops by viewModel.shops.collectAsState()
     val isLoading by viewModel.isLoading.collectAsState()
     val statistics by viewModel.statistics.collectAsState()
+    val expanded by viewModel.expanded.collectAsState()
 
 
     LaunchedEffect(Unit) {
-//         val summaries = repository.getAllSummaries()
-//         viewModel.loadData(summaries)
+        viewModel.loadScreenData(userAccessCode)
     }
 
     Column(
@@ -67,36 +72,65 @@ fun HomeScreen(
             .verticalScroll(rememberScrollState())
             .padding(16.dp)
     ) {
-        // Title
-        Text(
-            text = "Sales Performance",
-            style = MaterialTheme.typography.headlineMedium,
-            fontWeight = FontWeight.Bold
-        )
+
+        // Shop Selector
+        ExposedDropdownMenuBox(
+            expanded = expanded,
+            onExpandedChange = { viewModel.setExpanded(!expanded) }
+        ) {
+            OutlinedTextField(
+                value = selectedShop?.name ?: "",
+                onValueChange = {},
+                readOnly = true,
+                label = { Text("Select Shop") },
+                placeholder = { if (selectedShop == null) Text("Choose a shop...") },
+                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded) },
+                shape = RoundedCornerShape(12.dp),
+                modifier = Modifier
+                    .menuAnchor()
+                    .fillMaxWidth()
+            )
+
+            ExposedDropdownMenu(
+                expanded = expanded,
+                onDismissRequest = { viewModel.setExpanded(false) },
+                modifier = Modifier.heightIn(max = 300.dp)
+            ) {
+                shops.forEach { shop ->
+                    DropdownMenuItem(
+                        text = {
+                            Column {
+                                Text(shop.name ?: "-", style = MaterialTheme.typography.bodyLarge)
+                                if (!shop.address.isNullOrBlank()) {
+                                    Text(
+                                        text = shop.address,
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+                            }
+                        },
+                        onClick = {
+                            viewModel.setSelectedShop(shop)
+                            viewModel.setExpanded(false)
+                        }
+                    )
+                }
+            }
+        }
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        // Shop Selector
-        if (availableShops.isNotEmpty()) {
-            ShopSelector(
-                selectedShopId = selectedShopId,
-                shops = availableShops,
-                onShopSelected = { viewModel.selectShop(it) }
-            )
-        }
-
-        Spacer(modifier = Modifier.height(24.dp))
-
         // Statistics Card
         statistics?.let { stats ->
-            StatisticsCard(statistics = stats)
+            StatisticsCard(statistics = stats, selectedShop?.address ?: "")
             Spacer(modifier = Modifier.height(24.dp))
         }
 
         // Chart Title
         Text(
-            text = "Last 6 Months Trend",
-            style = MaterialTheme.typography.titleLarge,
+            text = "4 Months Trend",
+            style = MaterialTheme.typography.titleMedium,
             fontWeight = FontWeight.SemiBold
         )
 
@@ -222,6 +256,7 @@ private fun ShopSelector(
 @Composable
 private fun StatisticsCard(
     statistics: ChartStatistics,
+    shopAddress: String,
     modifier: Modifier = Modifier
 ) {
     Card(
@@ -235,7 +270,7 @@ private fun StatisticsCard(
             modifier = Modifier.padding(16.dp)
         ) {
             Text(
-                text = "Summary (${statistics.totalMonths} Months)",
+                text = "$shopAddress (${statistics.totalMonths} Months)",
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold
             )

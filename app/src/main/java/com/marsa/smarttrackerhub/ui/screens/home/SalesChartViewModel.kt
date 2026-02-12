@@ -1,8 +1,14 @@
 package com.marsa.smarttrackerhub.ui.screens.home
 
+import android.app.Application
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.marsa.smarttrackerhub.data.AppDatabase
 import com.marsa.smarttrackerhub.data.entity.SummaryEntity
+import com.marsa.smarttrackerhub.domain.AccessCode
+import com.marsa.smarttrackerhub.domain.getHomeShopUser
+import com.marsa.smarttrackerhub.ui.screens.statement.ShopListDto
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -12,18 +18,20 @@ import kotlinx.coroutines.launch
  * ViewModel for managing sales chart data
  */
 class SalesChartViewModel(
-    // Inject your repository here
-    // private val repository: SalesRepository
+    application: Application
 ) : ViewModel() {
 
-    private val _selectedShopId = MutableStateFlow<String?>(null)
-    val selectedShopId: StateFlow<String?> = _selectedShopId.asStateFlow()
+    private val _selectedShop = MutableStateFlow<ShopListDto?>(null)
+    val selectedShop: StateFlow<ShopListDto?> = _selectedShop
+
+    private val _expanded = MutableStateFlow(false)
+    val expanded: StateFlow<Boolean> = _expanded
 
     private val _chartData = MutableStateFlow<List<MonthlyChartData>>(emptyList())
     val chartData: StateFlow<List<MonthlyChartData>> = _chartData.asStateFlow()
 
-    private val _availableShops = MutableStateFlow<List<ShopInfo>>(emptyList())
-    val availableShops: StateFlow<List<ShopInfo>> = _availableShops.asStateFlow()
+    private val _shops = MutableStateFlow<List<ShopListDto>>(emptyList())
+    val shops: StateFlow<List<ShopListDto>> = _shops
 
     private val _isLoading = MutableStateFlow(false)
     val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
@@ -34,68 +42,60 @@ class SalesChartViewModel(
     // In-memory cache
     private var allSummaries: List<SummaryEntity> = emptyList()
 
+    private val database = AppDatabase.getDatabase(application)
+
+    private val summaryDao = database.summaryDao()
+
     /**
      * Loads all summary data
      */
-    fun loadData(summaries: List<SummaryEntity>) {
-        viewModelScope.launch {
-            _isLoading.value = true
-
-            allSummaries = summaries
-
-            // Extract unique shops
-            val shops = summaries
-                .map { it.shopId }
-                .distinct()
-                .sorted()
-                .map { shopId ->
-                    ShopInfo(
-                        shopId = shopId,
-                        displayName = formatShopName(shopId)
-                    )
-                }
-
-            _availableShops.value = shops
-
-            // Select first shop by default
-            if (_selectedShopId.value == null && shops.isNotEmpty()) {
-                selectShop(shops.first().shopId)
-            }
-
-            _isLoading.value = false
-        }
+    fun loadScreenData(userAccessCode: AccessCode) {
+        _shops.value = getHomeShopUser(userAccessCode)
     }
 
     /**
      * Selects a shop and loads its data
      */
-    fun selectShop(shopId: String) {
-        _selectedShopId.value = shopId
-        loadChartData(shopId)
+
+    fun setSelectedShop(shop: ShopListDto?) {
+        _selectedShop.value = shop
+
+        shop?.let {
+            if (!it.shopId.isNullOrEmpty()) {
+                loadChartData(it.shopId)
+            }
+        }
+    }
+
+    fun setExpanded(value: Boolean) {
+        _expanded.value = value
     }
 
     /**
      * Loads chart data for selected shop (last 6 months)
      */
     private fun loadChartData(shopId: String) {
-        val shopData = allSummaries
-            .filter { it.shopId == shopId }
-            .sortedByDescending { it.monthTimestamp } // Sort by timestamp descending (newest first)
-            .take(6) // Take last 6 months
-            .reversed() // Reverse to show oldest to newest in chart
+        viewModelScope.launch(Dispatchers.IO) {
+            allSummaries = summaryDao.getAllSummariesForShop(shopId = shopId)
 
-        _chartData.value = shopData.map { summary ->
-            MonthlyChartData(
-                monthYear = summary.monthYear,
-                monthShortName = getShortMonthName(summary.monthYear),
-                targetSale = summary.targetSale,
-                averageSale = summary.averageSale ?: 0.0,
-                isTargetMet = (summary.averageSale ?: 0.0) >= summary.targetSale
-            )
+            val shopData = allSummaries
+                .sortedByDescending { it.monthTimestamp }
+                .take(4)
+                .reversed()
+
+            _chartData.value = shopData.map { summary ->
+                MonthlyChartData(
+                    monthYear = summary.monthYear,
+                    monthShortName = getShortMonthName(summary.monthYear),
+                    targetSale = summary.targetSale,
+                    averageSale = summary.averageSale ?: 0.0,
+                    isTargetMet = (summary.averageSale ?: 0.0) >= summary.targetSale
+                )
+            }
+
+            // Calculate statistics
+            calculateStatistics(shopData)
         }
-
-        // Calculate statistics
-        calculateStatistics(shopData)
     }
 
     /**
