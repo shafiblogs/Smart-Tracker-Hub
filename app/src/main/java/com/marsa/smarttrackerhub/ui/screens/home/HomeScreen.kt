@@ -39,6 +39,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.findRootCoordinates
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -130,38 +132,22 @@ fun HomeScreen(
 
         // Statistics Card with Share (Last 3 Months Only)
         statistics?.let { stats ->
-            AndroidView(
-                factory = { ctx ->
-                    androidx.compose.ui.platform.ComposeView(ctx).apply {
-                        setContent {
-                            StatisticsCard(
-                                statistics = stats,
-                                shopAddress = selectedShop?.address ?: "",
-                                onShareClick = {
-                                    statsView?.let { view ->
-                                        ShareUtil.shareViewAsImage(
-                                            view = view,
-                                            context = context,
-                                            fileName = "sales_stats_${
-                                                selectedShop?.name?.replace(
-                                                    " ",
-                                                    "_"
-                                                )
-                                            }.png",
-                                            shareTitle = "Share Sales Statistics"
-                                        )
-                                    }
-                                }
-                            )
-                        }
-                    }.also { composeView ->
-                        statsView = composeView
+            StatisticsCard(
+                statistics = stats,
+                shopAddress = selectedShop?.address ?: "",
+                onShareClick = {
+                    statsView?.let { view ->
+                        ShareUtil.shareViewAsImage(
+                            view = view,
+                            context = context,
+                            fileName = "sales_stats_${selectedShop?.name?.replace(" ", "_")}.png",
+                            shareTitle = "Share Sales Statistics"
+                        )
                     }
-                },
-                modifier = Modifier.fillMaxWidth()
+                }
             )
-            Spacer(modifier = Modifier.height(12.dp))
         }
+
 
         // Chart Title with Share Button
         Row(

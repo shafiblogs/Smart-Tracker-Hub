@@ -97,13 +97,14 @@ class SalesChartViewModel(
 
             // Calculate statistics for last 3 months only (skip current/most recent month)
             // Skip index 0 (most recent) and take next 3
-            val statsMonths = if (sortedData.size > 1) {
+            /*val statsMonths = if (sortedData.size > 1) {
                 sortedData.drop(1).take(3) // Skip current month, take next 3
             } else {
                 emptyList() // Not enough data
             }
             
-            calculateStatistics(statsMonths)
+            calculateStatistics(statsMonths)*/
+            calculateStatistics(sortedData.take(1))
         }
     }
 

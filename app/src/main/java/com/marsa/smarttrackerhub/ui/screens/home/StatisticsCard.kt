@@ -56,7 +56,8 @@ fun StatisticsCard(
             ) {
                 // Title
                 Text(
-                    text = "$shopAddress (${statistics.totalMonths} Months)",
+                    //text = "$shopAddress (${statistics.totalMonths} Months)",
+                    text = shopAddress,
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.SemiBold,
                     color = colors.onSecondaryContainer // adapts to dark/light mode
