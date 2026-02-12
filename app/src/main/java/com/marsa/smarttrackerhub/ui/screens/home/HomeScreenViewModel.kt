@@ -124,13 +124,12 @@ class HomeScreenViewModel(
                     ?.map { doc ->
                         MonthItem(
                             id = doc.id,
-                            displayName = doc.id
+                            displayName = doc.id,
+                            timestamp = TargetSaleCalculator.parseMonthYearToTimestamp(doc.id)
                         )
                     }
                     .orEmpty()
-                    .sortedByDescending { monthItem ->
-                        parseMonthYear(monthItem.id)
-                    }
+                    .sortedByDescending { it.timestamp }
 
                 _availableMonths.value = monthsList
 
@@ -155,7 +154,7 @@ class HomeScreenViewModel(
                     _isLoadingMonth.value = false
                     Log.d("HomeViewModel", "Loaded summary from cache for $shopId - $monthId")
                 } else {
-                    // Load from Firestore
+                    // Load from Firestore (this will trigger recalculation)
                     loadFromFirestore(shopId, monthId)
                 }
             } catch (e: Exception) {
@@ -180,16 +179,24 @@ class HomeScreenViewModel(
                         put(monthId, summary)
                     }
 
-                    // Save to local database and recalculate averages
+                    // Save to local database and recalculate target sales
                     viewModelScope.launch(Dispatchers.IO) {
                         try {
                             val entity = summary.toEntity(shopId, monthId)
                             summaryDao.insertSummary(entity)
 
-                            // Recalculate average sales for all months in this shop
-                            recalculateAverageSales(shopId)
+                            // Recalculate target sales for all months
+                            recalculateTargetSales(shopId)
 
-                            Log.d("HomeViewModel", "Saved summary to local DB for $shopId - $monthId")
+                            // Reload to get updated target
+                            val updatedEntity = summaryDao.getSummary(shopId, monthId)
+                            if (updatedEntity != null) {
+                                _summariesCache.value = _summariesCache.value.toMutableMap().apply {
+                                    put(monthId, updatedEntity.toDomain())
+                                }
+                            }
+
+                            Log.d("HomeViewModel", "Saved and recalculated targets for $shopId - $monthId")
                         } catch (e: Exception) {
                             Log.e("HomeViewModel", "Error saving to local DB", e)
                         }
@@ -206,30 +213,31 @@ class HomeScreenViewModel(
             }
     }
 
-    private suspend fun recalculateAverageSales(shopId: String) {
+    private suspend fun recalculateTargetSales(shopId: String) {
         try {
-            // Get all summaries for this shop
+            // Get all summaries for this shop in chronological order
             val allSummaries = summaryDao.getAllSummariesForShopAscending(shopId)
 
-            // Calculate average sales
-            val updatedSummaries = AverageSaleCalculator.calculateAverageSalesForShop(allSummaries)
+            if (allSummaries.isEmpty()) return
 
-            // Save back to database
+            // Calculate target sales for all months based on actual average sales
+            val updatedSummaries = TargetSaleCalculator.calculateTargetSalesForShop(allSummaries)
+
+            // Save all updated summaries back to database
             summaryDao.insertSummaries(updatedSummaries)
 
-            Log.d("HomeViewModel", "Recalculated average sales for $shopId")
+            Log.d("HomeViewModel", "Recalculated ${updatedSummaries.size} target sales for $shopId")
 
-            // Update in-memory cache if the selected month is affected
-            _selectedMonthId.value?.let { selectedMonth ->
-                val updatedSummary = updatedSummaries.find { it.monthId == selectedMonth }
-                if (updatedSummary != null) {
+            // Update all affected months in the in-memory cache
+            updatedSummaries.forEach { updatedEntity ->
+                if (_summariesCache.value.containsKey(updatedEntity.monthId)) {
                     _summariesCache.value = _summariesCache.value.toMutableMap().apply {
-                        put(selectedMonth, updatedSummary.toDomain())
+                        put(updatedEntity.monthId, updatedEntity.toDomain())
                     }
                 }
             }
         } catch (e: Exception) {
-            Log.e("HomeViewModel", "Error recalculating average sales", e)
+            Log.e("HomeViewModel", "Error recalculating target sales", e)
         }
     }
 
@@ -256,5 +264,6 @@ class HomeScreenViewModel(
 
 data class MonthItem(
     val id: String,
-    val displayName: String
+    val displayName: String,
+    val timestamp: Long = 0L
 )

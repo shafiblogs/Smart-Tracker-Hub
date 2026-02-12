@@ -3,7 +3,7 @@ package com.marsa.smarttrackerhub.data.entity
 import androidx.room.Entity
 import androidx.room.PrimaryKey
 import com.marsa.smarttrackerhub.domain.MonthlySummary
-import com.marsa.smarttrackerhub.ui.screens.home.AverageSaleCalculator
+import com.marsa.smarttrackerhub.ui.screens.home.TargetSaleCalculator
 
 
 /**
@@ -18,15 +18,15 @@ data class SummaryEntity(
     val shopId: String,
     val monthId: String,
     val monthYear: String,
-    val monthTimestamp: Long, // Add this for proper sorting
+    val monthTimestamp: Long, // For proper sorting
     val openingCashBalance: Double,
     val cashBalance: Double,
     val openingAccountBalance: Double,
     val accountBalance: Double,
     val openingCreditBalance: Double,
     val creditSaleBalance: Double,
-    val averageSale: Double?, // This will be auto-calculated
-    val calculatedAverageSale: Double, // New field for the calculated average
+    val averageSale: Double?, // Actual average sale from server
+    val targetSale: Double, // Calculated target for this month
     val totalSales: Double,
     val totalPurchases: Double,
     val totalExpenses: Double,
@@ -37,7 +37,6 @@ data class SummaryEntity(
     val lastUpdated: Long // Timestamp for cache expiry
 )
 
-// Extension functions to convert between entity and domain model
 fun SummaryEntity.toDomain(): MonthlySummary {
     return MonthlySummary(
         monthYear = monthYear,
@@ -47,7 +46,7 @@ fun SummaryEntity.toDomain(): MonthlySummary {
         accountBalance = accountBalance,
         openingCreditBalance = openingCreditBalance,
         creditSaleBalance = creditSaleBalance,
-        averageSale = calculatedAverageSale, // Use calculated average
+        averageSale = averageSale, // Keep the actual average from server
         totalSales = totalSales,
         totalPurchases = totalPurchases,
         totalExpenses = totalExpenses,
@@ -59,7 +58,7 @@ fun SummaryEntity.toDomain(): MonthlySummary {
 }
 
 fun MonthlySummary.toEntity(shopId: String, monthId: String): SummaryEntity {
-    val monthTimestamp = AverageSaleCalculator.parseMonthYearToTimestamp(monthYear)
+    val monthTimestamp = TargetSaleCalculator.parseMonthYearToTimestamp(monthYear)
 
     return SummaryEntity(
         id = "$shopId-$monthId",
@@ -73,8 +72,8 @@ fun MonthlySummary.toEntity(shopId: String, monthId: String): SummaryEntity {
         accountBalance = accountBalance,
         openingCreditBalance = openingCreditBalance,
         creditSaleBalance = creditSaleBalance,
-        averageSale = averageSale,
-        calculatedAverageSale = averageSale ?: 0.0, // Will be recalculated
+        averageSale = averageSale, // Store actual average from server
+        targetSale = 0.0, // Will be calculated by TargetSaleCalculator
         totalSales = totalSales,
         totalPurchases = totalPurchases,
         totalExpenses = totalExpenses,

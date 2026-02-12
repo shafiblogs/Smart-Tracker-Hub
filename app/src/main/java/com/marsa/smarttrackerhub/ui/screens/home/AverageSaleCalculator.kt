@@ -1,19 +1,24 @@
 package com.marsa.smarttrackerhub.ui.screens.home
 
+import android.util.Log
 import com.marsa.smarttrackerhub.data.entity.SummaryEntity
 import java.text.SimpleDateFormat
 import java.util.Locale
 
-object AverageSaleCalculator {
+object TargetSaleCalculator {
 
-    private const val INITIAL_AVERAGE = 1500.0
+    private const val INITIAL_TARGET = 1500.0
     private const val GROWTH_PERCENTAGE = 0.10 // 10%
 
     /**
-     * Calculate average sale for all months in a shop
-     * Returns updated list of entities with calculated average sales
+     * Calculate target sale for all months in a shop based on previous months' actual average sales
+     * Logic:
+     * - 1st month: 1500
+     * - 2nd month: 1st month's actual average + 10%
+     * - 3rd month: average of first 2 months' actual averages + 10%
+     * - 4th+ months: average of previous 3 months' actual averages + 10%
      */
-    fun calculateAverageSalesForShop(summaries: List<SummaryEntity>): List<SummaryEntity> {
+    fun calculateTargetSalesForShop(summaries: List<SummaryEntity>): List<SummaryEntity> {
         if (summaries.isEmpty()) return emptyList()
 
         // Sort by month timestamp in ascending order (oldest first)
@@ -22,36 +27,36 @@ object AverageSaleCalculator {
         val updatedSummaries = mutableListOf<SummaryEntity>()
 
         sortedSummaries.forEachIndexed { index, summary ->
-            val calculatedAverage = when (index) {
+            val calculatedTarget = when (index) {
                 0 -> {
-                    // First month: use initial average
-                    INITIAL_AVERAGE
+                    // First month (earliest): use initial target
+                    INITIAL_TARGET
                 }
                 1 -> {
-                    // Second month: first month's average + 10%
-                    val firstMonthAverage = updatedSummaries[0].calculatedAverageSale
-                    firstMonthAverage * (1 + GROWTH_PERCENTAGE)
+                    // Second month: first month's actual average + 10%
+                    val firstMonthActualAverage = updatedSummaries[0].averageSale ?: INITIAL_TARGET
+                    firstMonthActualAverage * (1 + GROWTH_PERCENTAGE)
                 }
                 2 -> {
-                    // Third month: average of first 2 months + 10%
-                    val avg1 = updatedSummaries[0].calculatedAverageSale
-                    val avg2 = updatedSummaries[1].calculatedAverageSale
+                    // Third month: average of first 2 months' actual averages + 10%
+                    val avg1 = updatedSummaries[0].averageSale ?: INITIAL_TARGET
+                    val avg2 = updatedSummaries[1].averageSale ?: INITIAL_TARGET
                     val averageOfTwo = (avg1 + avg2) / 2
                     averageOfTwo * (1 + GROWTH_PERCENTAGE)
                 }
                 else -> {
-                    // 4th month onwards: average of previous 3 months + 10%
-                    val avg1 = updatedSummaries[index - 3].calculatedAverageSale
-                    val avg2 = updatedSummaries[index - 2].calculatedAverageSale
-                    val avg3 = updatedSummaries[index - 1].calculatedAverageSale
+                    // 4th month onwards: average of previous 3 months' actual averages + 10%
+                    val avg1 = updatedSummaries[index - 3].averageSale ?: INITIAL_TARGET
+                    val avg2 = updatedSummaries[index - 2].averageSale ?: INITIAL_TARGET
+                    val avg3 = updatedSummaries[index - 1].averageSale ?: INITIAL_TARGET
                     val averageOfThree = (avg1 + avg2 + avg3) / 3
                     averageOfThree * (1 + GROWTH_PERCENTAGE)
                 }
             }
 
-            // Create updated entity with calculated average
+            // Create updated entity with calculated target
             updatedSummaries.add(
-                summary.copy(calculatedAverageSale = calculatedAverage)
+                summary.copy(targetSale = calculatedTarget)
             )
         }
 
@@ -60,12 +65,19 @@ object AverageSaleCalculator {
 
     /**
      * Parse month year string to timestamp for sorting
+     * Handles format: "February - 2026", "January - 2026", etc.
      */
     fun parseMonthYearToTimestamp(monthYear: String): Long {
         return try {
+            // Try with spaces around hyphen first
             val formatter = SimpleDateFormat("MMMM - yyyy", Locale.ENGLISH)
-            formatter.parse(monthYear)?.time ?: 0L
+            formatter.parse(monthYear)?.time ?: run {
+                // Fallback: try without spaces
+                val formatter2 = SimpleDateFormat("MMMM-yyyy", Locale.ENGLISH)
+                formatter2.parse(monthYear)?.time ?: 0L
+            }
         } catch (e: Exception) {
+            Log.e("TargetSaleCalculator", "Error parsing monthYear: $monthYear", e)
             0L
         }
     }
