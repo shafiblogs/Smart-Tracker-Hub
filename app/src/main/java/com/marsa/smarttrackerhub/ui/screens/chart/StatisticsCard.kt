@@ -1,5 +1,6 @@
 package com.marsa.smarttrackerhub.ui.screens.chart
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -9,6 +10,9 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.Card
@@ -33,11 +37,19 @@ import kotlin.math.abs
 fun StatisticsCard(
     statistics: ChartStatistics,
     shopAddress: String,
-    periodLabel: String, // NEW: Dynamic period label
+    periodLabel: String,
     modifier: Modifier = Modifier,
     onShareClick: (() -> Unit)? = null
 ) {
     val colors = MaterialTheme.colorScheme
+    val isTargetAchieved = statistics.averageAchievementPercentage >= 100
+
+    // Indicator color based on achievement
+    val indicatorColor = if (isTargetAchieved) {
+        Color(0xFF4CAF50) // Green
+    } else {
+        Color(0xFFF44336) // Red
+    }
 
     Card(
         modifier = modifier.fillMaxWidth(),
@@ -50,13 +62,37 @@ fun StatisticsCard(
             Column(
                 modifier = Modifier.padding(16.dp)
             ) {
-                // Title with dynamic period
-                Text(
-                    text = "$shopAddress - $periodLabel",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.SemiBold,
-                    color = colors.primary
-                )
+                // Title with colored indicator
+                Row(
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    // Colored circle indicator
+                    Box(
+                        modifier = Modifier
+                            .size(12.dp)
+                            .background(
+                                color = indicatorColor,
+                                shape = CircleShape
+                            )
+                    )
+
+                    Spacer(modifier = Modifier.width(8.dp))
+
+                    Column {
+                        Text(
+                            text = shopAddress,
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.SemiBold,
+                            color = colors.onSecondaryContainer
+                        )
+
+                        Text(
+                            text = periodLabel,
+                            style = MaterialTheme.typography.labelMedium,
+                            color = colors.onSecondaryContainer
+                        )
+                    }
+                }
 
                 Spacer(modifier = Modifier.height(16.dp))
 
@@ -81,7 +117,7 @@ fun StatisticsCard(
 
                 Spacer(modifier = Modifier.height(16.dp))
 
-                // Second row: Achievement / Difference (instead of Targets)
+                // Second row: Achievement / Difference
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween
