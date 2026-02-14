@@ -39,10 +39,8 @@ fun StatisticsCard(
 
     Card(
         modifier = modifier.fillMaxWidth(),
-        elevation = CardDefaults.cardElevation(defaultElevation = 3.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = colors.secondaryContainer
-        )
+        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+        // Removed colors parameter to use default Card background (same as chart)
     ) {
         Box {
             Column {
@@ -59,7 +57,7 @@ fun StatisticsCard(
                         isTargetAchieved = isTargetAchieved,
                         modifier = Modifier
                             .weight(1f)
-                            .padding(0.dp) // Remove default padding
+                            .padding(0.dp)
                     )
 
                     // Share button aligned on the right
@@ -71,7 +69,7 @@ fun StatisticsCard(
                             Icon(
                                 imageVector = Icons.Default.Share,
                                 contentDescription = "Share Statistics",
-                                tint = colors.onSecondaryContainer,
+                                tint = colors.primary, // Changed to primary color
                                 modifier = Modifier.size(20.dp)
                             )
                         }
@@ -93,7 +91,7 @@ fun StatisticsCard(
                             "%.0f",
                             statistics.totalTarget / statistics.totalMonths
                         ),
-                        valueColor = colors.onSecondaryContainer
+                        valueColor = Color(0xFF2196F3)
                     )
 
                     StatItem(
@@ -103,7 +101,9 @@ fun StatisticsCard(
                             statistics.totalAverage / statistics.totalMonths
                         ),
                         valueColor = if (statistics.averageAchievementPercentage >= 100)
-                            colors.tertiary else colors.error
+                            Color(0xFF4CAF50)
+                        else
+                            Color(0xFFF44336)
                     )
                 }
 
@@ -120,7 +120,9 @@ fun StatisticsCard(
                         label = "Achievement",
                         value = String.format("%.0f%%", statistics.averageAchievementPercentage),
                         valueColor = if (statistics.averageAchievementPercentage >= 100)
-                            colors.tertiary else colors.error
+                            Color(0xFF4CAF50)
+                        else
+                            Color(0xFFF44336)
                     )
 
                     val difference = statistics.totalAverage - statistics.totalTarget
@@ -129,7 +131,10 @@ fun StatisticsCard(
                     StatItem(
                         label = "Difference",
                         value = "$icon ${String.format("%.0f", abs(difference))}",
-                        valueColor = if (difference >= 0) colors.tertiary else colors.error
+                        valueColor = if (difference >= 0)
+                            Color(0xFF4CAF50)
+                        else
+                            Color(0xFFF44336)
                     )
                 }
             }
