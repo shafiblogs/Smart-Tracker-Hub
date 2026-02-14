@@ -7,6 +7,7 @@ import com.marsa.smarttrackerhub.data.AppDatabase
 import com.marsa.smarttrackerhub.data.entity.SummaryEntity
 import com.marsa.smarttrackerhub.domain.AccessCode
 import com.marsa.smarttrackerhub.domain.ChartStatistics
+import com.marsa.smarttrackerhub.domain.MonthRange
 import com.marsa.smarttrackerhub.domain.getHomeShopUser
 import com.marsa.smarttrackerhub.ui.screens.chart.MonthlyChartData
 import com.marsa.smarttrackerhub.ui.screens.statement.ShopListDto
@@ -28,6 +29,16 @@ class HomeScreenViewModel(
 
     private val _expanded = MutableStateFlow(false)
     val expanded: StateFlow<Boolean> = _expanded
+
+    // Period selection
+    private val _availableRanges = MutableStateFlow<List<MonthRange>>(MonthRange.getAvailableRanges())
+    val availableRanges: StateFlow<List<MonthRange>> = _availableRanges.asStateFlow()
+
+    private val _selectedRange = MutableStateFlow<MonthRange>(MonthRange.Last3Months)
+    val selectedRange: StateFlow<MonthRange> = _selectedRange.asStateFlow()
+
+    private val _periodExpanded = MutableStateFlow(false)
+    val periodExpanded: StateFlow<Boolean> = _periodExpanded.asStateFlow()
 
     private val _chartData = MutableStateFlow<List<MonthlyChartData>>(emptyList())
     val chartData: StateFlow<List<MonthlyChartData>> = _chartData.asStateFlow()
@@ -66,14 +77,41 @@ class HomeScreenViewModel(
         _expanded.value = value
     }
 
+    fun setSelectedRange(range: MonthRange) {
+        _selectedRange.value = range
+        _selectedShop.value?.shopId?.let { shopId ->
+            loadChartData(shopId)
+        }
+    }
+
+    fun setPeriodExpanded(value: Boolean) {
+        _periodExpanded.value = value
+    }
+
     private fun loadChartData(shopId: String) {
         viewModelScope.launch(Dispatchers.IO) {
             allSummaries = summaryDao.getAllSummariesForShop(shopId = shopId)
-
             val sortedData = allSummaries.sortedByDescending { it.monthTimestamp }
 
-            // Take last 6 months for chart display
-            val chartMonths = sortedData.take(6).reversed()
+            val selectedRange = _selectedRange.value
+
+            // Determine how many months to take and whether to skip current month
+            val (chartMonthCount, statsMonthCount, skipCurrentMonth) = when (selectedRange) {
+                is MonthRange.CurrentMonth -> Triple(1, 1, false)     // Show current, include in stats
+                is MonthRange.PreviousMonth -> Triple(1, 1, true)     // Show previous, skip current
+                is MonthRange.Last3Months -> Triple(3, 3, true)       // Show 3, skip current
+                is MonthRange.Last6Months -> Triple(6, 6, true)       // Show 6, skip current
+            }
+
+            // Skip current month if needed
+            val dataToUse = if (skipCurrentMonth) {
+                sortedData.drop(1) // Skip the first (current) month
+            } else {
+                sortedData
+            }
+
+            // Get chart data
+            val chartMonths = dataToUse.take(chartMonthCount).reversed()
 
             _chartData.value = chartMonths.map { summary ->
                 MonthlyChartData(
@@ -85,46 +123,34 @@ class HomeScreenViewModel(
                 )
             }
 
-            // Use only current month for statistics
-            val statsMonths = sortedData.take(1)
+            // Get statistics data (same as chart data)
+            val statsMonths = dataToUse.take(statsMonthCount)
             calculateStatistics(statsMonths)
 
             // Generate period label
-            _periodLabel.value = generatePeriodLabel(statsMonths)
+            _periodLabel.value = generatePeriodLabel(statsMonths, selectedRange)
         }
     }
 
-    /**
-     * Generates dynamic period label based on data
-     */
-    private fun generatePeriodLabel(data: List<SummaryEntity>): String {
+    private fun generatePeriodLabel(data: List<SummaryEntity>, range: MonthRange): String {
         if (data.isEmpty()) return ""
 
         val dateFormat = SimpleDateFormat("dd MMM yyyy", Locale.getDefault())
-        val currentDate = Calendar.getInstance()
 
-        // Get the month from the data
-        val dataMonth = Calendar.getInstance().apply {
-            timeInMillis = data[0].monthTimestamp
-        }
-
-        // Check if it's current month
-        val isCurrentMonth = currentDate.get(Calendar.YEAR) == dataMonth.get(Calendar.YEAR) &&
-                currentDate.get(Calendar.MONTH) == dataMonth.get(Calendar.MONTH)
-
-        return if (isCurrentMonth) {
-            // Current month: show today's date
-            dateFormat.format(currentDate.time)
-        } else {
-            // Previous months: calculate difference
-            val monthsDiff = (currentDate.get(Calendar.YEAR) - dataMonth.get(Calendar.YEAR)) * 12 +
-                    (currentDate.get(Calendar.MONTH) - dataMonth.get(Calendar.MONTH))
-
-            when (monthsDiff) {
-                1 -> "Last Month"
-                2 -> "Last 2 Months"
-                3 -> "Last 3 Months"
-                else -> "Last $monthsDiff Months"
+        return when (range) {
+            is MonthRange.CurrentMonth -> {
+                // Show today's date
+                dateFormat.format(Calendar.getInstance().time)
+            }
+            is MonthRange.PreviousMonth -> {
+                // Show "Last Month"
+                "Last Month"
+            }
+            is MonthRange.Last3Months -> {
+                "Last 3 Months"
+            }
+            is MonthRange.Last6Months -> {
+                "Last 6 Months"
             }
         }
     }

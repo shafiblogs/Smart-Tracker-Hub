@@ -40,6 +40,11 @@ fun HomeScreen(
     val expanded by viewModel.expanded.collectAsState()
     val periodLabel by viewModel.periodLabel.collectAsState()
 
+    // Period selection states
+    val availableRanges by viewModel.availableRanges.collectAsState()
+    val selectedRange by viewModel.selectedRange.collectAsState()
+    val periodExpanded by viewModel.periodExpanded.collectAsState()
+
     var chartView by remember { mutableStateOf<View?>(null) }
     var statsView by remember { mutableStateOf<View?>(null) }
 
@@ -100,9 +105,49 @@ fun HomeScreen(
             }
         }
 
+        Spacer(modifier = Modifier.height(12.dp))
+
+        // Period Selector (NEW)
+        ExposedDropdownMenuBox(
+            expanded = periodExpanded,
+            onExpandedChange = { viewModel.setPeriodExpanded(!periodExpanded) }
+        ) {
+            OutlinedTextField(
+                value = selectedRange.displayName,
+                onValueChange = {},
+                readOnly = true,
+                label = { Text("Time Period") },
+                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(periodExpanded) },
+                shape = RoundedCornerShape(12.dp),
+                modifier = Modifier
+                    .menuAnchor()
+                    .fillMaxWidth()
+            )
+
+            ExposedDropdownMenu(
+                expanded = periodExpanded,
+                onDismissRequest = { viewModel.setPeriodExpanded(false) }
+            ) {
+                availableRanges.forEach { range ->
+                    DropdownMenuItem(
+                        text = {
+                            Text(
+                                text = range.displayName,
+                                style = MaterialTheme.typography.bodyLarge
+                            )
+                        },
+                        onClick = {
+                            viewModel.setSelectedRange(range)
+                            viewModel.setPeriodExpanded(false)
+                        }
+                    )
+                }
+            }
+        }
+
         Spacer(modifier = Modifier.height(16.dp))
 
-        // Statistics Card with working share - FIXED: Added update parameter
+        // Statistics Card
         statistics?.let { stats ->
             AndroidView(
                 factory = { ctx ->
@@ -128,7 +173,6 @@ fun HomeScreen(
                         statsView = composeView
                     }
                 },
-                // FIXED: Add update block to recompose when data changes
                 update = { view ->
                     view.setContent {
                         StatisticsCard(
@@ -192,7 +236,7 @@ fun HomeScreen(
 
         Spacer(modifier = Modifier.height(12.dp))
 
-        // Chart Card - FIXED: Added update parameter
+        // Chart Card
         Card(
             modifier = Modifier.fillMaxWidth(),
             elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
@@ -236,7 +280,6 @@ fun HomeScreen(
                         chartView = composeView
                     }
                 },
-                // FIXED: Add update block to recompose when data changes
                 update = { view ->
                     view.setContent {
                         if (isLoading) {
