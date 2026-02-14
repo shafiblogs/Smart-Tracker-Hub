@@ -6,9 +6,11 @@ import androidx.lifecycle.viewModelScope
 import com.marsa.smarttrackerhub.data.AppDatabase
 import com.marsa.smarttrackerhub.data.entity.SummaryEntity
 import com.marsa.smarttrackerhub.domain.AccessCode
+import com.marsa.smarttrackerhub.domain.ChartStatistics
 import com.marsa.smarttrackerhub.domain.getHomeShopUser
 import com.marsa.smarttrackerhub.ui.screens.chart.MonthlyChartData
 import com.marsa.smarttrackerhub.ui.screens.statement.ShopListDto
+import com.marsa.smarttrackerhub.utils.getShortMonthName
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -18,7 +20,7 @@ import kotlinx.coroutines.launch
 /**
  * ViewModel for managing sales chart data
  */
-class SalesChartViewModel(
+class HomeScreenViewModel(
     application: Application
 ) : ViewModel() {
 
@@ -82,14 +84,14 @@ class SalesChartViewModel(
 
             // Sort by timestamp descending (newest first)
             val sortedData = allSummaries.sortedByDescending { it.monthTimestamp }
-            
+
             // Take last 4 months for chart display
             val chartMonths = sortedData.take(6).reversed() // Reverse to show oldest to newest
 
             _chartData.value = chartMonths.map { summary ->
                 MonthlyChartData(
                     monthYear = summary.monthYear,
-                    monthShortName = getShortMonthName(summary.monthYear),
+                    monthShortName = summary.monthYear.getShortMonthName(),
                     targetSale = summary.targetSale,
                     averageSale = summary.averageSale ?: 0.0,
                     isTargetMet = (summary.averageSale ?: 0.0) >= summary.targetSale
@@ -136,33 +138,6 @@ class SalesChartViewModel(
             } else 0.0
         )
     }
-
-    /**
-     * Gets short month name from monthYear string
-     */
-    private fun getShortMonthName(monthYear: String): String {
-        return try {
-            val parts = monthYear.split(" - ")
-            if (parts.isNotEmpty()) {
-                val month = parts[0].trim()
-                month.take(3) // First 3 letters
-            } else {
-                monthYear
-            }
-        } catch (e: Exception) {
-            monthYear
-        }
-    }
 }
 
-/**
- * Chart statistics
- */
-data class ChartStatistics(
-    val totalMonths: Int,
-    val totalTarget: Double,
-    val totalAverage: Double,
-    val monthsTargetMet: Int,
-    val averageAchievementPercentage: Double,
-    val monthsTargetMetPercentage: Double
-)
+

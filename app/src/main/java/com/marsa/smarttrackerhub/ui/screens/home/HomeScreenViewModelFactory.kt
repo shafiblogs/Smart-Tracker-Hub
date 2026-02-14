@@ -12,9 +12,9 @@ import androidx.lifecycle.ViewModelProvider
  */
 class HomeScreenViewModelFactory(private val application: Application) : ViewModelProvider.Factory {
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
-        if (modelClass.isAssignableFrom(SalesChartViewModel::class.java)) {
+        if (modelClass.isAssignableFrom(HomeScreenViewModel::class.java)) {
             @Suppress("UNCHECKED_CAST")
-            return SalesChartViewModel(application) as T
+            return HomeScreenViewModel(application) as T
         }
         throw IllegalArgumentException("Unknown ViewModel class")
     }

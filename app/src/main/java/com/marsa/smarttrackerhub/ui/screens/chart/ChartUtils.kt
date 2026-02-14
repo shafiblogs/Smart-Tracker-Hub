@@ -19,6 +19,7 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.unit.sp
+import com.marsa.smarttrackerhub.utils.getShortMonthName
 import kotlin.math.max
 import kotlin.math.pow
 import kotlin.math.sqrt
@@ -303,29 +304,11 @@ fun DrawScope.drawMonthLabels(
         val labelY = chartHeight - bottomPadding + 35f
 
         drawContext.canvas.nativeCanvas.drawText(
-            getShortMonthName(monthData.monthYear),
+            monthData.monthYear.getShortMonthName(),
             x,
             labelY,
             paint
         )
-    }
-}
-
-
-/**
- * Gets short month name from full monthYear string
- */
-private fun getShortMonthName(monthYear: String): String {
-    return try {
-        val parts = monthYear.split(" - ")
-        if (parts.isNotEmpty()) {
-            val month = parts[0].trim()
-            month.take(3) // First 3 letters
-        } else {
-            monthYear
-        }
-    } catch (e: Exception) {
-        monthYear
     }
 }
 
