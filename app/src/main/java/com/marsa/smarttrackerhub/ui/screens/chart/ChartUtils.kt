@@ -10,6 +10,7 @@ package com.marsa.smarttrackerhub.ui.screens.chart
 import android.graphics.Paint
 import androidx.compose.material3.ColorScheme
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.PathEffect
@@ -326,5 +327,62 @@ fun DrawScope.drawEmptyState(colors: ColorScheme) {
             textSize = 16.sp.toPx()
             textAlign = Paint.Align.CENTER
         }
+    )
+}
+
+fun DrawScope.drawSingleMonthLegend(
+    chartWidth: Float,
+    topPadding: Float,
+    colors: ColorScheme,
+    isTargetMet: Boolean
+) {
+    val legendY = topPadding / 2.5f // Changed from topPadding / 2 to move legend higher
+    val boxSize = 15f
+    val textSizePx = 13.sp.toPx()
+    val spacing = 50f
+
+    val paint = Paint().apply {
+        color = colors.onSurface.toArgb()
+        textSize = textSizePx
+    }
+
+    val targetText = "Target"
+    val avgText = "Average Sale"
+
+    val targetWidth = paint.measureText(targetText)
+    val avgWidth = paint.measureText(avgText)
+
+    val totalWidth = boxSize + 5f + targetWidth + spacing + boxSize + 5f + avgWidth
+    val startX = (chartWidth - totalWidth) / 2
+
+    // Target legend (Blue)
+    drawRect(
+        color = Color(0xFF2196F3),
+        topLeft = Offset(startX, legendY - boxSize / 2),
+        size = Size(boxSize, boxSize)
+    )
+
+    drawContext.canvas.nativeCanvas.drawText(
+        targetText,
+        startX + boxSize + 5f,
+        legendY + 5f,
+        paint
+    )
+
+    // Average legend (Green if target met, Red if not)
+    val avgStart = startX + boxSize + 5f + targetWidth + spacing
+    val avgColor = if (isTargetMet) Color(0xFF4CAF50) else Color(0xFFF44336)
+
+    drawRect(
+        color = avgColor,
+        topLeft = Offset(avgStart, legendY - boxSize / 2),
+        size = Size(boxSize, boxSize)
+    )
+
+    drawContext.canvas.nativeCanvas.drawText(
+        avgText,
+        avgStart + boxSize + 5f,
+        legendY + 5f,
+        paint
     )
 }
