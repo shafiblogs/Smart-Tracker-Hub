@@ -54,9 +54,6 @@ class SaleScreenViewModel(
 
     private var monthsListenerRegistration: ListenerRegistration? = null
 
-    // Cache expiry time (e.g., 24 hours)
-    private val CACHE_EXPIRY_MS = 24 * 60 * 60 * 1000L
-
     fun setSelectedShop(shop: ShopListDto?) {
         monthsListenerRegistration?.remove()
 
@@ -87,20 +84,6 @@ class SaleScreenViewModel(
 
     fun loadScreenData(userAccessCode: AccessCode) {
         _shops.value = getHomeShopUser(userAccessCode)
-
-        if (_shops.value.isNotEmpty()) {
-            setSelectedShop(_shops.value.first())
-        }
-
-        // Clean up old cache on app start
-        viewModelScope.launch(Dispatchers.IO) {
-            val expiryTime = System.currentTimeMillis() - CACHE_EXPIRY_MS
-            val currentMonthId = getCurrentMonthId()
-            summaryDao.deleteExpiredCurrentMonth(
-                currentMonthId = currentMonthId,
-                expiryTime = expiryTime
-            )
-        }
     }
 
     /**
@@ -121,20 +104,13 @@ class SaleScreenViewModel(
         }
     }
 
-    private fun getCurrentMonthId(): String {
-        val calendar = Calendar.getInstance()
-        val year = calendar.get(Calendar.YEAR)
-        val month = calendar.get(Calendar.MONTH) + 1
-        return "%04d-%02d".format(year, month)
-    }
-
     private fun loadMonthListForShop(shopId: String) {
         monthsListenerRegistration = trackerFireStore.collection("summary")
             .document(shopId)
             .collection("months")
             .addSnapshotListener { snapshot, error ->
                 if (error != null) {
-                    Log.e("HomeViewModel", "Error fetching months for $shopId", error)
+                    Log.e("SaleScreenViewModel", "Error fetching months for $shopId", error)
                     return@addSnapshotListener
                 }
 
@@ -151,7 +127,7 @@ class SaleScreenViewModel(
 
                 _availableMonths.value = monthsList
 
-                Log.d("HomeViewModel", "Loaded ${monthsList.size} month IDs for $shopId")
+                Log.d("SaleScreenViewModel", "Loaded ${monthsList.size} month IDs for $shopId")
             }
     }
 
@@ -160,23 +136,23 @@ class SaleScreenViewModel(
 
         viewModelScope.launch(Dispatchers.IO) {
             try {
-                // First, try to load from local database
+                // Try to load from local database first
                 val cachedEntity = summaryDao.getSummary(shopId, monthId)
 
-                if (cachedEntity != null && !isCacheExpired(cachedEntity.lastUpdated)) {
+                if (cachedEntity != null) {
                     // Use cached data
                     val summary = cachedEntity.toDomain()
                     _summariesCache.value = _summariesCache.value.toMutableMap().apply {
                         put(monthId, summary)
                     }
                     _isLoadingMonth.value = false
-                    Log.d("HomeViewModel", "Loaded summary from cache for $shopId - $monthId")
+                    Log.d("SaleScreenViewModel", "Loaded summary from cache for $shopId - $monthId")
                 } else {
-                    // Load from Firestore (this will trigger recalculation)
+                    // Load from Firestore if not in cache
                     loadFromFirestore(shopId, monthId)
                 }
             } catch (e: Exception) {
-                Log.e("HomeViewModel", "Error loading from cache", e)
+                Log.e("SaleScreenViewModel", "Error loading from cache", e)
                 loadFromFirestore(shopId, monthId)
             }
         }
@@ -214,19 +190,19 @@ class SaleScreenViewModel(
                                 }
                             }
 
-                            Log.d("HomeViewModel", "Saved and recalculated targets for $shopId - $monthId")
+                            Log.d("SaleScreenViewModel", "Saved and recalculated targets for $shopId - $monthId")
                         } catch (e: Exception) {
-                            Log.e("HomeViewModel", "Error saving to local DB", e)
+                            Log.e("SaleScreenViewModel", "Error saving to local DB", e)
                         }
                     }
 
-                    Log.d("HomeViewModel", "Loaded summary from Firestore for $shopId - $monthId")
+                    Log.d("SaleScreenViewModel", "Loaded summary from Firestore for $shopId - $monthId")
                 }
 
                 _isLoadingMonth.value = false
             }
             .addOnFailureListener { error ->
-                Log.e("HomeViewModel", "Error fetching month $monthId", error)
+                Log.e("SaleScreenViewModel", "Error fetching month $monthId", error)
                 _isLoadingMonth.value = false
             }
     }
@@ -244,7 +220,7 @@ class SaleScreenViewModel(
             // Save all updated summaries back to database
             summaryDao.insertSummaries(updatedSummaries)
 
-            Log.d("HomeViewModel", "Recalculated ${updatedSummaries.size} target sales for $shopId")
+            Log.d("SaleScreenViewModel", "Recalculated ${updatedSummaries.size} target sales for $shopId")
 
             // Update all affected months in the in-memory cache
             updatedSummaries.forEach { updatedEntity ->
@@ -255,22 +231,7 @@ class SaleScreenViewModel(
                 }
             }
         } catch (e: Exception) {
-            Log.e("HomeViewModel", "Error recalculating target sales", e)
-        }
-    }
-
-    private fun isCacheExpired(lastUpdated: Long): Boolean {
-        val currentTime = System.currentTimeMillis()
-        return (currentTime - lastUpdated) > CACHE_EXPIRY_MS
-    }
-
-    private fun parseMonthYear(monthYear: String): Long {
-        return try {
-            val formatter = SimpleDateFormat("MMMM-yyyy", Locale.ENGLISH)
-            formatter.parse(monthYear)?.time ?: 0L
-        } catch (e: Exception) {
-            Log.e("HomeViewModel", "Error parsing monthYear: $monthYear", e)
-            0L
+            Log.e("SaleScreenViewModel", "Error recalculating target sales", e)
         }
     }
 
