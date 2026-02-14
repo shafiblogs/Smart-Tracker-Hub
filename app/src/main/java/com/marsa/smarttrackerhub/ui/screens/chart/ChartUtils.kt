@@ -334,9 +334,9 @@ fun DrawScope.drawSingleMonthLegend(
     chartWidth: Float,
     topPadding: Float,
     colors: ColorScheme,
-    isTargetMet: Boolean
+    achievementPercentage: Double // Changed from isTargetMet to percentage
 ) {
-    val legendY = topPadding / 2.5f // Changed from topPadding / 2 to move legend higher
+    val legendY = topPadding / 2.5f
     val boxSize = 15f
     val textSizePx = 13.sp.toPx()
     val spacing = 50f
@@ -369,9 +369,13 @@ fun DrawScope.drawSingleMonthLegend(
         paint
     )
 
-    // Average legend (Green if target met, Red if not)
+    // Average legend with achievement-based color
     val avgStart = startX + boxSize + 5f + targetWidth + spacing
-    val avgColor = if (isTargetMet) Color(0xFF4CAF50) else Color(0xFFF44336)
+    val avgColor = when {
+        achievementPercentage >= 100 -> Color(0xFF4CAF50) // Green
+        achievementPercentage >= 90 -> Color(0xFFFF6F00)  // Brown/Orange
+        else -> Color(0xFFF44336)                          // Red
+    }
 
     drawRect(
         color = avgColor,

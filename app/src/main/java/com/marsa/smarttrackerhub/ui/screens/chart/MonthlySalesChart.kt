@@ -25,6 +25,7 @@ fun MonthlySalesChart(
     shopAddress: String = "",
     periodLabel: String = "",
     isTargetAchieved: Boolean = false,
+    achievementPercentage: Double = 0.0, // NEW parameter
     modifier: Modifier = Modifier,
     onShareClick: (() -> Unit)? = null
 ) {
@@ -38,7 +39,8 @@ fun MonthlySalesChart(
                 ChartTitle(
                     shopAddress = shopAddress,
                     periodLabel = periodLabel,
-                    isTargetAchieved = isTargetAchieved
+                    isTargetAchieved = isTargetAchieved,
+                    achievementPercentage = achievementPercentage
                 )
             }
 
@@ -71,7 +73,6 @@ fun MonthlySalesChart(
                             )
                         }
                 ) {
-                    // Your existing multi-month line chart code
                     if (data.isEmpty()) {
                         drawEmptyState(colors)
                         return@Canvas
@@ -115,6 +116,7 @@ fun MonthlySalesChart(
                         yScale,
                         colors
                     )
+
                     drawAverageLine(
                         data,
                         leftPadding,
@@ -141,13 +143,18 @@ fun MonthlySalesChart(
                             center = Offset(x, targetY)
                         )
 
+                        // Calculate achievement percentage for this month
+                        val monthAchievementPercentage = (monthData.averageSale / monthData.targetSale) * 100
+
+                        // Use achievement-based color
+                        val avgColor = when {
+                            monthAchievementPercentage >= 100 -> Color(0xFF4CAF50) // Green
+                            monthAchievementPercentage >= 90 -> Color(0xFFFF6F00)  // Brown/Orange
+                            else -> Color(0xFFF44336)                               // Red
+                        }
+
                         val avgY =
                             chartHeight - bottomPadding - (monthData.averageSale * yScale).toFloat()
-                        val avgColor = if (monthData.isTargetMet) {
-                            Color(0xFF4CAF50)
-                        } else {
-                            Color(0xFFF44336)
-                        }
 
                         drawCircle(
                             color = avgColor,

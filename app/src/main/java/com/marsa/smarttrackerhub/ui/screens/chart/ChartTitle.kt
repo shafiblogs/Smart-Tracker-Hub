@@ -17,30 +17,23 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 
-/**
- * Reusable title component with colored indicator
- *
- * @param shopAddress Shop address to display
- * @param periodLabel Period label to display
- * @param isTargetAchieved Whether target is achieved (for indicator color)
- * @param modifier Modifier for the component
- */
 @Composable
 fun ChartTitle(
     shopAddress: String,
     periodLabel: String = "",
     isTargetAchieved: Boolean = false,
+    achievementPercentage: Double = 0.0, // NEW parameter
     modifier: Modifier = Modifier
 ) {
     if (shopAddress.isEmpty()) return
 
     val colors = MaterialTheme.colorScheme
 
-    // Indicator color based on achievement
-    val indicatorColor = if (isTargetAchieved) {
-        Color(0xFF4CAF50) // Green
-    } else {
-        Color(0xFFF44336) // Red
+    // Indicator color based on achievement percentage
+    val indicatorColor = when {
+        achievementPercentage >= 100 -> Color(0xFF4CAF50) // Green
+        achievementPercentage >= 90 -> Color(0xFFFF6F00)  // Brown/Orange
+        else -> Color(0xFFF44336)                          // Red
     }
 
     Row(
@@ -59,7 +52,7 @@ fun ChartTitle(
 
         Spacer(modifier = Modifier.width(8.dp))
 
-        // Shop address and period with different colors
+        // Shop address and period
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text(
                 text = shopAddress,

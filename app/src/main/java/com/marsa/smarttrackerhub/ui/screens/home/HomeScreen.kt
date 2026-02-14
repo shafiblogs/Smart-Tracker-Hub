@@ -270,6 +270,10 @@ fun HomeScreen(
                             } else {
                                 MonthlySalesChart(
                                     data = chartData,
+                                    shopAddress = selectedShop?.address ?: "",
+                                    periodLabel = periodLabel,
+                                    isTargetAchieved = (statistics?.averageAchievementPercentage ?: 0.0) >= 100,
+                                    achievementPercentage = statistics?.averageAchievementPercentage ?: 0.0, // ADD this
                                     modifier = Modifier
                                         .fillMaxWidth()
                                         .height(350.dp)
@@ -310,6 +314,7 @@ fun HomeScreen(
                                 shopAddress = selectedShop?.address ?: "",
                                 periodLabel = periodLabel,
                                 isTargetAchieved = (statistics?.averageAchievementPercentage ?: 0.0) >= 100,
+                                achievementPercentage = statistics?.averageAchievementPercentage ?: 0.0, // ADD this
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .height(350.dp)

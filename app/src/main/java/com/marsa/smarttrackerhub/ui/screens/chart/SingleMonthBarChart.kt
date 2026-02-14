@@ -23,7 +23,7 @@ fun SingleMonthBarChart(
         val chartWidth = size.width
         val chartHeight = size.height
         val bottomPadding = 80f
-        val topPadding = 70f // Keep same as before
+        val topPadding = 70f
         val leftPadding = 60f
         val rightPadding = 30f
         val availableHeight = chartHeight - bottomPadding - topPadding
@@ -31,6 +31,18 @@ fun SingleMonthBarChart(
 
         val maxValue = max(data.targetSale, data.averageSale)
         val yScale = availableHeight / maxValue.toFloat()
+
+        // Calculate achievement percentage
+        val achievementPercentage = (data.averageSale / data.targetSale) * 100
+
+        // Helper function to get achievement color
+        fun getAchievementColor(percentage: Double): Color {
+            return when {
+                percentage >= 100 -> Color(0xFF4CAF50) // Green - Target met
+                percentage >= 90 -> Color(0xFFFF6F00)  // Brown/Orange - Close to target
+                else -> Color(0xFFF44336)               // Red - Below target
+            }
+        }
 
         // Draw grid and Y-axis
         drawGridAndYAxis(
@@ -44,7 +56,7 @@ fun SingleMonthBarChart(
             colors
         )
 
-        // Bar width and spacing - reduced width to half
+        // Bar width and spacing
         val totalBars = 2
         val totalSpacing = availableWidth * 0.7f
         val barWidth = (availableWidth - totalSpacing) / totalBars
@@ -66,9 +78,9 @@ fun SingleMonthBarChart(
             size = Size(barWidth, targetBarHeight)
         )
 
-        // Draw Average Sale bar
+        // Draw Average Sale bar with achievement-based color
         val avgBarHeight = (data.averageSale * yScale).toFloat()
-        val avgColor = if (data.isTargetMet) Color(0xFF4CAF50) else Color(0xFFF44336)
+        val avgColor = getAchievementColor(achievementPercentage)
 
         drawRect(
             color = avgColor,
@@ -100,7 +112,12 @@ fun SingleMonthBarChart(
             labelPaint
         )
 
-        // Draw legend at top with more padding from bars
-        //drawSingleMonthLegend(chartWidth, topPadding, colors, data.isTargetMet)
+        // Draw legend at top
+        /*drawSingleMonthLegend(
+            chartWidth,
+            topPadding,
+            colors,
+            achievementPercentage
+        )*/
     }
 }

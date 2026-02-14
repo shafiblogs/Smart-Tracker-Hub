@@ -37,10 +37,18 @@ fun StatisticsCard(
     val colors = MaterialTheme.colorScheme
     val isTargetAchieved = statistics.averageAchievementPercentage >= 100
 
+    // Helper function to get achievement color
+    fun getAchievementColor(percentage: Double): Color {
+        return when {
+            percentage >= 100 -> Color(0xFF4CAF50) // Green - Target met
+            percentage >= 90 -> Color(0xFFFF6F00)  // Brown/Orange - Close to target
+            else -> Color(0xFFF44336)               // Red - Below target
+        }
+    }
+
     Card(
         modifier = modifier.fillMaxWidth(),
         elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
-        // Removed colors parameter to use default Card background (same as chart)
     ) {
         Box {
             Column {
@@ -50,17 +58,16 @@ fun StatisticsCard(
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    // Use the reusable ChartTitle component (without default padding)
                     ChartTitle(
                         shopAddress = shopAddress,
                         periodLabel = periodLabel,
                         isTargetAchieved = isTargetAchieved,
+                        achievementPercentage = statistics.averageAchievementPercentage, // ADD this
                         modifier = Modifier
                             .weight(1f)
                             .padding(0.dp)
                     )
 
-                    // Share button aligned on the right
                     onShareClick?.let { callback ->
                         IconButton(
                             onClick = callback,
@@ -69,7 +76,7 @@ fun StatisticsCard(
                             Icon(
                                 imageVector = Icons.Default.Share,
                                 contentDescription = "Share Statistics",
-                                tint = colors.primary, // Changed to primary color
+                                tint = colors.primary,
                                 modifier = Modifier.size(20.dp)
                             )
                         }
@@ -100,10 +107,7 @@ fun StatisticsCard(
                             "%.0f",
                             statistics.totalAverage / statistics.totalMonths
                         ),
-                        valueColor = if (statistics.averageAchievementPercentage >= 100)
-                            Color(0xFF4CAF50)
-                        else
-                            Color(0xFFF44336)
+                        valueColor = getAchievementColor(statistics.averageAchievementPercentage)
                     )
                 }
 
@@ -119,10 +123,7 @@ fun StatisticsCard(
                     StatItem(
                         label = "Achievement",
                         value = String.format("%.0f%%", statistics.averageAchievementPercentage),
-                        valueColor = if (statistics.averageAchievementPercentage >= 100)
-                            Color(0xFF4CAF50)
-                        else
-                            Color(0xFFF44336)
+                        valueColor = getAchievementColor(statistics.averageAchievementPercentage)
                     )
 
                     val difference = statistics.totalAverage - statistics.totalTarget
