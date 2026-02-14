@@ -16,10 +16,9 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import java.text.SimpleDateFormat
+import java.util.*
 
-/**
- * ViewModel for managing sales chart data
- */
 class HomeScreenViewModel(
     application: Application
 ) : ViewModel() {
@@ -42,26 +41,20 @@ class HomeScreenViewModel(
     private val _statistics = MutableStateFlow<ChartStatistics?>(null)
     val statistics: StateFlow<ChartStatistics?> = _statistics.asStateFlow()
 
-    // In-memory cache
+    private val _periodLabel = MutableStateFlow<String>("")
+    val periodLabel: StateFlow<String> = _periodLabel.asStateFlow()
+
     private var allSummaries: List<SummaryEntity> = emptyList()
 
     private val database = AppDatabase.getDatabase(application)
-
     private val summaryDao = database.summaryDao()
 
-    /**
-     * Loads all summary data
-     */
     fun loadScreenData(userAccessCode: AccessCode) {
         _shops.value = getHomeShopUser(userAccessCode)
     }
 
-    /**
-     * Selects a shop and loads its data
-     */
     fun setSelectedShop(shop: ShopListDto?) {
         _selectedShop.value = shop
-
         shop?.let {
             if (!it.shopId.isNullOrEmpty()) {
                 loadChartData(it.shopId)
@@ -73,20 +66,14 @@ class HomeScreenViewModel(
         _expanded.value = value
     }
 
-    /**
-     * Loads chart data for selected shop
-     * - Displays last 4 months in chart
-     * - Calculates statistics for last 3 months only (excluding current month)
-     */
     private fun loadChartData(shopId: String) {
         viewModelScope.launch(Dispatchers.IO) {
             allSummaries = summaryDao.getAllSummariesForShop(shopId = shopId)
 
-            // Sort by timestamp descending (newest first)
             val sortedData = allSummaries.sortedByDescending { it.monthTimestamp }
 
-            // Take last 4 months for chart display
-            val chartMonths = sortedData.take(6).reversed() // Reverse to show oldest to newest
+            // Take last 6 months for chart display
+            val chartMonths = sortedData.take(6).reversed()
 
             _chartData.value = chartMonths.map { summary ->
                 MonthlyChartData(
@@ -98,23 +85,50 @@ class HomeScreenViewModel(
                 )
             }
 
-            // Calculate statistics for last 3 months only (skip current/most recent month)
-            // Skip index 0 (most recent) and take next 3
-            /*val statsMonths = if (sortedData.size > 1) {
-                sortedData.drop(1).take(3) // Skip current month, take next 3
-            } else {
-                emptyList() // Not enough data
-            }
-            
-            calculateStatistics(statsMonths)*/
-            calculateStatistics(sortedData.take(1))
+            // Use only current month for statistics
+            val statsMonths = sortedData.take(1)
+            calculateStatistics(statsMonths)
+
+            // Generate period label
+            _periodLabel.value = generatePeriodLabel(statsMonths)
         }
     }
 
     /**
-     * Calculates summary statistics
-     * Now uses only last 3 months (excluding current month)
+     * Generates dynamic period label based on data
      */
+    private fun generatePeriodLabel(data: List<SummaryEntity>): String {
+        if (data.isEmpty()) return ""
+
+        val dateFormat = SimpleDateFormat("dd MMM yyyy", Locale.getDefault())
+        val currentDate = Calendar.getInstance()
+
+        // Get the month from the data
+        val dataMonth = Calendar.getInstance().apply {
+            timeInMillis = data[0].monthTimestamp
+        }
+
+        // Check if it's current month
+        val isCurrentMonth = currentDate.get(Calendar.YEAR) == dataMonth.get(Calendar.YEAR) &&
+                currentDate.get(Calendar.MONTH) == dataMonth.get(Calendar.MONTH)
+
+        return if (isCurrentMonth) {
+            // Current month: show today's date
+            dateFormat.format(currentDate.time)
+        } else {
+            // Previous months: calculate difference
+            val monthsDiff = (currentDate.get(Calendar.YEAR) - dataMonth.get(Calendar.YEAR)) * 12 +
+                    (currentDate.get(Calendar.MONTH) - dataMonth.get(Calendar.MONTH))
+
+            when (monthsDiff) {
+                1 -> "Last Month"
+                2 -> "Last 2 Months"
+                3 -> "Last 3 Months"
+                else -> "Last $monthsDiff Months"
+            }
+        }
+    }
+
     private fun calculateStatistics(data: List<SummaryEntity>) {
         if (data.isEmpty()) {
             _statistics.value = null
@@ -139,5 +153,3 @@ class HomeScreenViewModel(
         )
     }
 }
-
-

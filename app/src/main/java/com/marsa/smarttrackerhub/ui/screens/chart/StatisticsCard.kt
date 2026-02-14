@@ -24,21 +24,16 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.marsa.smarttrackerhub.domain.ChartStatistics
+import kotlin.math.abs
 
-
-/**
- * Created by Muhammed Shafi on 12/02/2026.
- * Moro Hub
- * muhammed.poyil@morohub.com
- */
 /**
  * Statistics summary card with share functionality
- * Shows last 3 months only (excluding current month)
  */
 @Composable
 fun StatisticsCard(
     statistics: ChartStatistics,
     shopAddress: String,
+    periodLabel: String, // NEW: Dynamic period label
     modifier: Modifier = Modifier,
     onShareClick: (() -> Unit)? = null
 ) {
@@ -48,20 +43,19 @@ fun StatisticsCard(
         modifier = modifier.fillMaxWidth(),
         elevation = CardDefaults.cardElevation(defaultElevation = 3.dp),
         colors = CardDefaults.cardColors(
-            containerColor = colors.secondaryContainer // adapts to dark/light mode
+            containerColor = colors.secondaryContainer
         )
     ) {
         Box {
             Column(
                 modifier = Modifier.padding(16.dp)
             ) {
-                // Title
+                // Title with dynamic period
                 Text(
-                    //text = "$shopAddress (${statistics.totalMonths} Months)",
-                    text = shopAddress,
+                    text = "$shopAddress - $periodLabel",
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.SemiBold,
-                    color = colors.primary // adapts to dark/light mode
+                    color = colors.primary
                 )
 
                 Spacer(modifier = Modifier.height(16.dp))
@@ -73,19 +67,13 @@ fun StatisticsCard(
                 ) {
                     StatItem(
                         label = "Avg Target",
-                        value = String.format(
-                            "%.0f",
-                            statistics.totalTarget / statistics.totalMonths
-                        ),
+                        value = String.format("%.0f", statistics.totalTarget / statistics.totalMonths),
                         valueColor = colors.onSecondaryContainer
                     )
 
                     StatItem(
                         label = "Avg Sale",
-                        value = String.format(
-                            "%.0f",
-                            statistics.totalAverage / statistics.totalMonths
-                        ),
+                        value = String.format("%.0f", statistics.totalAverage / statistics.totalMonths),
                         valueColor = if (statistics.averageAchievementPercentage >= 100)
                             colors.tertiary else colors.error
                     )
@@ -93,7 +81,7 @@ fun StatisticsCard(
 
                 Spacer(modifier = Modifier.height(16.dp))
 
-                // Second row: Achievement / Targets
+                // Second row: Achievement / Difference (instead of Targets)
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween
@@ -105,10 +93,14 @@ fun StatisticsCard(
                             colors.tertiary else colors.error
                     )
 
+                    // Calculate difference between average and target
+                    val difference = statistics.totalAverage - statistics.totalTarget
+                    val icon = if (difference >= 0) "↑" else "↓"
+
                     StatItem(
-                        label = "Targets",
-                        value = "${statistics.monthsTargetMet}/${statistics.totalMonths}",
-                        valueColor = colors.onSecondaryContainer
+                        label = "Difference",
+                        value = "$icon ${String.format("%.0f", abs(difference))}",
+                        valueColor = if (difference >= 0) colors.tertiary else colors.error
                     )
                 }
             }
@@ -124,7 +116,7 @@ fun StatisticsCard(
                     Icon(
                         imageVector = Icons.Default.Share,
                         contentDescription = "Share Statistics",
-                        tint = colors.onSecondaryContainer, // dynamic color
+                        tint = colors.onSecondaryContainer,
                         modifier = Modifier.size(20.dp)
                     )
                 }
@@ -147,7 +139,7 @@ private fun StatItem(
         Text(
             text = label,
             style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant // adaptive gray
+            color = MaterialTheme.colorScheme.onSurfaceVariant
         )
         Spacer(modifier = Modifier.height(4.dp))
         Text(

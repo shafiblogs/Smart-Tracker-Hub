@@ -2,40 +2,14 @@ package com.marsa.smarttrackerhub.ui.screens.home
 
 import android.app.Application
 import android.view.View
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.heightIn
-import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Share
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.ExposedDropdownMenuBox
-import androidx.compose.material3.ExposedDropdownMenuDefaults
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -49,9 +23,6 @@ import com.marsa.smarttrackerhub.ui.screens.chart.MonthlySalesChart
 import com.marsa.smarttrackerhub.ui.screens.chart.StatisticsCard
 import com.marsa.smarttrackerhub.utils.ShareUtil
 
-/**
- * Home screen with sales chart and statistics
- */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeScreen(
@@ -67,8 +38,8 @@ fun HomeScreen(
     val isLoading by viewModel.isLoading.collectAsState()
     val statistics by viewModel.statistics.collectAsState()
     val expanded by viewModel.expanded.collectAsState()
+    val periodLabel by viewModel.periodLabel.collectAsState()
 
-    // References for screenshot
     var chartView by remember { mutableStateOf<View?>(null) }
     var statsView by remember { mutableStateOf<View?>(null) }
 
@@ -131,24 +102,57 @@ fun HomeScreen(
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        // Statistics Card with Share (Last 3 Months Only)
+        // Statistics Card with working share - FIXED: Added update parameter
         statistics?.let { stats ->
-            StatisticsCard(
-                statistics = stats,
-                shopAddress = selectedShop?.address ?: "",
-                onShareClick = {
-                    statsView?.let { view ->
-                        ShareUtil.shareViewAsImage(
-                            view = view,
-                            context = context,
-                            fileName = "sales_stats_${selectedShop?.name?.replace(" ", "_")}.png",
-                            shareTitle = "Share Sales Statistics"
+            AndroidView(
+                factory = { ctx ->
+                    androidx.compose.ui.platform.ComposeView(ctx).apply {
+                        setContent {
+                            StatisticsCard(
+                                statistics = stats,
+                                shopAddress = selectedShop?.address ?: "",
+                                periodLabel = periodLabel,
+                                onShareClick = {
+                                    statsView?.let { view ->
+                                        ShareUtil.shareViewAsImage(
+                                            view = view,
+                                            context = context,
+                                            fileName = "sales_stats_${selectedShop?.name?.replace(" ", "_")}.png",
+                                            shareTitle = "Share Sales Statistics"
+                                        )
+                                    }
+                                }
+                            )
+                        }
+                    }.also { composeView ->
+                        statsView = composeView
+                    }
+                },
+                // FIXED: Add update block to recompose when data changes
+                update = { view ->
+                    view.setContent {
+                        StatisticsCard(
+                            statistics = stats,
+                            shopAddress = selectedShop?.address ?: "",
+                            periodLabel = periodLabel,
+                            onShareClick = {
+                                statsView?.let { v ->
+                                    ShareUtil.shareViewAsImage(
+                                        view = v,
+                                        context = context,
+                                        fileName = "sales_stats_${selectedShop?.name?.replace(" ", "_")}.png",
+                                        shareTitle = "Share Sales Statistics"
+                                    )
+                                }
+                            }
                         )
                     }
-                }
+                },
+                modifier = Modifier.fillMaxWidth()
             )
-        }
 
+            Spacer(modifier = Modifier.height(24.dp))
+        }
 
         // Chart Title with Share Button
         Row(
@@ -157,12 +161,11 @@ fun HomeScreen(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text(
-                text = " Sales Trends",
+                text = "Sales Trends",
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.SemiBold
             )
 
-            // Share chart button
             IconButton(
                 onClick = {
                     chartView?.let { view ->
@@ -189,7 +192,7 @@ fun HomeScreen(
 
         Spacer(modifier = Modifier.height(12.dp))
 
-        // Chart Card
+        // Chart Card - FIXED: Added update parameter
         Card(
             modifier = Modifier.fillMaxWidth(),
             elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
@@ -233,13 +236,45 @@ fun HomeScreen(
                         chartView = composeView
                     }
                 },
+                // FIXED: Add update block to recompose when data changes
+                update = { view ->
+                    view.setContent {
+                        if (isLoading) {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(350.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                CircularProgressIndicator()
+                            }
+                        } else if (chartData.isEmpty()) {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(350.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    text = "No data available for selected shop",
+                                    style = MaterialTheme.typography.bodyLarge,
+                                    color = Color.Gray
+                                )
+                            }
+                        } else {
+                            MonthlySalesChart(
+                                data = chartData,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(350.dp)
+                            )
+                        }
+                    }
+                },
                 modifier = Modifier.fillMaxWidth()
             )
         }
 
         Spacer(modifier = Modifier.height(16.dp))
-
     }
 }
-
-
