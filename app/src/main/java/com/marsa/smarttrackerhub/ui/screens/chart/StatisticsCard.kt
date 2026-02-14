@@ -12,7 +12,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.Card
@@ -103,13 +102,19 @@ fun StatisticsCard(
                 ) {
                     StatItem(
                         label = "Avg Target",
-                        value = String.format("%.0f", statistics.totalTarget / statistics.totalMonths),
+                        value = String.format(
+                            "%.0f",
+                            statistics.totalTarget / statistics.totalMonths
+                        ),
                         valueColor = colors.onSecondaryContainer
                     )
 
                     StatItem(
                         label = "Avg Sale",
-                        value = String.format("%.0f", statistics.totalAverage / statistics.totalMonths),
+                        value = String.format(
+                            "%.0f",
+                            statistics.totalAverage / statistics.totalMonths
+                        ),
                         valueColor = if (statistics.averageAchievementPercentage >= 100)
                             colors.tertiary else colors.error
                     )
