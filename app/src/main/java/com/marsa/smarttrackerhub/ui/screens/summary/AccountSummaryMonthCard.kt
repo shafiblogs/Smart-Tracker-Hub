@@ -1,0 +1,222 @@
+package com.marsa.smarttrackerhub.ui.screens.summary
+
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.KeyboardArrowUp
+import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Divider
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.dp
+import com.marsa.smarttrackerhub.domain.AccountSummary
+import com.marsa.smarttrackerhub.ui.components.InfoRow
+import com.marsa.smarttrackerhub.ui.screens.sale.BalanceComparisonRow
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
+
+@Composable
+fun AccountSummaryMonthCard(
+    monthItem: MonthItem,
+    isSelected: Boolean,
+    summary: AccountSummary?,
+    isLoading: Boolean,
+    shopAddress: String,
+    onClick: () -> Unit,
+    onRefresh: () -> Unit
+) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick),
+        colors = CardDefaults.cardColors(
+            containerColor = if (isSelected)
+                MaterialTheme.colorScheme.surfaceVariant
+            else
+                MaterialTheme.colorScheme.surface
+        ),
+        shape = RoundedCornerShape(12.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            // Month header
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = monthItem.displayName,
+                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                    if (shopAddress.isNotBlank()) {
+                        Spacer(modifier = Modifier.height(2.dp))
+                        Text(
+                            text = shopAddress,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+
+                Icon(
+                    imageVector = if (isSelected) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,
+                    contentDescription = if (isSelected) "Collapse" else "Expand",
+                    tint = MaterialTheme.colorScheme.onSurface
+                )
+            }
+
+            // Expanded content
+            if (isSelected) {
+                Spacer(modifier = Modifier.height(12.dp))
+
+                when {
+                    isLoading -> {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(24.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            CircularProgressIndicator()
+                        }
+                    }
+
+                    summary != null -> {
+                        // Refresh button row
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(bottom = 8.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = "Updated: ${formatTimestamp(summary.lastUpdated)}",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+
+                            TextButton(
+                                onClick = onRefresh,
+                                contentPadding = androidx.compose.foundation.layout.PaddingValues(
+                                    horizontal = 12.dp,
+                                    vertical = 4.dp
+                                )
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Refresh,
+                                    contentDescription = "Refresh",
+                                    modifier = Modifier.size(18.dp)
+                                )
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text(
+                                    text = "Refresh",
+                                    style = MaterialTheme.typography.bodySmall
+                                )
+                            }
+                        }
+
+                        Divider()
+                        Spacer(modifier = Modifier.height(8.dp))
+
+                        AccountSummaryContent(summary = summary)
+                    }
+
+                    else -> {
+                        Text(
+                            text = "Failed to load data",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.error
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun AccountSummaryContent(summary: AccountSummary) {
+    Column {
+        // Balances Title Row
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Text(
+                text = "Balances",
+                style = MaterialTheme.typography.labelMedium,
+                modifier = Modifier.weight(1f)
+            )
+            Text(
+                text = "Opening",
+                style = MaterialTheme.typography.labelMedium,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.weight(1f)
+            )
+            Text(
+                text = "Closing",
+                style = MaterialTheme.typography.labelMedium,
+                textAlign = TextAlign.End,
+                modifier = Modifier.weight(1f)
+            )
+        }
+
+        Divider(Modifier.padding(vertical = 6.dp))
+
+        BalanceComparisonRow("Cash", summary.openingCashBalance, summary.cashBalance)
+        BalanceComparisonRow(
+            "Outstanding",
+            summary.openingOutstandingBalance,
+            summary.outstandingBalance
+        )
+
+        Divider(Modifier.padding(vertical = 8.dp))
+
+        // Totals Section
+        InfoRow(
+            "💰 Profit Margin",
+            summary.netProfitMargin,
+            color = MaterialTheme.colorScheme.primary
+        )
+        InfoRow("💳 Sales Margin", summary.grossMargin, color = MaterialTheme.colorScheme.primary)
+        InfoRow("💰 Net Profit", summary.netProfit)
+        InfoRow("🛒 Gross Profit", summary.grossProfit)
+        InfoRow("💰 Total Sale", summary.totalCollection)
+        InfoRow("💳 Total Expense", summary.totalExpenses)
+        InfoRow("🛒 Total Purchase", summary.totalPurchases)
+        InfoRow("💳 Outstanding Payment", summary.outstandingPayments)
+    }
+}
+
+@Composable
+private fun formatTimestamp(timestamp: Long): String {
+    if (timestamp == 0L) return "Never"
+    val dateFormat = SimpleDateFormat("dd MMM yyyy, hh:mm a", Locale.getDefault())
+    return dateFormat.format(Date(timestamp))
+}

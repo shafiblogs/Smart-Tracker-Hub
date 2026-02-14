@@ -26,14 +26,14 @@ private val shopList = listOf(
         region = ShopRegion.UAE,
         folderPath = "gs://smart-tracker-8012f.firebasestorage.app/marsa/muzeira"
     ),
-    ShopListDto(
+    /*ShopListDto(
         name = "AL Masa Super Market",
         address = "Ajman",
         shopId = "MASA_103",
         category = ShopCategory.SUPERMARKET,
         region = ShopRegion.UAE,
         folderPath = "gs://smart-tracker-8012f.firebasestorage.app/masa/ajman"
-    ),
+    ),*/
     ShopListDto(
         name = "AL Wadi Cafe",
         address = "Muzeira",

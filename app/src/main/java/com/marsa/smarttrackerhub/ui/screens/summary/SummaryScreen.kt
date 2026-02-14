@@ -1,10 +1,9 @@
 package com.marsa.smarttrackerhub.ui.screens.summary
 
-import androidx.compose.foundation.clickable
+import android.app.Application
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -14,18 +13,10 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.KeyboardArrowDown
-import androidx.compose.material.icons.filled.KeyboardArrowUp
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.Divider
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
-import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
@@ -35,28 +26,24 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.google.firebase.FirebaseApp
 import com.marsa.smarttrackerhub.domain.AccessCode
-import com.marsa.smarttrackerhub.domain.AccountSummary
-import com.marsa.smarttrackerhub.ui.components.InfoRow
-import com.marsa.smarttrackerhub.ui.screens.sale.BalanceComparisonRow
+import com.marsa.smarttrackerhub.ui.screens.sale.MonthCard
 
-
-/**
- * Created by Muhammed Shafi on 31/05/2025.
- * Moro Hub
- * muhammed.poyil@morohub.com
- */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SummaryScreen(userAccessCode: AccessCode) {
+    val context = LocalContext.current
     val firebaseApp = FirebaseApp.getInstance("AccountTrackerApp")
-    val viewModel: SummaryViewModel =
-        viewModel(factory = SummaryScreenViewModelFactory(firebaseApp))
+    val viewModel: SummaryViewModel = viewModel(
+        factory = SummaryScreenViewModelFactory(
+            context.applicationContext as Application,
+            firebaseApp
+        )
+    )
 
     LaunchedEffect(userAccessCode) {
         viewModel.loadScreenData(userAccessCode)
@@ -152,7 +139,6 @@ fun SummaryScreen(userAccessCode: AccessCode) {
             }
 
             else -> {
-                // Show list of months - clicking loads the data
                 LazyColumn(
                     modifier = Modifier.fillMaxSize(),
                     verticalArrangement = Arrangement.spacedBy(8.dp)
@@ -161,161 +147,19 @@ fun SummaryScreen(userAccessCode: AccessCode) {
                         val isSelected = selectedMonthId == monthItem.id
                         val summary = summariesCache[monthItem.id]
 
-                        MonthCard(
+                        // Reuse MonthCard from sale package - just need to create AccountSummaryContent
+                        AccountSummaryMonthCard(
                             monthItem = monthItem,
                             isSelected = isSelected,
                             summary = summary,
                             isLoading = isSelected && isLoadingMonth,
                             shopAddress = selectedShop?.address ?: "",
-                            onClick = { viewModel.selectMonth(monthItem.id) }
+                            onClick = { viewModel.selectMonth(monthItem.id) },
+                            onRefresh = { viewModel.refreshMonth(monthItem.id) }
                         )
                     }
                 }
             }
         }
-    }
-}
-
-@Composable
-fun MonthCard(
-    monthItem: MonthItem,
-    isSelected: Boolean,
-    summary: AccountSummary?,
-    isLoading: Boolean,
-    shopAddress: String,
-    onClick: () -> Unit
-) {
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(onClick = onClick),
-        colors = CardDefaults.cardColors(
-            containerColor = if (isSelected)
-                MaterialTheme.colorScheme.surfaceVariant
-            else
-                MaterialTheme.colorScheme.surface
-        ),
-        shape = RoundedCornerShape(12.dp),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-    ) {
-        Column(modifier = Modifier.padding(16.dp)) {
-            // Month header - always visible
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = monthItem.displayName,
-                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-                    color = if (isSelected)
-                        MaterialTheme.colorScheme.onPrimaryContainer
-                    else
-                        MaterialTheme.colorScheme.primary
-                )
-
-                Icon(
-                    imageVector = if (isSelected) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,
-                    contentDescription = if (isSelected) "Collapse" else "Expand",
-                    tint = if (isSelected)
-                        MaterialTheme.colorScheme.onPrimaryContainer
-                    else
-                        MaterialTheme.colorScheme.onSurface
-                )
-            }
-
-            // Expanded content - only show when selected
-            if (isSelected) {
-                Spacer(modifier = Modifier.height(12.dp))
-
-                when {
-                    isLoading -> {
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(24.dp),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            CircularProgressIndicator()
-                        }
-                    }
-
-                    summary != null -> {
-                        // Show the full summary details
-                        SummaryContent(summary = summary, shopAddress = shopAddress)
-                    }
-
-                    else -> {
-                        Text(
-                            text = "Failed to load data",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.error
-                        )
-                    }
-                }
-            }
-        }
-    }
-}
-
-@Composable
-fun SummaryContent(summary: AccountSummary, shopAddress: String) {
-    Column {
-        Text(
-            text = "($shopAddress)",
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
-
-        Spacer(Modifier.height(12.dp))
-
-        // Balances Title Row
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween
-        ) {
-            Text(
-                text = "Balances",
-                style = MaterialTheme.typography.labelMedium,
-                modifier = Modifier.weight(1f)
-            )
-            Text(
-                text = "Opening",
-                style = MaterialTheme.typography.labelMedium,
-                textAlign = TextAlign.Center,
-                modifier = Modifier.weight(1f)
-            )
-            Text(
-                text = "Closing",
-                style = MaterialTheme.typography.labelMedium,
-                textAlign = TextAlign.End,
-                modifier = Modifier.weight(1f)
-            )
-        }
-
-        Divider(Modifier.padding(vertical = 6.dp))
-
-        BalanceComparisonRow("Cash", summary.openingCashBalance, summary.cashBalance)
-        BalanceComparisonRow(
-            "Outstanding",
-            summary.openingOutstandingBalance,
-            summary.outstandingBalance
-        )
-
-        Divider(Modifier.padding(vertical = 8.dp))
-
-        // Totals Section
-        InfoRow(
-            "💰 Profit Margin",
-            summary.netProfitMargin,
-            color = MaterialTheme.colorScheme.primary
-        )
-        InfoRow("💳 Sales Margin", summary.grossMargin, color = MaterialTheme.colorScheme.primary)
-        InfoRow("💰 Net Profit", summary.netProfit)
-        InfoRow("🛒 Gross Profit", summary.grossProfit)
-        InfoRow("💰 Total Sale", summary.totalCollection)
-        InfoRow("💳 Total Expense", summary.totalExpenses)
-        InfoRow("🛒 Total Purchase", summary.totalPurchases)
-        InfoRow("💳 Outstanding Payment", summary.outstandingPayments)
     }
 }

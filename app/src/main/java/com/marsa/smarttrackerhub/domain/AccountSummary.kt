@@ -20,5 +20,6 @@ data class AccountSummary(
     val netProfit: Double = 0.0,
     val netProfitMargin: Double = 0.0,
     val openingCashBalance: Double = 0.0,
-    val openingOutstandingBalance: Double = 0.0
+    val openingOutstandingBalance: Double = 0.0,
+    val lastUpdated: Long = 0L
 )

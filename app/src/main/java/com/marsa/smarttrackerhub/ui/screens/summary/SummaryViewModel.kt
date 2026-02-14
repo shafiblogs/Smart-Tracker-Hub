@@ -1,40 +1,42 @@
 package com.marsa.smarttrackerhub.ui.screens.summary
 
+import android.app.Application
 import android.util.Log
-import androidx.lifecycle.ViewModel
+import androidx.lifecycle.AndroidViewModel
+import androidx.lifecycle.viewModelScope
 import com.google.firebase.FirebaseApp
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.ListenerRegistration
-import com.google.firebase.firestore.Query
+import com.marsa.smarttrackerhub.data.AppDatabase
+import com.marsa.smarttrackerhub.data.entity.toDomain
+import com.marsa.smarttrackerhub.data.entity.toEntity
 import com.marsa.smarttrackerhub.domain.AccessCode
 import com.marsa.smarttrackerhub.domain.AccountSummary
 import com.marsa.smarttrackerhub.domain.getSummaryShopList
 import com.marsa.smarttrackerhub.ui.screens.statement.ShopListDto
+import com.marsa.smarttrackerhub.ui.screens.sale.TargetSaleCalculator
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
-import java.text.SimpleDateFormat
-import java.util.Locale
+import kotlinx.coroutines.launch
 
-
-/**
- * Created by Muhammed Shafi on 31/05/2025.
- * Moro Hub
- * muhammed.poyil@morohub.com
- */
-class SummaryViewModel(firebaseApp: FirebaseApp) : ViewModel() {
+class SummaryViewModel(
+    application: Application,
+    firebaseApp: FirebaseApp
+) : AndroidViewModel(application) {
 
     private val _shops = MutableStateFlow<List<ShopListDto>>(emptyList())
     val shops: StateFlow<List<ShopListDto>> = _shops
 
-    // Just store month IDs/names, not the full data
     private val _availableMonths = MutableStateFlow<List<MonthItem>>(emptyList())
     val availableMonths: StateFlow<List<MonthItem>> = _availableMonths
 
-    // Cache for loaded summaries to avoid re-fetching
     private val _summariesCache = MutableStateFlow<Map<String, AccountSummary>>(emptyMap())
     val summariesCache: StateFlow<Map<String, AccountSummary>> = _summariesCache
 
     private val trackerFireStore = FirebaseFirestore.getInstance(firebaseApp)
+    private val database = AppDatabase.getDatabase(application)
+    private val accountSummaryDao = database.accountSummaryDao()
 
     private val _selectedShop = MutableStateFlow<ShopListDto?>(null)
     val selectedShop: StateFlow<ShopListDto?> = _selectedShop
@@ -51,7 +53,6 @@ class SummaryViewModel(firebaseApp: FirebaseApp) : ViewModel() {
     private var monthsListenerRegistration: ListenerRegistration? = null
 
     fun setSelectedShop(shop: ShopListDto?) {
-        // Clean up previous listener
         monthsListenerRegistration?.remove()
 
         _selectedShop.value = shop
@@ -59,7 +60,6 @@ class SummaryViewModel(firebaseApp: FirebaseApp) : ViewModel() {
         _availableMonths.value = emptyList()
         _summariesCache.value = emptyMap()
 
-        // Load ONLY the month list (document IDs), not the actual data
         shop?.shopId?.let { shopId ->
             loadMonthListForShop(shopId)
         }
@@ -70,7 +70,6 @@ class SummaryViewModel(firebaseApp: FirebaseApp) : ViewModel() {
 
         val shopId = _selectedShop.value?.shopId
         if (shopId != null) {
-            // Check if already loaded in cache
             if (!_summariesCache.value.containsKey(monthId)) {
                 loadSummaryForMonth(shopId, monthId)
             }
@@ -85,6 +84,24 @@ class SummaryViewModel(firebaseApp: FirebaseApp) : ViewModel() {
         _shops.value = getSummaryShopList(userAccessCode)
     }
 
+    /**
+     * Force refresh a specific month from Firestore
+     */
+    fun refreshMonth(monthId: String) {
+        val shopId = _selectedShop.value?.shopId
+        if (shopId != null) {
+            // Remove from cache to force reload
+            _summariesCache.value = _summariesCache.value.toMutableMap().apply {
+                remove(monthId)
+            }
+
+            // Load fresh data from Firestore
+            loadFromFirestore(shopId, monthId)
+
+            Log.d("SummaryViewModel", "Refreshing month $monthId from server")
+        }
+    }
+
     private fun loadMonthListForShop(shopId: String) {
         monthsListenerRegistration = trackerFireStore.collection("summary")
             .document(shopId)
@@ -95,18 +112,16 @@ class SummaryViewModel(firebaseApp: FirebaseApp) : ViewModel() {
                     return@addSnapshotListener
                 }
 
-                // Get month list and sort with current month first
                 val monthsList = snapshot?.documents
                     ?.map { doc ->
                         MonthItem(
                             id = doc.id,
-                            displayName = doc.id
+                            displayName = doc.id,
+                            timestamp = TargetSaleCalculator.parseMonthYearToTimestamp(doc.id)
                         )
                     }
                     .orEmpty()
-                    .sortedByDescending { monthItem ->  // Changed from sortedWith(compareByDescending
-                        parseMonthYear(monthItem.id)
-                    }
+                    .sortedByDescending { it.timestamp }
 
                 _availableMonths.value = monthsList
 
@@ -114,21 +129,34 @@ class SummaryViewModel(firebaseApp: FirebaseApp) : ViewModel() {
             }
     }
 
-    // Helper function to parse monthYear for sorting
-    private fun parseMonthYear(monthYear: String): Long {
-        return try {
-            // Format is "January-2026", "February-2025", etc.
-            val formatter = SimpleDateFormat("MMMM-yyyy", Locale.ENGLISH)
-            formatter.parse(monthYear)?.time ?: 0L
-        } catch (e: Exception) {
-            Log.e("SummaryViewModel", "Error parsing monthYear: $monthYear", e)
-            0L
-        }
-    }
-
     private fun loadSummaryForMonth(shopId: String, monthId: String) {
         _isLoadingMonth.value = true
 
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                // Try to load from local database first
+                val cachedEntity = accountSummaryDao.getAccountSummary(shopId, monthId)
+
+                if (cachedEntity != null) {
+                    // Use cached data
+                    val summary = cachedEntity.toDomain()
+                    _summariesCache.value = _summariesCache.value.toMutableMap().apply {
+                        put(monthId, summary)
+                    }
+                    _isLoadingMonth.value = false
+                    Log.d("SummaryViewModel", "Loaded account summary from cache for $shopId - $monthId")
+                } else {
+                    // Load from Firestore if not in cache
+                    loadFromFirestore(shopId, monthId)
+                }
+            } catch (e: Exception) {
+                Log.e("SummaryViewModel", "Error loading from cache", e)
+                loadFromFirestore(shopId, monthId)
+            }
+        }
+    }
+
+    private fun loadFromFirestore(shopId: String, monthId: String) {
         trackerFireStore.collection("summary")
             .document(shopId)
             .collection("months")
@@ -138,11 +166,29 @@ class SummaryViewModel(firebaseApp: FirebaseApp) : ViewModel() {
                 val summary = document.toObject(AccountSummary::class.java)
 
                 if (summary != null) {
-                    // Add to cache
+                    // IMPORTANT: Set timestamp BEFORE using the summary
+                    val updatedSummary = summary.copy(
+                        lastUpdated = System.currentTimeMillis()
+                    )
+
+                    // Add to in-memory cache
                     _summariesCache.value = _summariesCache.value.toMutableMap().apply {
-                        put(monthId, summary)
+                        put(monthId, updatedSummary)
                     }
-                    Log.d("SummaryViewModel", "Loaded summary for $shopId - $monthId")
+
+                    // Save to local database
+                    viewModelScope.launch(Dispatchers.IO) {
+                        try {
+                            val entity = updatedSummary.toEntity(shopId, monthId)
+                            accountSummaryDao.insertAccountSummary(entity)
+
+                            Log.d("SummaryViewModel", "Saved account summary to local DB for $shopId - $monthId")
+                        } catch (e: Exception) {
+                            Log.e("SummaryViewModel", "Error saving to local DB", e)
+                        }
+                    }
+
+                    Log.d("SummaryViewModel", "Loaded account summary from Firestore for $shopId - $monthId")
                 }
 
                 _isLoadingMonth.value = false
@@ -159,8 +205,8 @@ class SummaryViewModel(firebaseApp: FirebaseApp) : ViewModel() {
     }
 }
 
-// Simple data class to represent a month in the list
 data class MonthItem(
     val id: String,
-    val displayName: String
+    val displayName: String,
+    val timestamp: Long = 0L
 )

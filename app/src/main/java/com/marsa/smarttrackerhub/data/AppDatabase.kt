@@ -6,12 +6,14 @@ import androidx.room.Room
 import androidx.room.RoomDatabase
 import androidx.room.TypeConverters
 import androidx.sqlite.db.SupportSQLiteDatabase
+import com.marsa.smarttrackerhub.data.dao.AccountSummaryDao
 import com.marsa.smarttrackerhub.data.dao.EmployeeInfoDao
 import com.marsa.smarttrackerhub.data.dao.EntryDao
 import com.marsa.smarttrackerhub.data.dao.InvestorDao
 import com.marsa.smarttrackerhub.data.dao.ShopDao
 import com.marsa.smarttrackerhub.data.dao.SummaryDao
 import com.marsa.smarttrackerhub.data.dao.UserAccountDao
+import com.marsa.smarttrackerhub.data.entity.AccountSummaryEntity
 import com.marsa.smarttrackerhub.data.entity.EmployeeInfo
 import com.marsa.smarttrackerhub.data.entity.EntryEntity
 import com.marsa.smarttrackerhub.data.entity.InvestorInfo
@@ -28,7 +30,7 @@ import com.marsa.smarttrackerhub.data.helper.Converters
  */
 
 @Database(
-    entities = [EntryEntity::class, SummaryEntity::class, UserAccount::class,
+    entities = [EntryEntity::class, SummaryEntity::class, UserAccount::class, AccountSummaryEntity::class,
         ShopInfo::class, InvestorInfo::class, EmployeeInfo::class],
     version = 1
 )
@@ -40,6 +42,7 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun shopDao(): ShopDao
     abstract fun investorDao(): InvestorDao
     abstract fun employeeDao(): EmployeeInfoDao
+    abstract fun accountSummaryDao(): AccountSummaryDao
 
     companion object {
         @Volatile
