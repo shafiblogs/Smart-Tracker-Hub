@@ -103,6 +103,24 @@ class SaleScreenViewModel(
         }
     }
 
+    /**
+     * Force refresh a specific month from Firestore
+     */
+    fun refreshMonth(monthId: String) {
+        val shopId = _selectedShop.value?.shopId
+        if (shopId != null) {
+            // Remove from cache to force reload
+            _summariesCache.value = _summariesCache.value.toMutableMap().apply {
+                remove(monthId)
+            }
+
+            // Load fresh data from Firestore
+            loadFromFirestore(shopId, monthId)
+
+            Log.d("SaleScreenViewModel", "Refreshing month $monthId from server")
+        }
+    }
+
     private fun getCurrentMonthId(): String {
         val calendar = Calendar.getInstance()
         val year = calendar.get(Calendar.YEAR)

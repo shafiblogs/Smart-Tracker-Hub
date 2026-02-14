@@ -1,5 +1,10 @@
 package com.marsa.smarttrackerhub.utils
 
+import androidx.compose.runtime.Composable
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
+
 
 /**
  * Created by Muhammed Shafi on 14/02/2026.
@@ -23,4 +28,10 @@ fun String.getShortMonthName(): String {
     } catch (e: Exception) {
         this
     }
+}
+
+@Composable
+private fun Long.formatTimestamp(): String {
+    val dateFormat = SimpleDateFormat("dd MMM yyyy, hh:mm a", Locale.getDefault())
+    return dateFormat.format(Date(this))
 }
