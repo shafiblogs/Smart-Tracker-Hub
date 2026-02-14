@@ -307,6 +307,9 @@ fun HomeScreen(
                         } else {
                             MonthlySalesChart(
                                 data = chartData,
+                                shopAddress = selectedShop?.address ?: "",
+                                periodLabel = periodLabel,
+                                isTargetAchieved = (statistics?.averageAchievementPercentage ?: 0.0) >= 100,
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .height(350.dp)

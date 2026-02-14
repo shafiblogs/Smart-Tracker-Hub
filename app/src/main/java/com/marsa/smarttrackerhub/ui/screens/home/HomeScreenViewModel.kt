@@ -132,19 +132,23 @@ class HomeScreenViewModel(
         }
     }
 
+    /**
+     * Generates dynamic period label based on data
+     */
     private fun generatePeriodLabel(data: List<SummaryEntity>, range: MonthRange): String {
         if (data.isEmpty()) return ""
 
         val dateFormat = SimpleDateFormat("dd MMM yyyy", Locale.getDefault())
+        val monthFormat = SimpleDateFormat("MMMM yyyy", Locale.getDefault())
 
         return when (range) {
             is MonthRange.CurrentMonth -> {
-                // Show today's date
+                // Show today's date for current month
                 dateFormat.format(Calendar.getInstance().time)
             }
             is MonthRange.PreviousMonth -> {
-                // Show "Last Month"
-                "Last Month"
+                // Show the actual month name instead of "Last Month"
+                monthFormat.format(data[0].monthTimestamp)
             }
             is MonthRange.Last3Months -> {
                 "Last 3 Months"

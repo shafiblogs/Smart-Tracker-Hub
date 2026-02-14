@@ -1,6 +1,5 @@
 package com.marsa.smarttrackerhub.ui.screens.chart
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -10,8 +9,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.Card
@@ -29,9 +26,6 @@ import androidx.compose.ui.unit.dp
 import com.marsa.smarttrackerhub.domain.ChartStatistics
 import kotlin.math.abs
 
-/**
- * Statistics summary card with share functionality
- */
 @Composable
 fun StatisticsCard(
     statistics: ChartStatistics,
@@ -43,13 +37,6 @@ fun StatisticsCard(
     val colors = MaterialTheme.colorScheme
     val isTargetAchieved = statistics.averageAchievementPercentage >= 100
 
-    // Indicator color based on achievement
-    val indicatorColor = if (isTargetAchieved) {
-        Color(0xFF4CAF50) // Green
-    } else {
-        Color(0xFFF44336) // Red
-    }
-
     Card(
         modifier = modifier.fillMaxWidth(),
         elevation = CardDefaults.cardElevation(defaultElevation = 3.dp),
@@ -58,38 +45,36 @@ fun StatisticsCard(
         )
     ) {
         Box {
-            Column(
-                modifier = Modifier.padding(16.dp)
-            ) {
-                // Title with colored indicator
+            Column {
+                // Title row with share button alignment
                 Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    // Colored circle indicator
-                    Box(
+                    // Use the reusable ChartTitle component (without default padding)
+                    ChartTitle(
+                        shopAddress = shopAddress,
+                        periodLabel = periodLabel,
+                        isTargetAchieved = isTargetAchieved,
                         modifier = Modifier
-                            .size(12.dp)
-                            .background(
-                                color = indicatorColor,
-                                shape = CircleShape
-                            )
+                            .weight(1f)
+                            .padding(0.dp) // Remove default padding
                     )
 
-                    Spacer(modifier = Modifier.width(8.dp))
-
-                    Column {
-                        Text(
-                            text = shopAddress,
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.SemiBold,
-                            color = colors.onSecondaryContainer
-                        )
-
-                        Text(
-                            text = periodLabel,
-                            style = MaterialTheme.typography.labelMedium,
-                            color = colors.onSecondaryContainer
-                        )
+                    // Share button aligned on the right
+                    onShareClick?.let { callback ->
+                        IconButton(
+                            onClick = callback,
+                            modifier = Modifier.padding(0.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Share,
+                                contentDescription = "Share Statistics",
+                                tint = colors.onSecondaryContainer,
+                                modifier = Modifier.size(20.dp)
+                            )
+                        }
                     }
                 }
 
@@ -97,7 +82,9 @@ fun StatisticsCard(
 
                 // First row: Avg Target / Avg Sale
                 Row(
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp),
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
                     StatItem(
@@ -124,7 +111,9 @@ fun StatisticsCard(
 
                 // Second row: Achievement / Difference
                 Row(
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
                     StatItem(
@@ -134,7 +123,6 @@ fun StatisticsCard(
                             colors.tertiary else colors.error
                     )
 
-                    // Calculate difference between average and target
                     val difference = statistics.totalAverage - statistics.totalTarget
                     val icon = if (difference >= 0) "↑" else "↓"
 
@@ -142,23 +130,6 @@ fun StatisticsCard(
                         label = "Difference",
                         value = "$icon ${String.format("%.0f", abs(difference))}",
                         valueColor = if (difference >= 0) colors.tertiary else colors.error
-                    )
-                }
-            }
-
-            // Share button at top-right
-            onShareClick?.let { callback ->
-                IconButton(
-                    onClick = callback,
-                    modifier = Modifier
-                        .align(Alignment.TopEnd)
-                        .padding(4.dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Share,
-                        contentDescription = "Share Statistics",
-                        tint = colors.onSecondaryContainer,
-                        modifier = Modifier.size(20.dp)
                     )
                 }
             }
