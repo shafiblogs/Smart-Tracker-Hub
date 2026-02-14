@@ -1,4 +1,4 @@
-package com.marsa.smarttrackerhub.ui.screens.home
+package com.marsa.smarttrackerhub.ui.screens.chart
 
 import android.graphics.Paint
 import androidx.compose.foundation.Canvas

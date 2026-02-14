@@ -45,6 +45,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.marsa.smarttrackerhub.domain.AccessCode
+import com.marsa.smarttrackerhub.ui.screens.chart.MonthlySalesChart
+import com.marsa.smarttrackerhub.ui.screens.chart.StatisticsCard
 
 /**
  * Home screen with sales chart and statistics
@@ -56,7 +58,7 @@ fun HomeScreen(
 ) {
     val context = LocalContext.current
     val viewModel: SalesChartViewModel = viewModel(
-        factory = SalesChartViewModelFactory(context.applicationContext as Application)
+        factory = HomeScreenViewModelFactory(context.applicationContext as Application)
     )
     val selectedShop by viewModel.selectedShop.collectAsState()
     val chartData by viewModel.chartData.collectAsState()

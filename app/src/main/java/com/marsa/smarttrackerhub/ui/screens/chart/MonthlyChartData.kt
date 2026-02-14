@@ -1,4 +1,4 @@
-package com.marsa.smarttrackerhub.ui.screens.home
+package com.marsa.smarttrackerhub.ui.screens.chart
 
 /**
  * Data model for monthly sales chart

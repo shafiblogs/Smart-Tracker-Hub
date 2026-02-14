@@ -7,6 +7,7 @@ import com.marsa.smarttrackerhub.data.AppDatabase
 import com.marsa.smarttrackerhub.data.entity.SummaryEntity
 import com.marsa.smarttrackerhub.domain.AccessCode
 import com.marsa.smarttrackerhub.domain.getHomeShopUser
+import com.marsa.smarttrackerhub.ui.screens.chart.MonthlyChartData
 import com.marsa.smarttrackerhub.ui.screens.statement.ShopListDto
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -153,14 +154,6 @@ class SalesChartViewModel(
         }
     }
 }
-
-/**
- * Shop information
- */
-data class ShopInfo(
-    val shopId: String,
-    val displayName: String
-)
 
 /**
  * Chart statistics

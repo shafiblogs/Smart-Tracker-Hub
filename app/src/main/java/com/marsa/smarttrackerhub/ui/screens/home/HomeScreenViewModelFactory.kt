@@ -10,7 +10,7 @@ import androidx.lifecycle.ViewModelProvider
  * Moro Hub
  * muhammed.poyil@morohub.com
  */
-class SalesChartViewModelFactory(private val application: Application) : ViewModelProvider.Factory {
+class HomeScreenViewModelFactory(private val application: Application) : ViewModelProvider.Factory {
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
         if (modelClass.isAssignableFrom(SalesChartViewModel::class.java)) {
             @Suppress("UNCHECKED_CAST")
