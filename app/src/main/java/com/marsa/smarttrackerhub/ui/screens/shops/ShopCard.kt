@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.HorizontalDivider
@@ -24,11 +25,14 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.marsa.smarttrackerhub.data.entity.ShopInfo
 import com.marsa.smarttrackerhub.utils.HijriDateUtils
+import com.marsa.smarttrackerhub.utils.ShareUtil
 import com.marsa.smarttrackerhub.utils.getExpiryStatus
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -44,6 +48,8 @@ fun ShopCard(shop: ShopInfo, onEditClick: () -> Unit) {
     val dateFormat = SimpleDateFormat("dd MMM yyyy", Locale.ENGLISH)
     val expiryStatus = shop.licenseExpiryDate.getExpiryStatus()
     val zakathAmount = shop.stockValue * 0.025 // 2.5% for Zakath
+    val context = LocalContext.current
+    val view = LocalView.current
 
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -57,7 +63,7 @@ fun ShopCard(shop: ShopInfo, onEditClick: () -> Unit) {
                 .fillMaxWidth()
                 .padding(16.dp)
         ) {
-            // Header: Shop Name and Edit Button
+            // Header: Shop Name with Edit and Share Buttons
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -82,16 +88,38 @@ fun ShopCard(shop: ShopInfo, onEditClick: () -> Unit) {
                     )
                 }
 
-                IconButton(
-                    onClick = onEditClick,
-                    modifier = Modifier.size(40.dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Edit,
-                        contentDescription = "Edit Shop",
-                        tint = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.size(20.dp)
-                    )
+                // Edit and Share buttons
+                Row {
+                    IconButton(
+                        onClick = {
+                            ShareUtil.shareViewAsImage(
+                                view = view,
+                                context = context,
+                                fileName = "shop_info_${shop.shopName.replace(" ", "_")}.png",
+                                shareTitle = "Share Shop Information"
+                            )
+                        },
+                        modifier = Modifier.size(40.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Share,
+                            contentDescription = "Share Shop",
+                            tint = MaterialTheme.colorScheme.secondary,
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
+
+                    IconButton(
+                        onClick = onEditClick,
+                        modifier = Modifier.size(40.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Edit,
+                            contentDescription = "Edit Shop",
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
                 }
             }
 

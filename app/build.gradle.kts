@@ -87,4 +87,5 @@ dependencies {
     implementation("com.google.firebase:firebase-auth-ktx")
     implementation("com.google.firebase:firebase-messaging-ktx")
     implementation("com.google.firebase:firebase-firestore-ktx")
+    implementation("com.github.msarhan:ummalqura-calendar:2.0.2")
 }
