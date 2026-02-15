@@ -30,8 +30,8 @@ fun String.getShortMonthName(): String {
     }
 }
 
-@Composable
-private fun Long.formatTimestamp(): String {
+fun Long.formatTimestamp(): String {
+    if (this == 0L) return "Never"
     val dateFormat = SimpleDateFormat("dd MMM yyyy, hh:mm a", Locale.getDefault())
     return dateFormat.format(Date(this))
 }

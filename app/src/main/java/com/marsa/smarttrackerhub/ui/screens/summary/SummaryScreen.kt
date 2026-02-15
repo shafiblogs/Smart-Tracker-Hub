@@ -24,14 +24,16 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.google.firebase.FirebaseApp
 import com.marsa.smarttrackerhub.domain.AccessCode
-import com.marsa.smarttrackerhub.ui.screens.sale.MonthCard
+import com.marsa.smarttrackerhub.utils.ShareUtil
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -56,6 +58,9 @@ fun SummaryScreen(userAccessCode: AccessCode) {
     val summariesCache by viewModel.summariesCache.collectAsState()
     val expanded by viewModel.expanded.collectAsState()
     val isLoadingMonth by viewModel.isLoadingMonth.collectAsState()
+
+    // Store view references for each month card
+    val cardViewRefs = remember { mutableMapOf<String, android.view.View>() }
 
     Column(
         modifier = Modifier
@@ -147,15 +152,84 @@ fun SummaryScreen(userAccessCode: AccessCode) {
                         val isSelected = selectedMonthId == monthItem.id
                         val summary = summariesCache[monthItem.id]
 
-                        // Reuse MonthCard from sale package - just need to create AccountSummaryContent
-                        AccountSummaryMonthCard(
-                            monthItem = monthItem,
-                            isSelected = isSelected,
-                            summary = summary,
-                            isLoading = isSelected && isLoadingMonth,
-                            shopAddress = selectedShop?.address ?: "",
-                            onClick = { viewModel.selectMonth(monthItem.id) },
-                            onRefresh = { viewModel.refreshMonth(monthItem.id) }
+                        // Wrap in AndroidView to get view reference
+                        AndroidView(
+                            factory = { context ->
+                                androidx.compose.ui.platform.ComposeView(context).apply {
+                                    setContent {
+                                        AccountSummaryMonthCard(
+                                            monthItem = monthItem,
+                                            isSelected = isSelected,
+                                            summary = summary,
+                                            isLoading = isSelected && isLoadingMonth,
+                                            shopAddress = selectedShop?.address ?: "",
+                                            onClick = { viewModel.selectMonth(monthItem.id) },
+                                            onRefresh = { viewModel.refreshMonth(monthItem.id) },
+                                            onShare = if (summary != null && isSelected) {
+                                                {
+                                                    cardViewRefs[monthItem.id]?.let { view ->
+                                                        ShareUtil.shareViewAsImage(
+                                                            view = view,
+                                                            context = context,
+                                                            fileName = "account_summary_${
+                                                                selectedShop?.name?.replace(
+                                                                    " ",
+                                                                    "_"
+                                                                )
+                                                            }_${
+                                                                monthItem.displayName.replace(
+                                                                    " ",
+                                                                    "_"
+                                                                )
+                                                            }.png",
+                                                            shareTitle = "Share Account Summary"
+                                                        )
+                                                    }
+                                                }
+                                            } else null
+                                        )
+                                    }
+                                }
+                            },
+                            update = { view ->
+                                // Store view reference
+                                if (isSelected) {
+                                    cardViewRefs[monthItem.id] = view
+                                }
+
+                                view.setContent {
+                                    AccountSummaryMonthCard(
+                                        monthItem = monthItem,
+                                        isSelected = isSelected,
+                                        summary = summary,
+                                        isLoading = isSelected && isLoadingMonth,
+                                        shopAddress = selectedShop?.address ?: "",
+                                        onClick = { viewModel.selectMonth(monthItem.id) },
+                                        onRefresh = { viewModel.refreshMonth(monthItem.id) },
+                                        onShare = if (summary != null && isSelected) {
+                                            {
+                                                ShareUtil.shareViewAsImage(
+                                                    view = view,
+                                                    context = context,
+                                                    fileName = "account_summary_${
+                                                        selectedShop?.name?.replace(
+                                                            " ",
+                                                            "_"
+                                                        )
+                                                    }_${
+                                                        monthItem.displayName.replace(
+                                                            " ",
+                                                            "_"
+                                                        )
+                                                    }.png",
+                                                    shareTitle = "Share Account Summary"
+                                                )
+                                            }
+                                        } else null
+                                    )
+                                }
+                            },
+                            modifier = Modifier.fillMaxWidth()
                         )
                     }
                 }

@@ -16,26 +16,24 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Divider
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.marsa.smarttrackerhub.domain.MonthlySummary
+import com.marsa.smarttrackerhub.utils.formatTimestamp
 
-
-/**
- * Created by Muhammed Shafi on 14/02/2026.
- * Moro Hub
- * muhammed.poyil@morohub.com
- */
 @Composable
 fun MonthCard(
     monthItem: MonthItem,
@@ -44,7 +42,8 @@ fun MonthCard(
     isLoading: Boolean,
     shopAddress: String,
     onClick: () -> Unit,
-    onRefresh: () -> Unit
+    onRefresh: () -> Unit,
+    onShare: (() -> Unit)? = null
 ) {
     Card(
         modifier = Modifier
@@ -91,7 +90,6 @@ fun MonthCard(
 
             // Expanded content
             if (isSelected) {
-
                 when {
                     isLoading -> {
                         Box(
@@ -105,7 +103,7 @@ fun MonthCard(
                     }
 
                     summary != null -> {
-                        // Refresh button row
+                        // Action buttons row (Refresh and Share)
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -115,29 +113,50 @@ fun MonthCard(
                         ) {
                             // Last updated time
                             Text(
-                                text = "Updated: ${formatTimestamp(summary.lastUpdated)}",
+                                text = "Updated: ${(summary.lastUpdated).formatTimestamp()}",
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
 
-                            // Refresh button
-                            androidx.compose.material3.TextButton(
-                                onClick = onRefresh,
-                                contentPadding = androidx.compose.foundation.layout.PaddingValues(
-                                    horizontal = 12.dp,
-                                    vertical = 4.dp
-                                )
+                            // Buttons row
+                            Row(
+                                horizontalArrangement = Arrangement.spacedBy(4.dp),
+                                verticalAlignment = Alignment.CenterVertically
                             ) {
-                                androidx.compose.material3.Icon(
-                                    imageVector = androidx.compose.material.icons.Icons.Default.Refresh,
-                                    contentDescription = "Refresh",
-                                    modifier = Modifier.size(18.dp)
-                                )
-                                Spacer(modifier = Modifier.width(4.dp))
-                                Text(
-                                    text = "Refresh",
-                                    style = MaterialTheme.typography.bodySmall
-                                )
+                                // Share button
+                                onShare?.let { shareCallback ->
+                                    IconButton(
+                                        onClick = shareCallback,
+                                        modifier = Modifier.size(36.dp)
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.Share,
+                                            contentDescription = "Share",
+                                            tint = MaterialTheme.colorScheme.primary,
+                                            modifier = Modifier.size(18.dp)
+                                        )
+                                    }
+                                }
+
+                                // Refresh button
+                                TextButton(
+                                    onClick = onRefresh,
+                                    contentPadding = androidx.compose.foundation.layout.PaddingValues(
+                                        horizontal = 12.dp,
+                                        vertical = 4.dp
+                                    )
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Refresh,
+                                        contentDescription = "Refresh",
+                                        modifier = Modifier.size(18.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                    Text(
+                                        text = "Refresh",
+                                        style = MaterialTheme.typography.bodySmall
+                                    )
+                                }
                             }
                         }
 
@@ -159,12 +178,4 @@ fun MonthCard(
             }
         }
     }
-}
-
-@Composable
-private fun formatTimestamp(timestamp: Long): String {
-    if (timestamp == 0L) return "Never"
-    val dateFormat =
-        java.text.SimpleDateFormat("dd MMM yyyy, hh:mm a", java.util.Locale.getDefault())
-    return dateFormat.format(java.util.Date(timestamp))
 }

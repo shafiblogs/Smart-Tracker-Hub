@@ -16,11 +16,13 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Divider
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -33,9 +35,7 @@ import androidx.compose.ui.unit.dp
 import com.marsa.smarttrackerhub.domain.AccountSummary
 import com.marsa.smarttrackerhub.ui.components.InfoRow
 import com.marsa.smarttrackerhub.ui.screens.sale.BalanceComparisonRow
-import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
+import com.marsa.smarttrackerhub.utils.formatTimestamp
 
 @Composable
 fun AccountSummaryMonthCard(
@@ -45,7 +45,8 @@ fun AccountSummaryMonthCard(
     isLoading: Boolean,
     shopAddress: String,
     onClick: () -> Unit,
-    onRefresh: () -> Unit
+    onRefresh: () -> Unit,
+    onShare: (() -> Unit)? = null // NEW: Share callback
 ) {
     Card(
         modifier = Modifier
@@ -107,7 +108,7 @@ fun AccountSummaryMonthCard(
                     }
 
                     summary != null -> {
-                        // Refresh button row
+                        // Action buttons row (Refresh and Share)
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -115,29 +116,52 @@ fun AccountSummaryMonthCard(
                             horizontalArrangement = Arrangement.SpaceBetween,
                             verticalAlignment = Alignment.CenterVertically
                         ) {
+
                             Text(
-                                text = "Updated: ${formatTimestamp(summary.lastUpdated)}",
+                                text = "Updated: ${(summary.lastUpdated).formatTimestamp()}",
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
 
-                            TextButton(
-                                onClick = onRefresh,
-                                contentPadding = androidx.compose.foundation.layout.PaddingValues(
-                                    horizontal = 12.dp,
-                                    vertical = 4.dp
-                                )
+                            // Buttons row
+                            Row(
+                                horizontalArrangement = Arrangement.spacedBy(4.dp),
+                                verticalAlignment = Alignment.CenterVertically
                             ) {
-                                Icon(
-                                    imageVector = Icons.Default.Refresh,
-                                    contentDescription = "Refresh",
-                                    modifier = Modifier.size(18.dp)
-                                )
-                                Spacer(modifier = Modifier.width(4.dp))
-                                Text(
-                                    text = "Refresh",
-                                    style = MaterialTheme.typography.bodySmall
-                                )
+                                // Share button
+                                onShare?.let { shareCallback ->
+                                    IconButton(
+                                        onClick = shareCallback,
+                                        modifier = Modifier.size(36.dp)
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.Share,
+                                            contentDescription = "Share",
+                                            tint = MaterialTheme.colorScheme.primary,
+                                            modifier = Modifier.size(18.dp)
+                                        )
+                                    }
+                                }
+
+                                // Refresh button
+                                TextButton(
+                                    onClick = onRefresh,
+                                    contentPadding = androidx.compose.foundation.layout.PaddingValues(
+                                        horizontal = 12.dp,
+                                        vertical = 4.dp
+                                    )
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Refresh,
+                                        contentDescription = "Refresh",
+                                        modifier = Modifier.size(18.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                    Text(
+                                        text = "Refresh",
+                                        style = MaterialTheme.typography.bodySmall
+                                    )
+                                }
                             }
                         }
 
@@ -212,11 +236,4 @@ private fun AccountSummaryContent(summary: AccountSummary) {
         InfoRow("🛒 Total Purchase", summary.totalPurchases)
         InfoRow("💳 Outstanding Payment", summary.outstandingPayments)
     }
-}
-
-@Composable
-private fun formatTimestamp(timestamp: Long): String {
-    if (timestamp == 0L) return "Never"
-    val dateFormat = SimpleDateFormat("dd MMM yyyy, hh:mm a", Locale.getDefault())
-    return dateFormat.format(Date(timestamp))
 }
