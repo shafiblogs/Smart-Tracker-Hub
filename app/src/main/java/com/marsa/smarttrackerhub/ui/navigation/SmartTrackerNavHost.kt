@@ -258,6 +258,8 @@ fun SmartTrackerNavHost(navController: NavHostController) {
                     Screen.AccountSetup.route, Screen.Summary.route -> {
                         val titleText = when (currentRoute) {
                             Screen.AccountSetup.route -> "My Account"
+                            Screen.AddShop.route -> "Add Shop"
+                            Screen.AddEmployee.route -> "Add Employee"
                             Screen.Investors.route -> "Investors"
                             Screen.Sale.route -> "Sales"
                             Screen.Statement.route -> "Statements"
