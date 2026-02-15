@@ -1,26 +1,18 @@
 package com.marsa.smarttrackerhub.data.repository
 
 import com.marsa.smarttrackerhub.data.dao.ShopDao
-import com.marsa.smarttrackerhub.data.dao.UserAccountDao
 import com.marsa.smarttrackerhub.data.entity.ShopInfo
-import com.marsa.smarttrackerhub.data.entity.UserAccount
 import kotlinx.coroutines.flow.Flow
 
+class ShopRepository(private val shopDao: ShopDao) {
 
-/**
- * Created by Muhammed Shafi on 18/07/2025.
- * Moro Hub
- * muhammed.poyil@morohub.com
- */
-class ShopRepository(private val dao: ShopDao) {
+    fun getAllShops(): Flow<List<ShopInfo>> = shopDao.getAllShops()
 
-    suspend fun updateShop(account: ShopInfo) =
-        dao.updateShop(account)
+    suspend fun getShopById(id: Int): ShopInfo? = shopDao.getShopById(id)
 
-    suspend fun insertShop(account: ShopInfo) =
-        dao.insert(account)
+    suspend fun insertShop(shop: ShopInfo) = shopDao.insertShop(shop)
 
-    suspend fun hasShops(): Boolean = dao.hasShops()
+    suspend fun updateShop(shop: ShopInfo) = shopDao.updateShop(shop)
 
-    fun getAllShops(): Flow<List<ShopInfo>> = dao.getAllShops()
+    suspend fun deleteShop(shop: ShopInfo) = shopDao.deleteShop(shop)
 }

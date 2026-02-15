@@ -7,31 +7,21 @@ import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import androidx.room.Update
 import com.marsa.smarttrackerhub.data.entity.ShopInfo
-import com.marsa.smarttrackerhub.data.entity.UserAccount
 import kotlinx.coroutines.flow.Flow
 
-
-/**
- * Created by Muhammed Shafi on 18/07/2025.
- * Moro Hub
- * muhammed.poyil@morohub.com
- */
 @Dao
 interface ShopDao {
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun insert(account: ShopInfo)
-
-    @Query("SELECT COUNT(*) FROM shop_info")
-    suspend fun hasShops(): Boolean
-
-    @Update
-    suspend fun updateShop(account: ShopInfo)
-
-    @Query("SELECT * FROM shop_info ORDER BY shopName ASC")
+    @Query("SELECT * FROM shop_info")
     fun getAllShops(): Flow<List<ShopInfo>>
+
+    @Query("SELECT * FROM shop_info WHERE id = :id")
+    suspend fun getShopById(id: Int): ShopInfo?
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertShop(shop: ShopInfo)
+
+    @Update
+    suspend fun updateShop(shop: ShopInfo)
 
     @Delete
     suspend fun deleteShop(shop: ShopInfo)

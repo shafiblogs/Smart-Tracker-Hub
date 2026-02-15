@@ -42,9 +42,11 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
+import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
+import androidx.navigation.navArgument
 import com.marsa.smarttracker.ui.theme.sTypography
 import com.marsa.smarttrackerhub.domain.AccessCode
 import com.marsa.smarttrackerhub.ui.components.CommonTextField
@@ -143,15 +145,34 @@ fun SmartTrackerNavHost(navController: NavHostController) {
             }
             composable(Screen.Statement.route) { StatementScreen(userAccessCode = userAccessCode) }
             composable(Screen.Summary.route) { SummaryScreen(userAccessCode = userAccessCode) }
-            composable(Screen.AddShop.route) { AddShopScreen(onShopCreated = { navController.popBackStack() }) }
+            composable(
+                route = Screen.AddShop.route,
+                arguments = listOf(
+                    navArgument("shopId") {
+                        type = NavType.IntType
+                        defaultValue = 0
+                    }
+                )
+            ) { backStackEntry ->
+                val shopId = backStackEntry.arguments?.getInt("shopId")
+                AddShopScreen(
+                    shopId = if (shopId == 0) null else shopId,
+                    onShopCreated = {
+                        navController.popBackStack()
+                    }
+                )
+            }
             composable(Screen.AddInvestor.route) { AddInvestorScreen(onSaveSuccess = { navController.popBackStack() }) }
             composable(Screen.AddEmployee.route) { AddEmployeeScreen(onEmployeeCreated = { navController.popBackStack() }) }
             composable(Screen.ShopList.route) {
                 ShopsListScreen(
-                    onItemClick = {},
+                    onEditClick = { shopId ->
+                        navController.navigate(Screen.AddShop.createRoute(shopId))
+                    },
                     onAddClick = {
-                        navController.navigate(Screen.AddShop.route)
-                    })
+                        navController.navigate(Screen.AddShop.createRoute())
+                    }
+                )
             }
             composable(Screen.Investors.route) {
                 InvestorsScreen(

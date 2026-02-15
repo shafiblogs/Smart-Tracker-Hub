@@ -1,6 +1,7 @@
 package com.marsa.smarttrackerhub.ui.screens.shops
 
 import android.content.Context
+import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.marsa.smarttrackerhub.data.AppDatabase
@@ -17,13 +18,9 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
-
-/**
- * Created by Muhammed Shafi on 12/08/2025.
- * Moro Hub
- * muhammed.poyil@morohub.com
- */
-class AddShopViewModel : ViewModel() {
+class AddShopViewModel(
+    private val savedStateHandle: SavedStateHandle
+) : ViewModel() {
     private val _formState = MutableStateFlow(ShopFormState())
     val formState = _formState.asStateFlow()
 
@@ -36,28 +33,52 @@ class AddShopViewModel : ViewModel() {
     private val _error = MutableStateFlow<String?>(null)
     val error: StateFlow<String?> = _error
 
-    private var editingAccountId: Int? = null
+    private var editingShopId: Int? = null
 
     val isFormValid: StateFlow<Boolean> = formState
         .map {
             it.shopName.isNotBlank() &&
-                    it.shopCode.isNotBlank() &&
-                    it.shopAddress.isNotBlank()
+                    it.shopId.isNotBlank() &&
+                    it.shopAddress.isNotBlank() &&
+                    it.licenseExpiryDate != null
         }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(), false)
+
+    fun loadShop(context: Context, shopId: Int) = viewModelScope.launch {
+        try {
+            val db = AppDatabase.getDatabase(context)
+            val repo = ShopRepository(db.shopDao())
+            val shop = repo.getShopById(shopId)
+
+            shop?.let {
+                editingShopId = it.id
+                _formState.value = ShopFormState(
+                    shopName = it.shopName,
+                    shopAddress = it.shopAddress,
+                    shopId = it.shopId,
+                    shopStatus = ShopStatus.valueOf(it.shopStatus),
+                    shopType = ShopType.valueOf(it.shopType),
+                    licenseExpiryDate = it.licenseExpiryDate
+                )
+                _isLoaded.value = true
+            }
+        } catch (e: Exception) {
+            _error.value = "Failed to load shop: ${e.localizedMessage}"
+        }
+    }
 
     fun updateShopName(name: String) {
         _formState.update { it.copy(shopName = name) }
         _error.value = null
     }
 
-    fun updateShopAddress(name: String) {
-        _formState.update { it.copy(shopAddress = name) }
+    fun updateShopAddress(address: String) {
+        _formState.update { it.copy(shopAddress = address) }
         _error.value = null
     }
 
-    fun updateShopCode(userCode: String) {
-        _formState.update { it.copy(shopCode = userCode) }
+    fun updateShopId(shopId: String) {
+        _formState.update { it.copy(shopId = shopId) }
         _error.value = null
     }
 
@@ -66,11 +87,15 @@ class AddShopViewModel : ViewModel() {
         _error.value = null
     }
 
-    fun updateShopStatus(name: ShopStatus) {
-        _formState.update { it.copy(shopStatus = name) }
+    fun updateShopStatus(status: ShopStatus) {
+        _formState.update { it.copy(shopStatus = status) }
         _error.value = null
     }
 
+    fun updateLicenseExpiryDate(dateInMillis: Long) {
+        _formState.update { it.copy(licenseExpiryDate = dateInMillis) }
+        _error.value = null
+    }
 
     fun saveShop(
         context: Context,
@@ -83,19 +108,20 @@ class AddShopViewModel : ViewModel() {
             val db = AppDatabase.getDatabase(context)
             val repo = ShopRepository(db.shopDao())
 
-            val account = ShopInfo(
-                id = editingAccountId ?: 0,
+            val shop = ShopInfo(
+                id = editingShopId ?: 0,
                 shopName = state.shopName,
                 shopAddress = state.shopAddress,
-                shopCode = state.shopCode,
+                shopId = state.shopId,
                 shopType = state.shopType?.name ?: "",
-                shopStatus = state.shopStatus?.name ?: ""
+                shopStatus = state.shopStatus?.name ?: "",
+                licenseExpiryDate = state.licenseExpiryDate ?: 0L
             )
 
-            if (editingAccountId != null) {
-                repo.updateShop(account)
+            if (editingShopId != null) {
+                repo.updateShop(shop)
             } else {
-                repo.insertShop(account)
+                repo.insertShop(shop)
             }
             _isSaved.value = true
             onSuccess()

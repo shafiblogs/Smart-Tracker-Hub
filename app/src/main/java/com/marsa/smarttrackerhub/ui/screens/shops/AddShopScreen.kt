@@ -1,5 +1,6 @@
 package com.marsa.smarttrackerhub.ui.screens.shops
 
+import android.app.DatePickerDialog
 import android.widget.Toast
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -9,9 +10,15 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -28,16 +35,17 @@ import com.marsa.smarttrackerhub.ui.components.DropdownField
 import com.marsa.smarttrackerhub.ui.components.LabeledInputField
 import com.marsa.smarttrackerhub.ui.screens.enums.ShopStatus
 import com.marsa.smarttrackerhub.ui.screens.enums.ShopType
+import java.text.SimpleDateFormat
+import java.util.Calendar
+import java.util.Date
+import java.util.Locale
 
-
-/**
- * Created by Muhammed Shafi on 11/08/2025.
- * Moro Hub
- * muhammed.poyil@morohub.com
- */
-
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun AddShopScreen(onShopCreated: () -> Unit) {
+fun AddShopScreen(
+    shopId: Int? = null,
+    onShopCreated: () -> Unit
+) {
     val viewModel: AddShopViewModel = viewModel()
     val state by viewModel.formState.collectAsState()
     val isValid by viewModel.isFormValid.collectAsState()
@@ -46,13 +54,23 @@ fun AddShopScreen(onShopCreated: () -> Unit) {
     val context = LocalContext.current
     val isLoaded by viewModel.isLoaded.collectAsState()
 
+    LaunchedEffect(shopId) {
+        shopId?.let {
+            viewModel.loadShop(context, it)
+        }
+    }
+
     LaunchedEffect(isSaved) {
         if (isSaved) {
             onShopCreated()
         }
     }
 
-    Scaffold(containerColor = MaterialTheme.colorScheme.background) { paddingValues ->
+    val dateFormat = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault())
+
+    Scaffold(
+        containerColor = MaterialTheme.colorScheme.background
+    ) { paddingValues ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -88,12 +106,61 @@ fun AddShopScreen(onShopCreated: () -> Unit) {
                 Spacer(modifier = Modifier.height(16.dp))
 
                 LabeledInputField(
-                    label = "Shop Code",
-                    value = state.shopCode,
+                    label = "Shop ID",
+                    value = state.shopId,
                     maxLength = 20,
-                    onValueChange = viewModel::updateShopCode,
+                    onValueChange = viewModel::updateShopId,
                     modifier = Modifier.fillMaxWidth()
                 )
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                // License Expiry Date Picker
+                Column(modifier = Modifier.fillMaxWidth()) {
+                    Text(
+                        text = "License Expiry Date",
+                        style = MaterialTheme.typography.bodyMedium,
+                        modifier = Modifier.padding(bottom = 4.dp)
+                    )
+                    OutlinedTextField(
+                        value = state.licenseExpiryDate?.let {
+                            dateFormat.format(Date(it))
+                        } ?: "",
+                        onValueChange = {},
+                        readOnly = true,
+                        enabled = false,
+                        modifier = Modifier.fillMaxWidth(),
+                        trailingIcon = {
+                            IconButton(
+                                onClick = {
+                                    val calendar = Calendar.getInstance()
+                                    state.licenseExpiryDate?.let {
+                                        calendar.timeInMillis = it
+                                    }
+
+                                    DatePickerDialog(
+                                        context,
+                                        { _, year, month, dayOfMonth ->
+                                            val selectedCalendar = Calendar.getInstance()
+                                            selectedCalendar.set(year, month, dayOfMonth, 0, 0, 0)
+                                            selectedCalendar.set(Calendar.MILLISECOND, 0)
+                                            viewModel.updateLicenseExpiryDate(selectedCalendar.timeInMillis)
+                                        },
+                                        calendar.get(Calendar.YEAR),
+                                        calendar.get(Calendar.MONTH),
+                                        calendar.get(Calendar.DAY_OF_MONTH)
+                                    ).show()
+                                }
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.DateRange,
+                                    contentDescription = "Select Date"
+                                )
+                            }
+                        },
+                        placeholder = { Text("Select expiry date") }
+                    )
+                }
 
                 Spacer(modifier = Modifier.height(16.dp))
 
@@ -107,7 +174,8 @@ fun AddShopScreen(onShopCreated: () -> Unit) {
                     ),
                     onOptionSelected = { selected ->
                         viewModel.updateShopStatus(ShopStatus.valueOf(selected))
-                    }, modifier = Modifier.fillMaxWidth()
+                    },
+                    modifier = Modifier.fillMaxWidth()
                 )
 
                 Spacer(modifier = Modifier.height(16.dp))
@@ -127,7 +195,6 @@ fun AddShopScreen(onShopCreated: () -> Unit) {
                     modifier = Modifier.fillMaxWidth()
                 )
 
-
                 if (!error.isNullOrEmpty()) {
                     Text(
                         text = error ?: "",
@@ -138,6 +205,7 @@ fun AddShopScreen(onShopCreated: () -> Unit) {
                 }
 
                 Spacer(modifier = Modifier.height(40.dp))
+
                 val buttonText = if (isLoaded) "Update Shop" else "Create Shop"
                 Button(
                     onClick = {
@@ -160,7 +228,9 @@ fun AddShopScreen(onShopCreated: () -> Unit) {
                         .fillMaxWidth()
                         .height(50.dp),
                     shape = MaterialTheme.shapes.medium,
-                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.primary
+                    )
                 ) {
                     Text(text = buttonText, fontSize = 18.sp)
                 }
