@@ -1,5 +1,6 @@
 package com.marsa.smarttrackerhub.ui.screens.employees
 
+import android.app.DatePickerDialog
 import android.widget.Toast
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -8,9 +9,19 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -18,11 +29,19 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.marsa.smarttrackerhub.ui.components.DropdownField
 import com.marsa.smarttrackerhub.ui.components.LabeledInputField
-
+import java.text.SimpleDateFormat
+import java.util.Calendar
+import java.util.Date
+import java.util.Locale
 
 /**
  * Created by Muhammed Shafi on 11/08/2025.
@@ -30,8 +49,10 @@ import com.marsa.smarttrackerhub.ui.components.LabeledInputField
  * muhammed.poyil@morohub.com
  */
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AddEmployeeScreen(
+    employeeId: Int? = null,
     onEmployeeCreated: () -> Unit
 ) {
     val viewModel: EmployeeViewModel = viewModel()
@@ -39,10 +60,18 @@ fun AddEmployeeScreen(
     val isValid by viewModel.isFormValid.collectAsState()
     val isSaved by viewModel.isSaved.collectAsState()
     val error by viewModel.error.collectAsState()
+    val shops by viewModel.shops.collectAsState()
+    val isLoaded by viewModel.isLoaded.collectAsState()
     val context = LocalContext.current
 
     LaunchedEffect(Unit) {
         viewModel.initDatabase(context)
+    }
+
+    LaunchedEffect(employeeId) {
+        employeeId?.let {
+            viewModel.loadEmployee(it)
+        }
     }
 
     LaunchedEffect(isSaved) {
@@ -52,83 +81,222 @@ fun AddEmployeeScreen(
         }
     }
 
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .verticalScroll(rememberScrollState())
-            .padding(16.dp),
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        LabeledInputField(
-            label = "Employee Name",
-            value = state.employeeName,
-            onValueChange = viewModel::updateEmployeeName,
-            modifier = Modifier.fillMaxWidth()
-        )
-        Spacer(Modifier.height(16.dp))
-        LabeledInputField(
-            label = "Email",
-            value = state.employeeEmail,
-            onValueChange = viewModel::updateEmployeeEmail,
-            modifier = Modifier.fillMaxWidth()
-        )
-        Spacer(Modifier.height(16.dp))
-        LabeledInputField(
-            label = "Phone",
-            value = state.employeePhone,
-            onValueChange = viewModel::updateEmployeePhone,
-            modifier = Modifier.fillMaxWidth()
-        )
-        Spacer(Modifier.height(16.dp))
-        LabeledInputField(
-            label = "Role",
-            value = state.employeeRole,
-            onValueChange = viewModel::updateEmployeeRole,
-            modifier = Modifier.fillMaxWidth()
-        )
-        Spacer(Modifier.height(16.dp))
-        LabeledInputField(
-            label = "Salary",
-            value = state.salary,
-            onValueChange = viewModel::updateSalary,
-            //keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-            modifier = Modifier.fillMaxWidth()
-        )
-        Spacer(Modifier.height(16.dp))
-        // You can add a dropdown to select associatedShopId from shops, if you want
-        // For now, let's just input the ID manually:
-        LabeledInputField(
-            label = "Associated Shop ID",
-            value = state.associatedShopId?.toString() ?: "",
-            onValueChange = { input ->
-                input.toIntOrNull()?.let { viewModel.updateAssociatedShopId(it) }
-            },
-            //keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-            modifier = Modifier.fillMaxWidth()
-        )
+    val dateFormat = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault())
 
-        if (!error.isNullOrEmpty()) {
-            Text(error!!, color = MaterialTheme.colorScheme.error)
-        }
-
-        Spacer(Modifier.height(32.dp))
-        Button(
-            onClick = {
-                viewModel.saveEmployee(
-                    onSuccess = {
-                        Toast.makeText(context, "Employee saved", Toast.LENGTH_SHORT).show()
-                    },
-                    onFail = {
-                        Toast.makeText(context, it, Toast.LENGTH_SHORT).show()
-                    }
-                )
-            },
-            enabled = isValid,
+    Scaffold(
+        containerColor = MaterialTheme.colorScheme.background
+    ) { paddingValues ->
+        Column(
             modifier = Modifier
-                .fillMaxWidth()
-                .height(50.dp)
+                .fillMaxSize()
+                .verticalScroll(rememberScrollState())
+                .padding(paddingValues)
+                .padding(horizontal = 16.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Text("Save Employee")
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 16.dp)
+            ) {
+
+                // ============ EMPLOYEE INFORMATION SECTION ============
+                SectionHeader(text = "Employee Information")
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                LabeledInputField(
+                    label = "Employee Name",
+                    value = state.employeeName,
+                    maxLength = 30,
+                    onValueChange = viewModel::updateEmployeeName,
+                    modifier = Modifier.fillMaxWidth()
+                )
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                LabeledInputField(
+                    label = "Phone Number",
+                    value = state.employeePhone,
+                    maxLength = 15,
+                    onValueChange = viewModel::updateEmployeePhone,
+                    modifier = Modifier.fillMaxWidth()
+                )
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                DropdownField(
+                    label = "Employee Role",
+                    selectedValue = state.employeeRole?.displayName() ?: "Select Role",
+                    options = EmployeeRole.values().map { it.displayName() },
+                    onOptionSelected = { selected ->
+                        val role = EmployeeRole.values().find { it.displayName() == selected }
+                        role?.let { viewModel.updateEmployeeRole(it) }
+                    },
+                    modifier = Modifier.fillMaxWidth()
+                )
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                // Associated Shop Dropdown
+                DropdownField(
+                    label = "Associated Shop",
+                    selectedValue = shops.find { it.id == state.associatedShopId }?.shopName
+                        ?: "Select Shop",
+                    options = shops.map { it.shopName },
+                    onOptionSelected = { selected ->
+                        val shop = shops.find { it.shopName == selected }
+                        shop?.let { viewModel.updateAssociatedShopId(it.id) }
+                    },
+                    modifier = Modifier.fillMaxWidth()
+                )
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                // Visa Expiry Date
+                Column(modifier = Modifier.fillMaxWidth()) {
+                    Text(
+                        text = "Visa Expiry Date",
+                        style = MaterialTheme.typography.bodyMedium,
+                        modifier = Modifier.padding(bottom = 4.dp)
+                    )
+                    OutlinedTextField(
+                        value = state.visaExpiryDate?.let {
+                            dateFormat.format(Date(it))
+                        } ?: "",
+                        onValueChange = {},
+                        readOnly = true,
+                        enabled = false,
+                        modifier = Modifier.fillMaxWidth(),
+                        trailingIcon = {
+                            IconButton(
+                                onClick = {
+                                    val calendar = Calendar.getInstance()
+                                    state.visaExpiryDate?.let {
+                                        calendar.timeInMillis = it
+                                    }
+
+                                    DatePickerDialog(
+                                        context,
+                                        { _, year, month, dayOfMonth ->
+                                            val selectedCalendar = Calendar.getInstance()
+                                            selectedCalendar.set(year, month, dayOfMonth, 0, 0, 0)
+                                            selectedCalendar.set(Calendar.MILLISECOND, 0)
+                                            viewModel.updateVisaExpiryDate(selectedCalendar.timeInMillis)
+                                        },
+                                        calendar.get(Calendar.YEAR),
+                                        calendar.get(Calendar.MONTH),
+                                        calendar.get(Calendar.DAY_OF_MONTH)
+                                    ).show()
+                                }
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.DateRange,
+                                    contentDescription = "Select Date"
+                                )
+                            }
+                        },
+                        placeholder = { Text("Select visa expiry date") }
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(24.dp))
+                HorizontalDivider(color = Color.LightGray)
+                Spacer(modifier = Modifier.height(24.dp))
+
+                // ============ SALARY INFORMATION SECTION ============
+                SectionHeader(text = "Salary Information")
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                Column(modifier = Modifier.fillMaxWidth()) {
+                    Text(
+                        text = "Basic Salary",
+                        style = MaterialTheme.typography.bodyMedium,
+                        modifier = Modifier.padding(bottom = 4.dp)
+                    )
+                    OutlinedTextField(
+                        value = state.salary,
+                        onValueChange = viewModel::updateSalary,
+                        modifier = Modifier.fillMaxWidth(),
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                        placeholder = { Text("Enter salary") },
+                        prefix = { Text("AED ") }
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                Column(modifier = Modifier.fillMaxWidth()) {
+                    Text(
+                        text = "Allowance",
+                        style = MaterialTheme.typography.bodyMedium,
+                        modifier = Modifier.padding(bottom = 4.dp)
+                    )
+                    OutlinedTextField(
+                        value = state.allowance,
+                        onValueChange = viewModel::updateAllowance,
+                        modifier = Modifier.fillMaxWidth(),
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                        placeholder = { Text("Enter allowance") },
+                        prefix = { Text("AED ") }
+                    )
+                }
+
+                // Error Display
+                if (!error.isNullOrEmpty()) {
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Text(
+                        text = error ?: "",
+                        color = MaterialTheme.colorScheme.error,
+                        fontSize = 14.sp,
+                        modifier = Modifier.padding(top = 8.dp)
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(32.dp))
+
+                // Submit Button
+                val buttonText = if (isLoaded) "Update Employee" else "Create Employee"
+                Button(
+                    onClick = {
+                        viewModel.saveEmployee(
+                            onSuccess = {
+                                Toast.makeText(
+                                    context,
+                                    "Employee saved successfully!",
+                                    Toast.LENGTH_SHORT
+                                ).show()
+                            },
+                            onFail = { errorMessage ->
+                                Toast.makeText(context, errorMessage, Toast.LENGTH_SHORT).show()
+                            }
+                        )
+                    },
+                    enabled = isValid,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(56.dp),
+                    shape = MaterialTheme.shapes.medium,
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.primary
+                    )
+                ) {
+                    Text(text = buttonText, fontSize = 16.sp, fontWeight = FontWeight.Medium)
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+            }
         }
     }
+}
+
+@Composable
+private fun SectionHeader(text: String) {
+    Text(
+        text = text,
+        style = MaterialTheme.typography.titleMedium,
+        fontWeight = FontWeight.Bold,
+        color = MaterialTheme.colorScheme.primary
+    )
 }

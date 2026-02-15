@@ -163,7 +163,23 @@ fun SmartTrackerNavHost(navController: NavHostController) {
                 )
             }
             composable(Screen.AddInvestor.route) { AddInvestorScreen(onSaveSuccess = { navController.popBackStack() }) }
-            composable(Screen.AddEmployee.route) { AddEmployeeScreen(onEmployeeCreated = { navController.popBackStack() }) }
+            composable(
+                route = Screen.AddEmployee.route,
+                arguments = listOf(
+                    navArgument("employeeId") {
+                        type = NavType.IntType
+                        defaultValue = 0
+                    }
+                )
+            ) { backStackEntry ->
+                val employeeId = backStackEntry.arguments?.getInt("employeeId")
+                AddEmployeeScreen(
+                    employeeId = if (employeeId == 0) null else employeeId,
+                    onEmployeeCreated = {
+                        navController.popBackStack()
+                    }
+                )
+            }
             composable(Screen.ShopList.route) {
                 ShopsListScreen(
                     onEditClick = { shopId ->
@@ -183,10 +199,13 @@ fun SmartTrackerNavHost(navController: NavHostController) {
             }
             composable(Screen.Employees.route) {
                 EmployeesScreen(
-                    onItemClick = {},
+                    onEditClick = { employeeId ->
+                        navController.navigate(Screen.AddEmployee.createRoute(employeeId))
+                    },
                     onAddClick = {
-                        navController.navigate(Screen.AddEmployee.route)
-                    })
+                        navController.navigate(Screen.AddEmployee.createRoute())
+                    }
+                )
             }
         }
     }

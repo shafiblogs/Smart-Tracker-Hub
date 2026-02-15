@@ -23,7 +23,13 @@ sealed class Screen(val route: String) {
         }
     }
     data object Investors : Screen("Investors")
-    data object Employees : Screen("Employees")
     data object AddInvestor : Screen("AddInvestor")
-    data object AddEmployee : Screen("AddEmployee")
+    object Employees : Screen("employees")
+    object AddEmployee : Screen("add_employee/{employeeId}") {
+        fun createRoute(employeeId: Int? = null) = if (employeeId != null) {
+            "add_employee/$employeeId"
+        } else {
+            "add_employee/0"
+        }
+    }
 }

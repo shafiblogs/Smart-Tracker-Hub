@@ -16,11 +16,23 @@ import kotlinx.coroutines.flow.Flow
  */
 @Dao
 interface EmployeeInfoDao {
-    @Query("SELECT * FROM employee_info ORDER BY employeeName ASC")
+    @Query("SELECT * FROM employee_info WHERE isActive = 1")
+    fun getActiveEmployees(): Flow<List<EmployeeInfo>>
+
+    @Query("SELECT * FROM employee_info WHERE isActive = 0")
+    fun getTerminatedEmployees(): Flow<List<EmployeeInfo>>
+
+    @Query("SELECT * FROM employee_info")
     fun getAllEmployees(): Flow<List<EmployeeInfo>>
 
-    @Query("SELECT * FROM employee_info WHERE associatedShopId = :shopId ORDER BY employeeName ASC")
-    fun getEmployeesByShop(shopId: Int): Flow<List<EmployeeInfo>>
+    @Query("SELECT * FROM employee_info WHERE id = :id")
+    suspend fun getEmployeeById(id: Int): EmployeeInfo?
+
+    @Query("UPDATE employee_info SET isActive = 0, terminationDate = :terminationDate WHERE id = :id")
+    suspend fun terminateEmployee(id: Int, terminationDate: Long)
+
+    @Query("UPDATE employee_info SET isActive = 1, terminationDate = NULL WHERE id = :id")
+    suspend fun reactivateEmployee(id: Int)
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertEmployee(employee: EmployeeInfo)

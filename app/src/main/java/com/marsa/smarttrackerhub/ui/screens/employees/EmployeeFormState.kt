@@ -1,6 +1,5 @@
 package com.marsa.smarttrackerhub.ui.screens.employees
 
-
 /**
  * Created by Muhammed Shafi on 13/08/2025.
  * Moro Hub
@@ -8,9 +7,10 @@ package com.marsa.smarttrackerhub.ui.screens.employees
  */
 data class EmployeeFormState(
     val employeeName: String = "",
-    val employeeEmail: String = "",
     val employeePhone: String = "",
-    val employeeRole: String = "",
-    val salary: String = "", // Use String for user input, convert on save
-    val associatedShopId: Int? = null
+    val employeeRole: EmployeeRole? = null, // Changed to enum
+    val salary: String = "", // Use String for user input
+    val allowance: String = "", // New field
+    val associatedShopId: Int? = null,
+    val visaExpiryDate: Long? = null // New field
 )
