@@ -18,7 +18,8 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
-import java.util.*
+import java.util.Calendar
+import java.util.Locale
 
 class HomeScreenViewModel(
     application: Application
@@ -31,10 +32,15 @@ class HomeScreenViewModel(
     val expanded: StateFlow<Boolean> = _expanded
 
     // Period selection
-    private val _availableRanges = MutableStateFlow<List<MonthRange>>(MonthRange.getAvailableRanges())
+    private val _availableRanges =
+        MutableStateFlow<List<MonthRange>>(MonthRange.getAvailableRanges())
     val availableRanges: StateFlow<List<MonthRange>> = _availableRanges.asStateFlow()
 
-    private val _selectedRange = MutableStateFlow<MonthRange>(MonthRange.Last3Months)
+    private val _selectedRange = MutableStateFlow<MonthRange>(
+        MonthRange.CurrentMonth(
+            SimpleDateFormat("MMMM yyyy", Locale.getDefault()).format(Calendar.getInstance().time)
+        )
+    )
     val selectedRange: StateFlow<MonthRange> = _selectedRange.asStateFlow()
 
     private val _periodExpanded = MutableStateFlow(false)
@@ -97,7 +103,11 @@ class HomeScreenViewModel(
 
             // Determine how many months to take and whether to skip current month
             val (chartMonthCount, statsMonthCount, skipCurrentMonth) = when (selectedRange) {
-                is MonthRange.CurrentMonth -> Triple(1, 1, false)     // Show current, include in stats
+                is MonthRange.CurrentMonth -> Triple(
+                    1,
+                    1,
+                    false
+                )     // Show current, include in stats
                 is MonthRange.PreviousMonth -> Triple(1, 1, true)     // Show previous, skip current
                 is MonthRange.Last3Months -> Triple(3, 3, true)       // Show 3, skip current
                 is MonthRange.Last6Months -> Triple(6, 6, true)       // Show 6, skip current
@@ -143,16 +153,17 @@ class HomeScreenViewModel(
 
         return when (range) {
             is MonthRange.CurrentMonth -> {
-                // Show today's date for current month
                 dateFormat.format(Calendar.getInstance().time)
             }
+
             is MonthRange.PreviousMonth -> {
-                // Show the actual month name instead of "Last Month"
                 monthFormat.format(data[0].monthTimestamp)
             }
+
             is MonthRange.Last3Months -> {
                 "Last 3 Months"
             }
+
             is MonthRange.Last6Months -> {
                 "Last 6 Months"
             }
