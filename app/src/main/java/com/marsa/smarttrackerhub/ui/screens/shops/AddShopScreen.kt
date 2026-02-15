@@ -3,18 +3,23 @@ package com.marsa.smarttrackerhub.ui.screens.shops
 import android.app.DatePickerDialog
 import android.widget.Toast
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -27,14 +32,17 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.marsa.smarttrackerhub.ui.components.DropdownField
 import com.marsa.smarttrackerhub.ui.components.LabeledInputField
-import com.marsa.smarttrackerhub.ui.screens.enums.ShopStatus
 import com.marsa.smarttrackerhub.ui.screens.enums.ShopType
+import com.marsa.smarttrackerhub.utils.HijriDateUtils
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Date
@@ -51,6 +59,7 @@ fun AddShopScreen(
     val isValid by viewModel.isFormValid.collectAsState()
     val isSaved by viewModel.isSaved.collectAsState()
     val error by viewModel.error.collectAsState()
+    val zakathAmount by viewModel.zakathAmount.collectAsState()
     val context = LocalContext.current
     val isLoaded by viewModel.isLoaded.collectAsState()
 
@@ -66,7 +75,7 @@ fun AddShopScreen(
         }
     }
 
-    val dateFormat = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault())
+    val gregorianDateFormat = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault())
 
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background
@@ -84,6 +93,11 @@ fun AddShopScreen(
                     .fillMaxWidth()
                     .padding(vertical = 16.dp)
             ) {
+
+                // ============ SHOP INFORMATION SECTION ============
+                SectionHeader(text = "Shop Information")
+
+                Spacer(modifier = Modifier.height(16.dp))
 
                 LabeledInputField(
                     label = "Shop Name",
@@ -115,6 +129,81 @@ fun AddShopScreen(
 
                 Spacer(modifier = Modifier.height(16.dp))
 
+                DropdownField(
+                    label = "Shop Type",
+                    selectedValue = state.shopType?.name ?: "Select Type",
+                    options = listOf(
+                        ShopType.Grocery.name,
+                        ShopType.Cafeteria.name,
+                        ShopType.Hyper.name,
+                        ShopType.Super.name
+                    ),
+                    onOptionSelected = { selected ->
+                        viewModel.updateShopType(ShopType.valueOf(selected))
+                    },
+                    modifier = Modifier.fillMaxWidth()
+                )
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                // Shop Opening Date with Hijri Calendar
+                Column(modifier = Modifier.fillMaxWidth()) {
+                    Text(
+                        text = "Shop Opening Date",
+                        style = MaterialTheme.typography.bodyMedium,
+                        modifier = Modifier.padding(bottom = 4.dp)
+                    )
+                    OutlinedTextField(
+                        value = state.shopOpeningDate?.let {
+                            gregorianDateFormat.format(Date(it))
+                        } ?: "",
+                        onValueChange = {},
+                        readOnly = true,
+                        enabled = false,
+                        modifier = Modifier.fillMaxWidth(),
+                        trailingIcon = {
+                            IconButton(
+                                onClick = {
+                                    val calendar = Calendar.getInstance()
+                                    state.shopOpeningDate?.let {
+                                        calendar.timeInMillis = it
+                                    }
+
+                                    DatePickerDialog(
+                                        context,
+                                        { _, year, month, dayOfMonth ->
+                                            val selectedCalendar = Calendar.getInstance()
+                                            selectedCalendar.set(year, month, dayOfMonth, 0, 0, 0)
+                                            selectedCalendar.set(Calendar.MILLISECOND, 0)
+                                            viewModel.updateShopOpeningDate(selectedCalendar.timeInMillis)
+                                        },
+                                        calendar.get(Calendar.YEAR),
+                                        calendar.get(Calendar.MONTH),
+                                        calendar.get(Calendar.DAY_OF_MONTH)
+                                    ).show()
+                                }
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.DateRange,
+                                    contentDescription = "Select Date"
+                                )
+                            }
+                        },
+                        placeholder = { Text("Select opening date") },
+                        supportingText = {
+                            state.shopOpeningDate?.let {
+                                Text(
+                                    text = "Hijri: ${HijriDateUtils.getHijriDateDayMonth(it)}",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.primary
+                                )
+                            }
+                        }
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+
                 // License Expiry Date Picker
                 Column(modifier = Modifier.fillMaxWidth()) {
                     Text(
@@ -124,7 +213,7 @@ fun AddShopScreen(
                     )
                     OutlinedTextField(
                         value = state.licenseExpiryDate?.let {
-                            dateFormat.format(Date(it))
+                            gregorianDateFormat.format(Date(it))
                         } ?: "",
                         onValueChange = {},
                         readOnly = true,
@@ -162,40 +251,133 @@ fun AddShopScreen(
                     )
                 }
 
+                Spacer(modifier = Modifier.height(24.dp))
+                HorizontalDivider(color = Color.LightGray)
+                Spacer(modifier = Modifier.height(24.dp))
+
+                // ============ ZAKATH INFORMATION SECTION ============
+                SectionHeader(text = "Zakath Information")
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                // Stock Value Input
+                Column(modifier = Modifier.fillMaxWidth()) {
+                    Text(
+                        text = "Current Stock Value",
+                        style = MaterialTheme.typography.bodyMedium,
+                        modifier = Modifier.padding(bottom = 4.dp)
+                    )
+                    OutlinedTextField(
+                        value = state.stockValue,
+                        onValueChange = viewModel::updateStockValue,
+                        modifier = Modifier.fillMaxWidth(),
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                        placeholder = { Text("Enter stock value") },
+                        prefix = { Text("AED ") }
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                // Stock Taken Date
+                Column(modifier = Modifier.fillMaxWidth()) {
+                    Text(
+                        text = "Stock Taken Date",
+                        style = MaterialTheme.typography.bodyMedium,
+                        modifier = Modifier.padding(bottom = 4.dp)
+                    )
+                    OutlinedTextField(
+                        value = state.stockTakenDate?.let {
+                            gregorianDateFormat.format(Date(it))
+                        } ?: "",
+                        onValueChange = {},
+                        readOnly = true,
+                        enabled = false,
+                        modifier = Modifier.fillMaxWidth(),
+                        trailingIcon = {
+                            IconButton(
+                                onClick = {
+                                    val calendar = Calendar.getInstance()
+                                    state.stockTakenDate?.let {
+                                        calendar.timeInMillis = it
+                                    }
+
+                                    DatePickerDialog(
+                                        context,
+                                        { _, year, month, dayOfMonth ->
+                                            val selectedCalendar = Calendar.getInstance()
+                                            selectedCalendar.set(year, month, dayOfMonth, 0, 0, 0)
+                                            selectedCalendar.set(Calendar.MILLISECOND, 0)
+                                            viewModel.updateStockTakenDate(selectedCalendar.timeInMillis)
+                                        },
+                                        calendar.get(Calendar.YEAR),
+                                        calendar.get(Calendar.MONTH),
+                                        calendar.get(Calendar.DAY_OF_MONTH)
+                                    ).show()
+                                }
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.DateRange,
+                                    contentDescription = "Select Date"
+                                )
+                            }
+                        },
+                        placeholder = { Text("Select date") }
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                // Zakath Amount Display (Auto-calculated)
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.primaryContainer
+                    ),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = "Zakath Amount (2.5%)",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onPrimaryContainer
+                            )
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Text(
+                                text = "AED ${String.format("%.2f", zakathAmount)}",
+                                style = MaterialTheme.typography.titleLarge,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                        }
+                    }
+                }
+
                 Spacer(modifier = Modifier.height(16.dp))
 
                 DropdownField(
-                    label = "Shop Status",
-                    selectedValue = state.shopStatus?.name ?: "Select Status",
+                    label = "Zakath Status",
+                    selectedValue = state.zakathStatus?.name ?: "Select Status",
                     options = listOf(
-                        ShopStatus.Running.name,
-                        ShopStatus.Initial.name,
-                        ShopStatus.Closed.name
+                        ZakathStatus.Paid.name,
+                        ZakathStatus.Pending.name,
+                        ZakathStatus.NotApplicable.name
                     ),
                     onOptionSelected = { selected ->
-                        viewModel.updateShopStatus(ShopStatus.valueOf(selected))
+                        viewModel.updateZakathStatus(ZakathStatus.valueOf(selected))
                     },
                     modifier = Modifier.fillMaxWidth()
                 )
 
-                Spacer(modifier = Modifier.height(16.dp))
-
-                DropdownField(
-                    label = "Shop Type",
-                    selectedValue = state.shopType?.name ?: "Select Type",
-                    options = listOf(
-                        ShopType.Grocery.name,
-                        ShopType.Cafeteria.name,
-                        ShopType.Hyper.name,
-                        ShopType.Super.name
-                    ),
-                    onOptionSelected = { selected ->
-                        viewModel.updateShopType(ShopType.valueOf(selected))
-                    },
-                    modifier = Modifier.fillMaxWidth()
-                )
-
+                // Error Display
                 if (!error.isNullOrEmpty()) {
+                    Spacer(modifier = Modifier.height(16.dp))
                     Text(
                         text = error ?: "",
                         color = MaterialTheme.colorScheme.error,
@@ -204,8 +386,9 @@ fun AddShopScreen(
                     )
                 }
 
-                Spacer(modifier = Modifier.height(40.dp))
+                Spacer(modifier = Modifier.height(32.dp))
 
+                // Submit Button
                 val buttonText = if (isLoaded) "Update Shop" else "Create Shop"
                 Button(
                     onClick = {
@@ -226,15 +409,27 @@ fun AddShopScreen(
                     enabled = isValid,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(50.dp),
+                        .height(56.dp),
                     shape = MaterialTheme.shapes.medium,
                     colors = ButtonDefaults.buttonColors(
                         containerColor = MaterialTheme.colorScheme.primary
                     )
                 ) {
-                    Text(text = buttonText, fontSize = 18.sp)
+                    Text(text = buttonText, fontSize = 16.sp, fontWeight = FontWeight.Medium)
                 }
+
+                Spacer(modifier = Modifier.height(16.dp))
             }
         }
     }
+}
+
+@Composable
+private fun SectionHeader(text: String) {
+    Text(
+        text = text,
+        style = MaterialTheme.typography.titleMedium,
+        fontWeight = FontWeight.Bold,
+        color = MaterialTheme.colorScheme.primary
+    )
 }

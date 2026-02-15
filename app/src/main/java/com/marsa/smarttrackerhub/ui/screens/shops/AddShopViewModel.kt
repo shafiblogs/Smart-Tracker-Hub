@@ -7,7 +7,6 @@ import androidx.lifecycle.viewModelScope
 import com.marsa.smarttrackerhub.data.AppDatabase
 import com.marsa.smarttrackerhub.data.entity.ShopInfo
 import com.marsa.smarttrackerhub.data.repository.ShopRepository
-import com.marsa.smarttrackerhub.ui.screens.enums.ShopStatus
 import com.marsa.smarttrackerhub.ui.screens.enums.ShopType
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -40,9 +39,20 @@ class AddShopViewModel(
             it.shopName.isNotBlank() &&
                     it.shopId.isNotBlank() &&
                     it.shopAddress.isNotBlank() &&
-                    it.licenseExpiryDate != null
+                    it.licenseExpiryDate != null &&
+                    it.shopOpeningDate != null &&
+                    it.stockValue.isNotBlank() &&
+                    it.stockTakenDate != null
         }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(), false)
+
+    // Calculated Zakath amount (5% of stock)
+    val zakathAmount: StateFlow<Double> = formState
+        .map {
+            val stock = it.stockValue.toDoubleOrNull() ?: 0.0
+            stock * 0.025
+        }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(), 0.0)
 
     fun loadShop(context: Context, shopId: Int) = viewModelScope.launch {
         try {
@@ -56,9 +66,12 @@ class AddShopViewModel(
                     shopName = it.shopName,
                     shopAddress = it.shopAddress,
                     shopId = it.shopId,
-                    shopStatus = ShopStatus.valueOf(it.shopStatus),
+                    zakathStatus = ZakathStatus.valueOf(it.zakathStatus),
                     shopType = ShopType.valueOf(it.shopType),
-                    licenseExpiryDate = it.licenseExpiryDate
+                    licenseExpiryDate = it.licenseExpiryDate,
+                    shopOpeningDate = it.shopOpeningDate,
+                    stockValue = it.stockValue.toString(),
+                    stockTakenDate = it.stockTakenDate
                 )
                 _isLoaded.value = true
             }
@@ -87,13 +100,31 @@ class AddShopViewModel(
         _error.value = null
     }
 
-    fun updateShopStatus(status: ShopStatus) {
-        _formState.update { it.copy(shopStatus = status) }
+    fun updateZakathStatus(status: ZakathStatus) {
+        _formState.update { it.copy(zakathStatus = status) }
         _error.value = null
     }
 
     fun updateLicenseExpiryDate(dateInMillis: Long) {
         _formState.update { it.copy(licenseExpiryDate = dateInMillis) }
+        _error.value = null
+    }
+
+    fun updateShopOpeningDate(dateInMillis: Long) {
+        _formState.update { it.copy(shopOpeningDate = dateInMillis) }
+        _error.value = null
+    }
+
+    fun updateStockValue(value: String) {
+        // Only allow numbers and decimal point
+        if (value.isEmpty() || value.matches(Regex("^\\d*\\.?\\d*$"))) {
+            _formState.update { it.copy(stockValue = value) }
+            _error.value = null
+        }
+    }
+
+    fun updateStockTakenDate(dateInMillis: Long) {
+        _formState.update { it.copy(stockTakenDate = dateInMillis) }
         _error.value = null
     }
 
@@ -114,8 +145,11 @@ class AddShopViewModel(
                 shopAddress = state.shopAddress,
                 shopId = state.shopId,
                 shopType = state.shopType?.name ?: "",
-                shopStatus = state.shopStatus?.name ?: "",
-                licenseExpiryDate = state.licenseExpiryDate ?: 0L
+                zakathStatus = state.zakathStatus?.name ?: "",
+                licenseExpiryDate = state.licenseExpiryDate ?: 0L,
+                shopOpeningDate = state.shopOpeningDate ?: 0L,
+                stockValue = state.stockValue.toDoubleOrNull() ?: 0.0,
+                stockTakenDate = state.stockTakenDate ?: 0L
             )
 
             if (editingShopId != null) {
