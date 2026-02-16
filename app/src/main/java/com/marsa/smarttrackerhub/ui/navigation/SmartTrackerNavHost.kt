@@ -386,14 +386,15 @@ fun SmartTrackerNavHost(navController: NavHostController) {
                         )
 
                         val drawerItems = if (userAccessCode == AccessCode.ADMIN) listOf(
-                            Screen.AccountSetup.route to "My Account",
                             Screen.Statement.route to "Statement",
                             Screen.ShopList.route to "Shops",
                             Screen.Employees.route to "Employees",
-                            Screen.Investors.route to "Investors"
+                            Screen.Investors.route to "Investors",
+                            Screen.AccountSetup.route to "My Account"
                         ) else listOf(
-                            Screen.AccountSetup.route to "My Account",
-                            Screen.Statement.route to "Statement"
+
+                            Screen.Statement.route to "Statement",
+                            Screen.AccountSetup.route to "My Account"
                         )
 
                         drawerItems.forEach { (route, label) ->
