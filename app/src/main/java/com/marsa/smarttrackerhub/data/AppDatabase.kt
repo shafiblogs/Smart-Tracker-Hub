@@ -8,14 +8,12 @@ import androidx.room.TypeConverters
 import androidx.sqlite.db.SupportSQLiteDatabase
 import com.marsa.smarttrackerhub.data.dao.AccountSummaryDao
 import com.marsa.smarttrackerhub.data.dao.EmployeeInfoDao
-import com.marsa.smarttrackerhub.data.dao.EntryDao
 import com.marsa.smarttrackerhub.data.dao.InvestorDao
 import com.marsa.smarttrackerhub.data.dao.ShopDao
 import com.marsa.smarttrackerhub.data.dao.SummaryDao
 import com.marsa.smarttrackerhub.data.dao.UserAccountDao
 import com.marsa.smarttrackerhub.data.entity.AccountSummaryEntity
 import com.marsa.smarttrackerhub.data.entity.EmployeeInfo
-import com.marsa.smarttrackerhub.data.entity.EntryEntity
 import com.marsa.smarttrackerhub.data.entity.InvestorInfo
 import com.marsa.smarttrackerhub.data.entity.ShopInfo
 import com.marsa.smarttrackerhub.data.entity.SummaryEntity
@@ -30,13 +28,12 @@ import com.marsa.smarttrackerhub.data.helper.Converters
  */
 
 @Database(
-    entities = [EntryEntity::class, SummaryEntity::class, UserAccount::class, AccountSummaryEntity::class,
+    entities = [SummaryEntity::class, UserAccount::class, AccountSummaryEntity::class,
         ShopInfo::class, InvestorInfo::class, EmployeeInfo::class],
     version = 1
 )
 @TypeConverters(Converters::class)
 abstract class AppDatabase : RoomDatabase() {
-    abstract fun entryDao(): EntryDao
     abstract fun summaryDao(): SummaryDao
     abstract fun userAccountDao(): UserAccountDao
     abstract fun shopDao(): ShopDao
