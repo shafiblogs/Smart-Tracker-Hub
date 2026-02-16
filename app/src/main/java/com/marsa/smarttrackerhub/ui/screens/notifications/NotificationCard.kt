@@ -13,11 +13,13 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.AccountCircle
+import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -47,20 +49,21 @@ fun NotificationCard(
 
     val (icon, iconColor, backgroundColor) = when (notification.priority) {
         NotificationPriority.HIGH -> {
-            // Expired - Red theme
+            // Expired/Due - Red theme
             val notificationIcon = when (notification.type) {
-                NotificationType.SHOP_LICENSE_EXPIRED -> Icons.Default.AccountCircle
-                NotificationType.EMPLOYEE_VISA_EXPIRED -> Icons.Default.Info
+                NotificationType.SHOP_LICENSE_EXPIRED -> Icons.Default.Info
+                NotificationType.EMPLOYEE_VISA_EXPIRED -> Icons.Default.Person
+                NotificationType.ZAKATH_DUE -> Icons.Default.CheckCircle
                 else -> Icons.Default.Warning
             }
             Triple(notificationIcon, Color(0xFFD32F2F), MaterialTheme.colorScheme.surface)
         }
-
         NotificationPriority.MEDIUM -> {
-            // Near expiry - Orange theme
+            // Near expiry/Approaching - Orange theme
             val notificationIcon = when (notification.type) {
-                NotificationType.SHOP_LICENSE_NEAR_EXPIRY -> Icons.Default.AccountCircle
-                NotificationType.EMPLOYEE_VISA_NEAR_EXPIRY -> Icons.Default.Info
+                NotificationType.SHOP_LICENSE_NEAR_EXPIRY -> Icons.Default.Info
+                NotificationType.EMPLOYEE_VISA_NEAR_EXPIRY -> Icons.Default.Person
+                NotificationType.ZAKATH_APPROACHING -> Icons.Default.CheckCircle
                 else -> Icons.Default.Warning
             }
             Triple(notificationIcon, Color(0xFFFF9800), MaterialTheme.colorScheme.surface)
@@ -169,14 +172,42 @@ fun NotificationCard(
 
                     Spacer(modifier = Modifier.width(6.dp))
 
+                    val dateLabel = when (notification.type) {
+                        NotificationType.ZAKATH_DUE,
+                        NotificationType.ZAKATH_APPROACHING -> "Due Date"
+                        else -> "Expires"
+                    }
+
                     Text(
-                        text = "Expires: ${dateFormat.format(Date(notification.expiryDate))}",
+                        text = "$dateLabel: ${dateFormat.format(Date(notification.expiryDate))}",
                         style = MaterialTheme.typography.bodySmall.copy(
                             fontSize = 12.sp,
                             fontWeight = FontWeight.Medium
                         ),
                         color = iconColor
                     )
+                }
+
+                // Show additional info if available (for Zakath)
+                notification.additionalInfo?.let { info ->
+                    Spacer(modifier = Modifier.height(8.dp))
+                    HorizontalDivider(color = Color.LightGray.copy(alpha = 0.3f))
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    Surface(
+                        shape = RoundedCornerShape(6.dp),
+                        color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f)
+                    ) {
+                        Text(
+                            text = info,
+                            style = MaterialTheme.typography.bodySmall.copy(
+                                fontSize = 13.sp,
+                                fontWeight = FontWeight.SemiBold
+                            ),
+                            color = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
+                        )
+                    }
                 }
             }
         }

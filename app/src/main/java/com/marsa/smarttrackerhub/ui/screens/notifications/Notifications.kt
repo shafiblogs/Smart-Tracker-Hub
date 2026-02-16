@@ -10,7 +10,9 @@ enum class NotificationType {
     SHOP_LICENSE_EXPIRED,
     SHOP_LICENSE_NEAR_EXPIRY,
     EMPLOYEE_VISA_EXPIRED,
-    EMPLOYEE_VISA_NEAR_EXPIRY
+    EMPLOYEE_VISA_NEAR_EXPIRY,
+    ZAKATH_DUE,
+    ZAKATH_APPROACHING
 }
 
 data class NotificationItem(
@@ -19,14 +21,15 @@ data class NotificationItem(
     val title: String,
     val message: String,
     val expiryDate: Long,
-    val entityId: Int, // Shop ID or Employee ID
+    val entityId: Int,
     val entityName: String,
-    val priority: NotificationPriority
+    val priority: NotificationPriority,
+    val additionalInfo: String? = null
 )
 
 enum class NotificationPriority {
-    HIGH,    // Expired
-    MEDIUM   // Near expiry
+    HIGH,
+    MEDIUM
 }
 
 data class NotificationsUiState(

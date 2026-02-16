@@ -98,7 +98,7 @@ fun NotificationsScreen(
                     Spacer(modifier = Modifier.height(8.dp))
 
                     Text(
-                        text = "All licenses and visas are up to date",
+                        text = "All licenses, visas, and Zakath are up to date",
                         style = MaterialTheme.typography.bodyMedium,
                         color = Color.Gray,
                         textAlign = TextAlign.Center
@@ -165,7 +165,9 @@ fun NotificationsScreen(
                             onClick = {
                                 when (notification.type) {
                                     NotificationType.SHOP_LICENSE_EXPIRED,
-                                    NotificationType.SHOP_LICENSE_NEAR_EXPIRY -> {
+                                    NotificationType.SHOP_LICENSE_NEAR_EXPIRY,
+                                    NotificationType.ZAKATH_DUE,
+                                    NotificationType.ZAKATH_APPROACHING -> {
                                         onShopClick(notification.entityId)
                                     }
 
