@@ -10,7 +10,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Share
@@ -26,14 +25,11 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.marsa.smarttrackerhub.data.entity.ShopInfo
 import com.marsa.smarttrackerhub.utils.HijriDateUtils
-import com.marsa.smarttrackerhub.utils.ShareUtil
 import com.marsa.smarttrackerhub.utils.getExpiryStatus
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -45,18 +41,21 @@ import java.util.Locale
  * muhammed.poyil@morohub.com
  */
 @Composable
-fun ShopCard(shop: ShopInfo, onEditClick: () -> Unit) {
+fun ShopCard(
+    shop: ShopInfo,
+    onEditClick: () -> Unit,
+    onShareClick: () -> Unit
+) {
     val dateFormat = SimpleDateFormat("dd MMM yyyy", Locale.ENGLISH)
     val expiryStatus = shop.licenseExpiryDate.getExpiryStatus()
     val zakathAmount = shop.stockValue * 0.025 // 2.5% for Zakath
-    val context = LocalContext.current
-    val view = LocalView.current
 
     Card(
-        modifier = Modifier
-            .fillMaxWidth(),
-        shape = RoundedCornerShape(12.dp),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+        modifier = Modifier.fillMaxWidth(),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surface
+        )
     ) {
         Column(
             modifier = Modifier
@@ -91,14 +90,7 @@ fun ShopCard(shop: ShopInfo, onEditClick: () -> Unit) {
                 // Edit and Share buttons
                 Row {
                     IconButton(
-                        onClick = {
-                            ShareUtil.shareViewAsImage(
-                                view = view,
-                                context = context,
-                                fileName = "shop_info_${shop.shopName.replace(" ", "_")}.png",
-                                shareTitle = "Share Shop Information"
-                            )
-                        },
+                        onClick = onShareClick,
                         modifier = Modifier.size(40.dp)
                     ) {
                         Icon(

@@ -34,7 +34,9 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.marsa.smarttrackerhub.utils.ShareUtil
 
 /**
  * Created by Muhammed Shafi on 11/08/2025.
@@ -54,6 +56,9 @@ fun EmployeesScreen(
     val context = LocalContext.current
     var showTerminateDialog by remember { mutableStateOf<Int?>(null) }
     var showReactivateDialog by remember { mutableStateOf<Int?>(null) }
+
+    // Store view references for each employee card
+    val cardViewRefs = remember { mutableMapOf<Int, android.view.View>() }
 
     LaunchedEffect(Unit) {
         viewModel.initDatabase(context)
@@ -115,12 +120,72 @@ fun EmployeesScreen(
                                 shops.find { it.id == employee.associatedShopId }?.shopName
                                     ?: "Unknown Shop"
 
-                            EmployeeCard(
-                                employee = employee,
-                                shopName = shopName,
-                                onEditClick = { onEditClick(employee.id) },
-                                onTerminateClick = { showTerminateDialog = employee.id },
-                                onReactivateClick = { showReactivateDialog = employee.id }
+                            // Wrap in AndroidView to get view reference
+                            AndroidView(
+                                factory = { context ->
+                                    androidx.compose.ui.platform.ComposeView(context).apply {
+                                        setContent {
+                                            EmployeeCard(
+                                                employee = employee,
+                                                shopName = shopName,
+                                                onEditClick = { onEditClick(employee.id) },
+                                                onTerminateClick = {
+                                                    showTerminateDialog = employee.id
+                                                },
+                                                onReactivateClick = {
+                                                    showReactivateDialog = employee.id
+                                                },
+                                                onShareClick = {
+                                                    cardViewRefs[employee.id]?.let { view ->
+                                                        ShareUtil.shareViewAsImage(
+                                                            view = view,
+                                                            context = context,
+                                                            fileName = "employee_info_${
+                                                                employee.employeeName.replace(
+                                                                    " ",
+                                                                    "_"
+                                                                )
+                                                            }.png",
+                                                            shareTitle = "Share Employee Information"
+                                                        )
+                                                    }
+                                                }
+                                            )
+                                        }
+                                    }
+                                },
+                                update = { view ->
+                                    // Store view reference
+                                    cardViewRefs[employee.id] = view
+
+                                    view.setContent {
+                                        EmployeeCard(
+                                            employee = employee,
+                                            shopName = shopName,
+                                            onEditClick = { onEditClick(employee.id) },
+                                            onTerminateClick = {
+                                                showTerminateDialog = employee.id
+                                            },
+                                            onReactivateClick = {
+                                                showReactivateDialog = employee.id
+                                            },
+                                            onShareClick = {
+                                                ShareUtil.shareViewAsImage(
+                                                    view = view,
+                                                    context = context,
+                                                    fileName = "employee_info_${
+                                                        employee.employeeName.replace(
+                                                            " ",
+                                                            "_"
+                                                        )
+                                                    }.png",
+                                                    shareTitle = "Share Employee Information"
+                                                )
+                                            }
+                                        )
+                                    }
+                                },
+                                modifier = Modifier.fillMaxWidth()
                             )
                         }
                     }
