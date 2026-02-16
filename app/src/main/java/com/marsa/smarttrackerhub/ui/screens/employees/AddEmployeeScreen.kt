@@ -13,9 +13,11 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.DateRange
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -27,6 +29,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -64,6 +69,9 @@ fun AddEmployeeScreen(
     val isLoaded by viewModel.isLoaded.collectAsState()
     val context = LocalContext.current
 
+    // Edit mode state - disabled by default when loading existing employee
+    var isEditEnabled by remember { mutableStateOf(employeeId == null) }
+
     LaunchedEffect(Unit) {
         viewModel.initDatabase(context)
     }
@@ -71,6 +79,7 @@ fun AddEmployeeScreen(
     LaunchedEffect(employeeId) {
         employeeId?.let {
             viewModel.loadEmployee(it)
+            isEditEnabled = false // Disable edit mode when loading
         }
     }
 
@@ -84,7 +93,21 @@ fun AddEmployeeScreen(
     val dateFormat = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault())
 
     Scaffold(
-        containerColor = MaterialTheme.colorScheme.background
+        containerColor = MaterialTheme.colorScheme.background,
+        floatingActionButton = {
+            // Show edit button only when in view mode (existing employee)
+            if (isLoaded && !isEditEnabled) {
+                FloatingActionButton(
+                    onClick = { isEditEnabled = true },
+                    containerColor = MaterialTheme.colorScheme.primary
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Edit,
+                        contentDescription = "Enable Edit"
+                    )
+                }
+            }
+        }
     ) { paddingValues ->
         Column(
             modifier = Modifier
@@ -110,7 +133,8 @@ fun AddEmployeeScreen(
                     value = state.employeeName,
                     maxLength = 30,
                     onValueChange = viewModel::updateEmployeeName,
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier.fillMaxWidth(),
+                    enabled = isEditEnabled
                 )
 
                 Spacer(modifier = Modifier.height(16.dp))
@@ -120,7 +144,8 @@ fun AddEmployeeScreen(
                     value = state.employeePhone,
                     maxLength = 15,
                     onValueChange = viewModel::updateEmployeePhone,
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier.fillMaxWidth(),
+                    enabled = isEditEnabled
                 )
 
                 Spacer(modifier = Modifier.height(16.dp))
@@ -133,7 +158,8 @@ fun AddEmployeeScreen(
                         val role = EmployeeRole.values().find { it.displayName() == selected }
                         role?.let { viewModel.updateEmployeeRole(it) }
                     },
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier.fillMaxWidth(),
+                    enabled = isEditEnabled
                 )
 
                 Spacer(modifier = Modifier.height(16.dp))
@@ -148,7 +174,8 @@ fun AddEmployeeScreen(
                         val shop = shops.find { it.shopName == selected }
                         shop?.let { viewModel.updateAssociatedShopId(it.id) }
                     },
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier.fillMaxWidth(),
+                    enabled = isEditEnabled
                 )
 
                 Spacer(modifier = Modifier.height(16.dp))
@@ -166,34 +193,43 @@ fun AddEmployeeScreen(
                         } ?: "",
                         onValueChange = {},
                         readOnly = true,
-                        enabled = false,
+                        enabled = isEditEnabled,
                         modifier = Modifier.fillMaxWidth(),
                         trailingIcon = {
-                            IconButton(
-                                onClick = {
-                                    val calendar = Calendar.getInstance()
-                                    state.visaExpiryDate?.let {
-                                        calendar.timeInMillis = it
-                                    }
+                            if (isEditEnabled) {
+                                IconButton(
+                                    onClick = {
+                                        val calendar = Calendar.getInstance()
+                                        state.visaExpiryDate?.let {
+                                            calendar.timeInMillis = it
+                                        }
 
-                                    DatePickerDialog(
-                                        context,
-                                        { _, year, month, dayOfMonth ->
-                                            val selectedCalendar = Calendar.getInstance()
-                                            selectedCalendar.set(year, month, dayOfMonth, 0, 0, 0)
-                                            selectedCalendar.set(Calendar.MILLISECOND, 0)
-                                            viewModel.updateVisaExpiryDate(selectedCalendar.timeInMillis)
-                                        },
-                                        calendar.get(Calendar.YEAR),
-                                        calendar.get(Calendar.MONTH),
-                                        calendar.get(Calendar.DAY_OF_MONTH)
-                                    ).show()
+                                        DatePickerDialog(
+                                            context,
+                                            { _, year, month, dayOfMonth ->
+                                                val selectedCalendar = Calendar.getInstance()
+                                                selectedCalendar.set(
+                                                    year,
+                                                    month,
+                                                    dayOfMonth,
+                                                    0,
+                                                    0,
+                                                    0
+                                                )
+                                                selectedCalendar.set(Calendar.MILLISECOND, 0)
+                                                viewModel.updateVisaExpiryDate(selectedCalendar.timeInMillis)
+                                            },
+                                            calendar.get(Calendar.YEAR),
+                                            calendar.get(Calendar.MONTH),
+                                            calendar.get(Calendar.DAY_OF_MONTH)
+                                        ).show()
+                                    }
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.DateRange,
+                                        contentDescription = "Select Date"
+                                    )
                                 }
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.DateRange,
-                                    contentDescription = "Select Date"
-                                )
                             }
                         },
                         placeholder = { Text("Select visa expiry date") }
@@ -221,7 +257,8 @@ fun AddEmployeeScreen(
                         modifier = Modifier.fillMaxWidth(),
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                         placeholder = { Text("Enter salary") },
-                        prefix = { Text("AED ") }
+                        prefix = { Text("AED ") },
+                        enabled = isEditEnabled
                     )
                 }
 
@@ -239,7 +276,8 @@ fun AddEmployeeScreen(
                         modifier = Modifier.fillMaxWidth(),
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                         placeholder = { Text("Enter allowance") },
-                        prefix = { Text("AED ") }
+                        prefix = { Text("AED ") },
+                        enabled = isEditEnabled
                     )
                 }
 
@@ -256,33 +294,35 @@ fun AddEmployeeScreen(
 
                 Spacer(modifier = Modifier.height(32.dp))
 
-                // Submit Button
-                val buttonText = if (isLoaded) "Update Employee" else "Create Employee"
-                Button(
-                    onClick = {
-                        viewModel.saveEmployee(
-                            onSuccess = {
-                                Toast.makeText(
-                                    context,
-                                    "Employee saved successfully!",
-                                    Toast.LENGTH_SHORT
-                                ).show()
-                            },
-                            onFail = { errorMessage ->
-                                Toast.makeText(context, errorMessage, Toast.LENGTH_SHORT).show()
-                            }
+                // Submit Button - only show when edit is enabled
+                if (isEditEnabled) {
+                    val buttonText = if (isLoaded) "Save Changes" else "Create Employee"
+                    Button(
+                        onClick = {
+                            viewModel.saveEmployee(
+                                onSuccess = {
+                                    Toast.makeText(
+                                        context,
+                                        "Employee saved successfully!",
+                                        Toast.LENGTH_SHORT
+                                    ).show()
+                                },
+                                onFail = { errorMessage ->
+                                    Toast.makeText(context, errorMessage, Toast.LENGTH_SHORT).show()
+                                }
+                            )
+                        },
+                        enabled = isValid,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(56.dp),
+                        shape = MaterialTheme.shapes.medium,
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.primary
                         )
-                    },
-                    enabled = isValid,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(56.dp),
-                    shape = MaterialTheme.shapes.medium,
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = MaterialTheme.colorScheme.primary
-                    )
-                ) {
-                    Text(text = buttonText, fontSize = 16.sp, fontWeight = FontWeight.Medium)
+                    ) {
+                        Text(text = buttonText, fontSize = 16.sp, fontWeight = FontWeight.Medium)
+                    }
                 }
 
                 Spacer(modifier = Modifier.height(16.dp))

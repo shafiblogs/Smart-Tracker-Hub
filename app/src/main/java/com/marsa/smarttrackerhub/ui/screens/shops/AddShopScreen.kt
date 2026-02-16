@@ -14,11 +14,13 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.DateRange
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -30,6 +32,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -63,9 +68,13 @@ fun AddShopScreen(
     val context = LocalContext.current
     val isLoaded by viewModel.isLoaded.collectAsState()
 
+    // Edit mode state - disabled by default when loading existing shop
+    var isEditEnabled by remember { mutableStateOf(shopId == null) }
+
     LaunchedEffect(shopId) {
         shopId?.let {
             viewModel.loadShop(context, it)
+            isEditEnabled = false // Disable edit mode when loading
         }
     }
 
@@ -78,7 +87,21 @@ fun AddShopScreen(
     val gregorianDateFormat = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault())
 
     Scaffold(
-        containerColor = MaterialTheme.colorScheme.background
+        containerColor = MaterialTheme.colorScheme.background,
+        floatingActionButton = {
+            // Show edit button only when in view mode (existing shop)
+            if (isLoaded && !isEditEnabled) {
+                FloatingActionButton(
+                    onClick = { isEditEnabled = true },
+                    containerColor = MaterialTheme.colorScheme.primary
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Edit,
+                        contentDescription = "Enable Edit"
+                    )
+                }
+            }
+        }
     ) { paddingValues ->
         Column(
             modifier = Modifier
@@ -104,7 +127,8 @@ fun AddShopScreen(
                     value = state.shopName,
                     maxLength = 20,
                     onValueChange = viewModel::updateShopName,
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier.fillMaxWidth(),
+                    enabled = isEditEnabled
                 )
 
                 Spacer(modifier = Modifier.height(16.dp))
@@ -114,7 +138,8 @@ fun AddShopScreen(
                     value = state.shopAddress,
                     maxLength = 30,
                     onValueChange = viewModel::updateShopAddress,
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier.fillMaxWidth(),
+                    enabled = isEditEnabled
                 )
 
                 Spacer(modifier = Modifier.height(16.dp))
@@ -124,7 +149,8 @@ fun AddShopScreen(
                     value = state.shopId,
                     maxLength = 20,
                     onValueChange = viewModel::updateShopId,
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier.fillMaxWidth(),
+                    enabled = isEditEnabled
                 )
 
                 Spacer(modifier = Modifier.height(16.dp))
@@ -141,7 +167,8 @@ fun AddShopScreen(
                     onOptionSelected = { selected ->
                         viewModel.updateShopType(ShopType.valueOf(selected))
                     },
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier.fillMaxWidth(),
+                    enabled = isEditEnabled
                 )
 
                 Spacer(modifier = Modifier.height(16.dp))
@@ -159,34 +186,43 @@ fun AddShopScreen(
                         } ?: "",
                         onValueChange = {},
                         readOnly = true,
-                        enabled = false,
+                        enabled = isEditEnabled,
                         modifier = Modifier.fillMaxWidth(),
                         trailingIcon = {
-                            IconButton(
-                                onClick = {
-                                    val calendar = Calendar.getInstance()
-                                    state.shopOpeningDate?.let {
-                                        calendar.timeInMillis = it
-                                    }
+                            if (isEditEnabled) {
+                                IconButton(
+                                    onClick = {
+                                        val calendar = Calendar.getInstance()
+                                        state.shopOpeningDate?.let {
+                                            calendar.timeInMillis = it
+                                        }
 
-                                    DatePickerDialog(
-                                        context,
-                                        { _, year, month, dayOfMonth ->
-                                            val selectedCalendar = Calendar.getInstance()
-                                            selectedCalendar.set(year, month, dayOfMonth, 0, 0, 0)
-                                            selectedCalendar.set(Calendar.MILLISECOND, 0)
-                                            viewModel.updateShopOpeningDate(selectedCalendar.timeInMillis)
-                                        },
-                                        calendar.get(Calendar.YEAR),
-                                        calendar.get(Calendar.MONTH),
-                                        calendar.get(Calendar.DAY_OF_MONTH)
-                                    ).show()
+                                        DatePickerDialog(
+                                            context,
+                                            { _, year, month, dayOfMonth ->
+                                                val selectedCalendar = Calendar.getInstance()
+                                                selectedCalendar.set(
+                                                    year,
+                                                    month,
+                                                    dayOfMonth,
+                                                    0,
+                                                    0,
+                                                    0
+                                                )
+                                                selectedCalendar.set(Calendar.MILLISECOND, 0)
+                                                viewModel.updateShopOpeningDate(selectedCalendar.timeInMillis)
+                                            },
+                                            calendar.get(Calendar.YEAR),
+                                            calendar.get(Calendar.MONTH),
+                                            calendar.get(Calendar.DAY_OF_MONTH)
+                                        ).show()
+                                    }
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.DateRange,
+                                        contentDescription = "Select Date"
+                                    )
                                 }
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.DateRange,
-                                    contentDescription = "Select Date"
-                                )
                             }
                         },
                         placeholder = { Text("Select opening date") },
@@ -217,34 +253,43 @@ fun AddShopScreen(
                         } ?: "",
                         onValueChange = {},
                         readOnly = true,
-                        enabled = false,
+                        enabled = isEditEnabled,
                         modifier = Modifier.fillMaxWidth(),
                         trailingIcon = {
-                            IconButton(
-                                onClick = {
-                                    val calendar = Calendar.getInstance()
-                                    state.licenseExpiryDate?.let {
-                                        calendar.timeInMillis = it
-                                    }
+                            if (isEditEnabled) {
+                                IconButton(
+                                    onClick = {
+                                        val calendar = Calendar.getInstance()
+                                        state.licenseExpiryDate?.let {
+                                            calendar.timeInMillis = it
+                                        }
 
-                                    DatePickerDialog(
-                                        context,
-                                        { _, year, month, dayOfMonth ->
-                                            val selectedCalendar = Calendar.getInstance()
-                                            selectedCalendar.set(year, month, dayOfMonth, 0, 0, 0)
-                                            selectedCalendar.set(Calendar.MILLISECOND, 0)
-                                            viewModel.updateLicenseExpiryDate(selectedCalendar.timeInMillis)
-                                        },
-                                        calendar.get(Calendar.YEAR),
-                                        calendar.get(Calendar.MONTH),
-                                        calendar.get(Calendar.DAY_OF_MONTH)
-                                    ).show()
+                                        DatePickerDialog(
+                                            context,
+                                            { _, year, month, dayOfMonth ->
+                                                val selectedCalendar = Calendar.getInstance()
+                                                selectedCalendar.set(
+                                                    year,
+                                                    month,
+                                                    dayOfMonth,
+                                                    0,
+                                                    0,
+                                                    0
+                                                )
+                                                selectedCalendar.set(Calendar.MILLISECOND, 0)
+                                                viewModel.updateLicenseExpiryDate(selectedCalendar.timeInMillis)
+                                            },
+                                            calendar.get(Calendar.YEAR),
+                                            calendar.get(Calendar.MONTH),
+                                            calendar.get(Calendar.DAY_OF_MONTH)
+                                        ).show()
+                                    }
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.DateRange,
+                                        contentDescription = "Select Date"
+                                    )
                                 }
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.DateRange,
-                                    contentDescription = "Select Date"
-                                )
                             }
                         },
                         placeholder = { Text("Select expiry date") }
@@ -273,7 +318,8 @@ fun AddShopScreen(
                         modifier = Modifier.fillMaxWidth(),
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                         placeholder = { Text("Enter stock value") },
-                        prefix = { Text("AED ") }
+                        prefix = { Text("AED ") },
+                        enabled = isEditEnabled
                     )
                 }
 
@@ -292,34 +338,43 @@ fun AddShopScreen(
                         } ?: "",
                         onValueChange = {},
                         readOnly = true,
-                        enabled = false,
+                        enabled = isEditEnabled,
                         modifier = Modifier.fillMaxWidth(),
                         trailingIcon = {
-                            IconButton(
-                                onClick = {
-                                    val calendar = Calendar.getInstance()
-                                    state.stockTakenDate?.let {
-                                        calendar.timeInMillis = it
-                                    }
+                            if (isEditEnabled) {
+                                IconButton(
+                                    onClick = {
+                                        val calendar = Calendar.getInstance()
+                                        state.stockTakenDate?.let {
+                                            calendar.timeInMillis = it
+                                        }
 
-                                    DatePickerDialog(
-                                        context,
-                                        { _, year, month, dayOfMonth ->
-                                            val selectedCalendar = Calendar.getInstance()
-                                            selectedCalendar.set(year, month, dayOfMonth, 0, 0, 0)
-                                            selectedCalendar.set(Calendar.MILLISECOND, 0)
-                                            viewModel.updateStockTakenDate(selectedCalendar.timeInMillis)
-                                        },
-                                        calendar.get(Calendar.YEAR),
-                                        calendar.get(Calendar.MONTH),
-                                        calendar.get(Calendar.DAY_OF_MONTH)
-                                    ).show()
+                                        DatePickerDialog(
+                                            context,
+                                            { _, year, month, dayOfMonth ->
+                                                val selectedCalendar = Calendar.getInstance()
+                                                selectedCalendar.set(
+                                                    year,
+                                                    month,
+                                                    dayOfMonth,
+                                                    0,
+                                                    0,
+                                                    0
+                                                )
+                                                selectedCalendar.set(Calendar.MILLISECOND, 0)
+                                                viewModel.updateStockTakenDate(selectedCalendar.timeInMillis)
+                                            },
+                                            calendar.get(Calendar.YEAR),
+                                            calendar.get(Calendar.MONTH),
+                                            calendar.get(Calendar.DAY_OF_MONTH)
+                                        ).show()
+                                    }
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.DateRange,
+                                        contentDescription = "Select Date"
+                                    )
                                 }
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.DateRange,
-                                    contentDescription = "Select Date"
-                                )
                             }
                         },
                         placeholder = { Text("Select date") }
@@ -372,7 +427,8 @@ fun AddShopScreen(
                     onOptionSelected = { selected ->
                         viewModel.updateZakathStatus(ZakathStatus.valueOf(selected))
                     },
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier.fillMaxWidth(),
+                    enabled = isEditEnabled
                 )
 
                 // Error Display
@@ -388,34 +444,37 @@ fun AddShopScreen(
 
                 Spacer(modifier = Modifier.height(32.dp))
 
-                // Submit Button
-                val buttonText = if (isLoaded) "Update Shop" else "Create Shop"
-                Button(
-                    onClick = {
-                        viewModel.saveShop(
-                            context = context,
-                            onSuccess = {
-                                Toast.makeText(
-                                    context,
-                                    "Shop saved successfully!",
-                                    Toast.LENGTH_SHORT
-                                ).show()
-                            },
-                            onFail = { errorMessage ->
-                                Toast.makeText(context, errorMessage, Toast.LENGTH_SHORT).show()
-                            }
+                // Submit Button - only show when edit is enabled
+                if (isEditEnabled) {
+                    val buttonText = if (isLoaded) "Save Changes" else "Create Shop"
+                    Button(
+                        onClick = {
+                            viewModel.saveShop(
+                                context = context,
+                                onSuccess = {
+                                    Toast.makeText(
+                                        context,
+                                        "Shop saved successfully!",
+                                        Toast.LENGTH_SHORT
+                                    ).show()
+                                },
+                                onFail = { errorMessage ->
+                                    Toast.makeText(context, errorMessage, Toast.LENGTH_SHORT)
+                                        .show()
+                                }
+                            )
+                        },
+                        enabled = isValid,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(56.dp),
+                        shape = MaterialTheme.shapes.medium,
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.primary
                         )
-                    },
-                    enabled = isValid,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(56.dp),
-                    shape = MaterialTheme.shapes.medium,
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = MaterialTheme.colorScheme.primary
-                    )
-                ) {
-                    Text(text = buttonText, fontSize = 16.sp, fontWeight = FontWeight.Medium)
+                    ) {
+                        Text(text = buttonText, fontSize = 16.sp, fontWeight = FontWeight.Medium)
+                    }
                 }
 
                 Spacer(modifier = Modifier.height(16.dp))

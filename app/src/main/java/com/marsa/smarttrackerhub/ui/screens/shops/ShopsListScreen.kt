@@ -81,18 +81,13 @@ fun ShopsListScreen(
                                     setContent {
                                         ShopCard(
                                             shop = shop,
-                                            onEditClick = { onEditClick(shop.id) },
+                                            onCardClick = { onEditClick(shop.id) },  // Changed parameter
                                             onShareClick = {
                                                 cardViewRefs[shop.id]?.let { view ->
                                                     ShareUtil.shareViewAsImage(
                                                         view = view,
                                                         context = context,
-                                                        fileName = "shop_info_${
-                                                            shop.shopName.replace(
-                                                                " ",
-                                                                "_"
-                                                            )
-                                                        }.png",
+                                                        fileName = "shop_info_${shop.shopName.replace(" ", "_")}.png",
                                                         shareTitle = "Share Shop Information"
                                                     )
                                                 }
@@ -102,23 +97,16 @@ fun ShopsListScreen(
                                 }
                             },
                             update = { view ->
-                                // Store view reference
                                 cardViewRefs[shop.id] = view
-
                                 view.setContent {
                                     ShopCard(
                                         shop = shop,
-                                        onEditClick = { onEditClick(shop.id) },
+                                        onCardClick = { onEditClick(shop.id) },
                                         onShareClick = {
                                             ShareUtil.shareViewAsImage(
                                                 view = view,
                                                 context = context,
-                                                fileName = "shop_info_${
-                                                    shop.shopName.replace(
-                                                        " ",
-                                                        "_"
-                                                    )
-                                                }.png",
+                                                fileName = "shop_info_${shop.shopName.replace(" ", "_")}.png",
                                                 shareTitle = "Share Shop Information"
                                             )
                                         }
