@@ -166,8 +166,9 @@ fun NotificationsScreen(
                                 when (notification.type) {
                                     NotificationType.SHOP_LICENSE_EXPIRED,
                                     NotificationType.SHOP_LICENSE_NEAR_EXPIRY,
-                                    NotificationType.ZAKATH_DUE,
-                                    NotificationType.ZAKATH_APPROACHING -> {
+                                    NotificationType.ZAKATH_STOCK_DUE,
+                                    NotificationType.ZAKATH_STOCK_APPROACHING,
+                                    NotificationType.ZAKATH_PAYMENT_PENDING -> {
                                         onShopClick(notification.entityId)
                                     }
 

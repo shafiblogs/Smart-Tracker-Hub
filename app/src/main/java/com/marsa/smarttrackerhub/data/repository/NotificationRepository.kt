@@ -27,7 +27,6 @@ class NotificationRepository(
         ) { shops, employees ->
             val notifications = mutableListOf<NotificationItem>()
             val currentTime = System.currentTimeMillis()
-            val twoMonthsInMillis = TimeUnit.DAYS.toMillis(60)
 
             // Check shop licenses
             shops.forEach { shop ->
@@ -66,41 +65,58 @@ class NotificationRepository(
                     }
                 }
 
-                // Check Zakath due date
-                val zakathDueDate = calculateNextZakathDueDate(shop.stockTakenDate)
-                val daysUntilZakathDue = TimeUnit.MILLISECONDS.toDays(zakathDueDate - currentTime)
-                val zakathAmount = shop.stockValue * 0.025
+                // Check Zakath Payment Status - if pending, show notification
+                if (shop.zakathStatus == "Pending") {
+                    val zakathAmount = shop.stockValue * 0.025
+                    notifications.add(
+                        NotificationItem(
+                            id = "zakath_pending_${shop.id}",
+                            type = NotificationType.ZAKATH_PAYMENT_PENDING,
+                            title = "Zakath Payment Pending",
+                            message = "${shop.shopName} - Zakath payment is pending",
+                            expiryDate = shop.stockTakenDate, // Use stock taken date as reference
+                            entityId = shop.id,
+                            entityName = shop.shopName,
+                            priority = NotificationPriority.HIGH,
+                            additionalInfo = "Pending Amount: AED ${String.format("%.2f", zakathAmount)}"
+                        )
+                    )
+                }
+
+                // Check Zakath stock taking due date
+                val nextStockDueDate = calculateNextZakathStockDate(shop.stockTakenDate)
+                val daysUntilStockDue = TimeUnit.MILLISECONDS.toDays(nextStockDueDate - currentTime)
 
                 when {
-                    daysUntilZakathDue <= 0 -> {
-                        // Zakath is due
+                    daysUntilStockDue <= 0 -> {
+                        // Stock taking is due
                         notifications.add(
                             NotificationItem(
-                                id = "zakath_due_${shop.id}",
-                                type = NotificationType.ZAKATH_DUE,
-                                title = "Zakath Payment Due",
-                                message = "${shop.shopName} - Time to update stock and calculate Zakath",
-                                expiryDate = zakathDueDate,
+                                id = "zakath_stock_due_${shop.id}",
+                                type = NotificationType.ZAKATH_STOCK_DUE,
+                                title = "Stock Taking Due for Zakath",
+                                message = "${shop.shopName} - Time to update stock for Zakath calculation",
+                                expiryDate = nextStockDueDate,
                                 entityId = shop.id,
                                 entityName = shop.shopName,
                                 priority = NotificationPriority.HIGH,
-                                additionalInfo = "Zakath Amount: AED ${String.format("%.2f", zakathAmount)}"
+                                additionalInfo = "Update stock value and calculate Zakath"
                             )
                         )
                     }
-                    daysUntilZakathDue <= 30 -> {
-                        // Zakath approaching (within 1 month)
+                    daysUntilStockDue <= 30 -> {
+                        // Stock taking approaching (within 1 month)
                         notifications.add(
                             NotificationItem(
-                                id = "zakath_approaching_${shop.id}",
-                                type = NotificationType.ZAKATH_APPROACHING,
-                                title = "Zakath Due Soon",
-                                message = "${shop.shopName} - Zakath due in $daysUntilZakathDue days",
-                                expiryDate = zakathDueDate,
+                                id = "zakath_stock_approaching_${shop.id}",
+                                type = NotificationType.ZAKATH_STOCK_APPROACHING,
+                                title = "Stock Taking Approaching",
+                                message = "${shop.shopName} - Stock taking due in $daysUntilStockDue days",
+                                expiryDate = nextStockDueDate,
                                 entityId = shop.id,
                                 entityName = shop.shopName,
                                 priority = NotificationPriority.MEDIUM,
-                                additionalInfo = "Current Zakath: AED ${String.format("%.2f", zakathAmount)}"
+                                additionalInfo = "Prepare for annual Zakath stock count"
                             )
                         )
                     }
@@ -154,15 +170,15 @@ class NotificationRepository(
     }
 
     /**
-     * Calculate the next Zakath due date (one lunar year from stock taken date)
+     * Calculate the next Zakath stock taking date (one lunar year from last stock taken date)
      * Zakath is calculated based on Islamic lunar year (354-355 days)
-     * For simplicity, using 354 days as standard lunar year
+     * Using 354 days as standard lunar year
      */
-    private fun calculateNextZakathDueDate(stockTakenDate: Long): Long {
+    private fun calculateNextZakathStockDate(lastStockTakenDate: Long): Long {
         val calendar = Calendar.getInstance()
-        calendar.timeInMillis = stockTakenDate
+        calendar.timeInMillis = lastStockTakenDate
 
-        // Add one lunar year (354 days) to the stock taken date
+        // Add one lunar year (354 days) to the last stock taken date
         calendar.add(Calendar.DAY_OF_YEAR, 354)
 
         return calendar.timeInMillis

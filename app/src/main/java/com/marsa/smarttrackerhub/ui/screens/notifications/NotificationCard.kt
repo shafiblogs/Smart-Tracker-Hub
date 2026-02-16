@@ -15,7 +15,9 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Person
+
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -49,11 +51,12 @@ fun NotificationCard(
 
     val (icon, iconColor, backgroundColor) = when (notification.priority) {
         NotificationPriority.HIGH -> {
-            // Expired/Due - Red theme
+            // Expired/Due/Pending - Red theme
             val notificationIcon = when (notification.type) {
                 NotificationType.SHOP_LICENSE_EXPIRED -> Icons.Default.Info
                 NotificationType.EMPLOYEE_VISA_EXPIRED -> Icons.Default.Person
-                NotificationType.ZAKATH_DUE -> Icons.Default.CheckCircle
+                NotificationType.ZAKATH_STOCK_DUE -> Icons.Default.CheckCircle
+                NotificationType.ZAKATH_PAYMENT_PENDING -> Icons.Default.Info
                 else -> Icons.Default.Warning
             }
             Triple(notificationIcon, Color(0xFFD32F2F), MaterialTheme.colorScheme.surface)
@@ -63,7 +66,7 @@ fun NotificationCard(
             val notificationIcon = when (notification.type) {
                 NotificationType.SHOP_LICENSE_NEAR_EXPIRY -> Icons.Default.Info
                 NotificationType.EMPLOYEE_VISA_NEAR_EXPIRY -> Icons.Default.Person
-                NotificationType.ZAKATH_APPROACHING -> Icons.Default.CheckCircle
+                NotificationType.ZAKATH_STOCK_APPROACHING -> Icons.Default.CheckCircle
                 else -> Icons.Default.Warning
             }
             Triple(notificationIcon, Color(0xFFFF9800), MaterialTheme.colorScheme.surface)
@@ -173,8 +176,9 @@ fun NotificationCard(
                     Spacer(modifier = Modifier.width(6.dp))
 
                     val dateLabel = when (notification.type) {
-                        NotificationType.ZAKATH_DUE,
-                        NotificationType.ZAKATH_APPROACHING -> "Due Date"
+                        NotificationType.ZAKATH_STOCK_DUE,
+                        NotificationType.ZAKATH_STOCK_APPROACHING -> "Stock Due"
+                        NotificationType.ZAKATH_PAYMENT_PENDING -> "Stock Taken"
                         else -> "Expires"
                     }
 
@@ -188,7 +192,7 @@ fun NotificationCard(
                     )
                 }
 
-                // Show additional info if available (for Zakath)
+                // Show additional info if available
                 notification.additionalInfo?.let { info ->
                     Spacer(modifier = Modifier.height(8.dp))
                     HorizontalDivider(color = Color.LightGray.copy(alpha = 0.3f))

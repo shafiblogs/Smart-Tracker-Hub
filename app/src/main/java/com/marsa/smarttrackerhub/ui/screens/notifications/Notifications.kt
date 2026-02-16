@@ -11,8 +11,9 @@ enum class NotificationType {
     SHOP_LICENSE_NEAR_EXPIRY,
     EMPLOYEE_VISA_EXPIRED,
     EMPLOYEE_VISA_NEAR_EXPIRY,
-    ZAKATH_DUE,
-    ZAKATH_APPROACHING
+    ZAKATH_STOCK_DUE,              // New: Time to take stock for Zakath calculation
+    ZAKATH_STOCK_APPROACHING,      // New: Stock taking date approaching
+    ZAKATH_PAYMENT_PENDING         // New: Zakath calculated but not paid
 }
 
 data class NotificationItem(
@@ -21,15 +22,15 @@ data class NotificationItem(
     val title: String,
     val message: String,
     val expiryDate: Long,
-    val entityId: Int,
+    val entityId: Int, // Shop ID or Employee ID
     val entityName: String,
     val priority: NotificationPriority,
-    val additionalInfo: String? = null
+    val additionalInfo: String? = null // For showing stock value, zakath amount etc.
 )
 
 enum class NotificationPriority {
-    HIGH,
-    MEDIUM
+    HIGH,    // Expired / Due / Pending Payment
+    MEDIUM   // Near expiry / Approaching
 }
 
 data class NotificationsUiState(
