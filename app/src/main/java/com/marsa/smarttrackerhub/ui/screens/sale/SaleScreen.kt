@@ -123,7 +123,7 @@ fun SaleScreen(userAccessCode: AccessCode) {
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
-                        text = "Select a shop to view monthly summaries",
+                        text = "Select a shop to view sales",
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )

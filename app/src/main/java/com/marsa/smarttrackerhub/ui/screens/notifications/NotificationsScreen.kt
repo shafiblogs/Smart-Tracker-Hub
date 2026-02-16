@@ -80,7 +80,7 @@ fun NotificationsScreen(
                     Icon(
                         imageVector = Icons.Default.Notifications,
                         contentDescription = "No Notifications",
-                        modifier = Modifier.size(80.dp),
+                        modifier = Modifier.size(40.dp),
                         tint = Color.Gray.copy(alpha = 0.5f)
                     )
 
