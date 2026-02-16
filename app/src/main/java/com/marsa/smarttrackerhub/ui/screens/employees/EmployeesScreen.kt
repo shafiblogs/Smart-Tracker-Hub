@@ -128,7 +128,7 @@ fun EmployeesScreen(
                                             EmployeeCard(
                                                 employee = employee,
                                                 shopName = shopName,
-                                                onEditClick = { onEditClick(employee.id) },
+                                                onCardClick = { onEditClick(employee.id) },
                                                 onTerminateClick = {
                                                     showTerminateDialog = employee.id
                                                 },
@@ -162,7 +162,7 @@ fun EmployeesScreen(
                                         EmployeeCard(
                                             employee = employee,
                                             shopName = shopName,
-                                            onEditClick = { onEditClick(employee.id) },
+                                            onCardClick = { onEditClick(employee.id) },
                                             onTerminateClick = {
                                                 showTerminateDialog = employee.id
                                             },
