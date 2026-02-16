@@ -10,12 +10,14 @@ import com.marsa.smarttrackerhub.data.dao.AccountSummaryDao
 import com.marsa.smarttrackerhub.data.dao.EmployeeInfoDao
 import com.marsa.smarttrackerhub.data.dao.InvestorDao
 import com.marsa.smarttrackerhub.data.dao.ShopDao
+import com.marsa.smarttrackerhub.data.dao.ShopInvestorDao
 import com.marsa.smarttrackerhub.data.dao.SummaryDao
 import com.marsa.smarttrackerhub.data.dao.UserAccountDao
 import com.marsa.smarttrackerhub.data.entity.AccountSummaryEntity
 import com.marsa.smarttrackerhub.data.entity.EmployeeInfo
 import com.marsa.smarttrackerhub.data.entity.InvestorInfo
 import com.marsa.smarttrackerhub.data.entity.ShopInfo
+import com.marsa.smarttrackerhub.data.entity.ShopInvestor
 import com.marsa.smarttrackerhub.data.entity.SummaryEntity
 import com.marsa.smarttrackerhub.data.entity.UserAccount
 import com.marsa.smarttrackerhub.data.helper.Converters
@@ -29,7 +31,7 @@ import com.marsa.smarttrackerhub.data.helper.Converters
 
 @Database(
     entities = [SummaryEntity::class, UserAccount::class, AccountSummaryEntity::class,
-        ShopInfo::class, InvestorInfo::class, EmployeeInfo::class],
+        ShopInfo::class, InvestorInfo::class, EmployeeInfo::class, ShopInvestor::class],
     version = 1
 )
 @TypeConverters(Converters::class)
@@ -40,6 +42,8 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun investorDao(): InvestorDao
     abstract fun employeeDao(): EmployeeInfoDao
     abstract fun accountSummaryDao(): AccountSummaryDao
+
+    abstract fun shopInvestorDao(): ShopInvestorDao
 
     companion object {
         @Volatile
