@@ -10,9 +10,9 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.DateRange
-import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Menu
+import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material3.DrawerValue
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -56,10 +56,11 @@ import com.marsa.smarttrackerhub.ui.screens.account.AccountSetupScreen
 import com.marsa.smarttrackerhub.ui.screens.employees.AddEmployeeScreen
 import com.marsa.smarttrackerhub.ui.screens.employees.EmployeesScreen
 import com.marsa.smarttrackerhub.ui.screens.home.HomeScreen
-import com.marsa.smarttrackerhub.ui.screens.sale.SaleScreen
 import com.marsa.smarttrackerhub.ui.screens.investers.AddInvestorScreen
 import com.marsa.smarttrackerhub.ui.screens.investers.InvestorsScreen
 import com.marsa.smarttrackerhub.ui.screens.login.LoginScreen
+import com.marsa.smarttrackerhub.ui.screens.notifications.NotificationsScreen
+import com.marsa.smarttrackerhub.ui.screens.sale.SaleScreen
 import com.marsa.smarttrackerhub.ui.screens.shops.AddShopScreen
 import com.marsa.smarttrackerhub.ui.screens.shops.ShopsListScreen
 import com.marsa.smarttrackerhub.ui.screens.statement.StatementScreen
@@ -87,7 +88,7 @@ fun SmartTrackerNavHost(navController: NavHostController) {
     }
 
     val bottomNavRoutes = mutableListOf(
-        Screen.Home.route, Screen.Sale.route, Screen.Statement.route, Screen.Summary.route
+        Screen.Home.route, Screen.Sale.route, Screen.Summary.route, Screen.Notifications.route
     )
 
     val showBottomBar = currentRoute in bottomNavRoutes
@@ -190,6 +191,17 @@ fun SmartTrackerNavHost(navController: NavHostController) {
                     }
                 )
             }
+            composable(Screen.Notifications.route) {
+                NotificationsScreen(
+                    userAccessCode = userAccessCode,
+                    onShopClick = { shopId ->
+                        navController.navigate(Screen.AddShop.createRoute(shopId))
+                    },
+                    onEmployeeClick = { employeeId ->
+                        navController.navigate(Screen.AddEmployee.createRoute(employeeId))
+                    }
+                )
+            }
             composable(Screen.Investors.route) {
                 InvestorsScreen(
                     onItemClick = {},
@@ -253,11 +265,12 @@ fun SmartTrackerNavHost(navController: NavHostController) {
                         )
                     }
 
-                    Screen.Statement.route, Screen.ShopList.route, Screen.AddShop.route, Screen.Sale.route,
+                    Screen.Statement.route, Screen.ShopList.route, Screen.AddShop.route, Screen.Sale.route, Screen.Notifications.route,
                     Screen.Investors.route, Screen.AddInvestor.route, Screen.Employees.route, Screen.AddEmployee.route,
                     Screen.AccountSetup.route, Screen.Summary.route -> {
                         val titleText = when (currentRoute) {
                             Screen.AccountSetup.route -> "My Account"
+                            Screen.Notifications.route -> "Notifications"
                             Screen.AddShop.route -> "Add Shop"
                             Screen.AddEmployee.route -> "Add Employee"
                             Screen.Investors.route -> "Investors"
@@ -317,20 +330,10 @@ fun SmartTrackerNavHost(navController: NavHostController) {
                             selected = currentRoute == Screen.Sale.route,
                             onClick = { navigateToRoute(Screen.Sale.route) },
                             icon = {
-                                Icon(Icons.Default.FavoriteBorder, contentDescription = "Sales")
+                                Icon(Icons.Default.DateRange, contentDescription = "Sales")
                             },
                             label = {
                                 SmallTextField("Sales")
-                            })
-
-                        NavigationBarItem(
-                            selected = currentRoute == Screen.Statement.route,
-                            onClick = { navigateToRoute(Screen.Statement.route) },
-                            icon = {
-                                Icon(Icons.Default.DateRange, contentDescription = "Statements")
-                            },
-                            label = {
-                                SmallTextField("Statements")
                             })
 
                         NavigationBarItem(
@@ -341,6 +344,19 @@ fun SmartTrackerNavHost(navController: NavHostController) {
                             },
                             label = {
                                 SmallTextField("Summary")
+                            })
+
+                        NavigationBarItem(
+                            selected = currentRoute == Screen.Notifications.route,
+                            onClick = { navigateToRoute(Screen.Notifications.route) },
+                            icon = {
+                                Icon(
+                                    Icons.Default.Notifications,
+                                    contentDescription = "Notifications"
+                                )
+                            },
+                            label = {
+                                SmallTextField("Notifications")
                             })
                     }
                 }
@@ -371,11 +387,13 @@ fun SmartTrackerNavHost(navController: NavHostController) {
 
                         val drawerItems = if (userAccessCode == AccessCode.ADMIN) listOf(
                             Screen.AccountSetup.route to "My Account",
-                            Screen.Investors.route to "Investors",
+                            Screen.Statement.route to "Statement",
                             Screen.ShopList.route to "Shops",
                             Screen.Employees.route to "Employees",
+                            Screen.Investors.route to "Investors"
                         ) else listOf(
-                            Screen.AccountSetup.route to "My Account"
+                            Screen.AccountSetup.route to "My Account",
+                            Screen.Statement.route to "Statement"
                         )
 
                         drawerItems.forEach { (route, label) ->

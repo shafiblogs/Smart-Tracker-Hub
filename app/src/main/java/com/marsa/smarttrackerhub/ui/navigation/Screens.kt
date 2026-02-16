@@ -14,6 +14,7 @@ sealed class Screen(val route: String) {
     data object Home : Screen("home")
     data object Summary : Screen("Summary")
     data object Statement : Screen("Statement")
+    data object Notifications : Screen("Notifications")
     object ShopList : Screen("shop_list")
     object AddShop : Screen("add_shop/{shopId}") {
         fun createRoute(shopId: Int? = null) = if (shopId != null) {
