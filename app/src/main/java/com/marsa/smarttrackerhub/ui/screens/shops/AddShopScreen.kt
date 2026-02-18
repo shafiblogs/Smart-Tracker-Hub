@@ -48,7 +48,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.marsa.smarttrackerhub.domain.ShopInvestorDetail
+import com.marsa.smarttrackerhub.domain.ShopInvestorSummary
 import com.marsa.smarttrackerhub.ui.components.DropdownField
 import com.marsa.smarttrackerhub.ui.components.LabeledInputField
 import com.marsa.smarttrackerhub.ui.screens.enums.ShopType
@@ -542,7 +542,7 @@ private fun SectionHeader(text: String) {
 }
 
 @Composable
-private fun ShopInvestorRow(investor: ShopInvestorDetail) {
+private fun ShopInvestorRow(investor: ShopInvestorSummary) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
@@ -561,7 +561,7 @@ private fun ShopInvestorRow(investor: ShopInvestorDetail) {
                     fontWeight = FontWeight.SemiBold
                 )
                 Text(
-                    text = "AED ${String.format("%,.2f", investor.investmentAmount)}",
+                    text = "Paid: AED ${String.format("%,.2f", investor.totalPaid)}",
                     style = MaterialTheme.typography.bodySmall,
                     color = Color.Gray
                 )

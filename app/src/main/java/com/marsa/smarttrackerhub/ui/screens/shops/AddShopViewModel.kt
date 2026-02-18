@@ -8,7 +8,7 @@ import com.marsa.smarttrackerhub.data.AppDatabase
 import com.marsa.smarttrackerhub.data.entity.ShopInfo
 import com.marsa.smarttrackerhub.data.repository.ShopInvestorRepository
 import com.marsa.smarttrackerhub.data.repository.ShopRepository
-import com.marsa.smarttrackerhub.domain.ShopInvestorDetail
+import com.marsa.smarttrackerhub.domain.ShopInvestorSummary
 import com.marsa.smarttrackerhub.ui.screens.enums.ShopType
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -34,8 +34,8 @@ class AddShopViewModel(
     private val _error = MutableStateFlow<String?>(null)
     val error: StateFlow<String?> = _error
 
-    private val _shopInvestors = MutableStateFlow<List<ShopInvestorDetail>>(emptyList())
-    val shopInvestors: StateFlow<List<ShopInvestorDetail>> = _shopInvestors.asStateFlow()
+    private val _shopInvestors = MutableStateFlow<List<ShopInvestorSummary>>(emptyList())
+    val shopInvestors: StateFlow<List<ShopInvestorSummary>> = _shopInvestors.asStateFlow()
 
     private var editingShopId: Int? = null
     private var shopInvestorRepo: ShopInvestorRepository? = null
