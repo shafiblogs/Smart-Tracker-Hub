@@ -35,6 +35,29 @@ class YearEndSettlementRepository(private val dao: YearEndSettlementDao) {
     suspend fun updateSettlementEntry(entry: SettlementEntry) =
         dao.updateSettlementEntry(entry)
 
+    /**
+     * Marks an investor's settlement entry as paid.
+     * Converts the [SettlementEntryWithName] projection back to a [SettlementEntry]
+     * entity and writes the paid amount + date.
+     */
+    suspend fun markEntrySettled(
+        entry: SettlementEntryWithName,
+        paidAmount: Double,
+        paidDate: Long
+    ) {
+        val updated = SettlementEntry(
+            id = entry.id,
+            settlementId = entry.settlementId,
+            investorId = entry.investorId,
+            fairShareAmount = entry.fairShareAmount,
+            actualPaidAmount = entry.actualPaidAmount,
+            balanceAmount = entry.balanceAmount,
+            settlementPaidAmount = paidAmount,
+            settlementPaidDate = paidDate
+        )
+        dao.updateSettlementEntry(updated)
+    }
+
     suspend fun deleteSettlement(id: Int) =
         dao.deleteSettlement(id)
 }

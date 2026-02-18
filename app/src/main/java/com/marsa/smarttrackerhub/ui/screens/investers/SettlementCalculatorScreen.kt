@@ -331,11 +331,29 @@ private fun SettlementSummaryCard(rows: List<InvestorSettlementRow>) {
             Spacer(Modifier.height(8.dp))
             debtor.forEach { d ->
                 creditor.forEach { c ->
-                    Text(
-                        text = "• ${d.investorName} owes ${c.investorName}",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSecondaryContainer
+                    // Amount to transfer = min(|debtor balance|, creditor balance)
+                    // For simplicity with 2-3 investors, show each debtor's full balance
+                    val transferAmount = minOf(
+                        kotlin.math.abs(d.balanceAmount),
+                        c.balanceAmount
                     )
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Text(
+                            text = "• ${d.investorName} → ${c.investorName}",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSecondaryContainer,
+                            modifier = Modifier.weight(1f)
+                        )
+                        Text(
+                            text = "AED ${String.format("%,.2f", transferAmount)}",
+                            style = MaterialTheme.typography.bodySmall,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onSecondaryContainer
+                        )
+                    }
                 }
             }
             Spacer(Modifier.height(6.dp))

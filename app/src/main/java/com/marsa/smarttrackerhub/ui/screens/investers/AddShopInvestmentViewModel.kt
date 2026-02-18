@@ -24,10 +24,27 @@ import kotlinx.coroutines.launch
  * Assigns an investor to a shop with a fixed share %.
  * Actual money contributions are recorded separately via AddTransactionScreen.
  *
+ * When the new investor's share would push the total over 100 %, existing
+ * investors' shares are scaled down proportionally so the total stays at 100 %.
+ *
  * Created by Muhammed Shafi on 19/02/2026.
  * Moro Hub
  * muhammed.poyil@morohub.com
  */
+
+/**
+ * Preview item shown when adding the new investor requires redistributing
+ * existing investors' shares.
+ *
+ * @param investorName display name
+ * @param oldShare     share before the new investor is added
+ * @param newShare     recalculated share after proportional dilution
+ */
+data class ShareRedistributionPreview(
+    val investorName: String,
+    val oldShare: Double,
+    val newShare: Double
+)
 
 data class ShopInvestmentFormState(
     val selectedShopId: Int? = null,
@@ -59,9 +76,17 @@ class AddShopInvestmentViewModel(
     private val _error = MutableStateFlow<String?>(null)
     val error: StateFlow<String?> = _error
 
-    /** Remaining % available to assign in the selected shop. */
+    /** Remaining % still available to assign in the selected shop (informational). */
     private val _remainingPercentage = MutableStateFlow(100.0)
     val remainingPercentage: StateFlow<Double> = _remainingPercentage.asStateFlow()
+
+    /**
+     * Non-empty when adding the entered share % would exceed 100 % and existing
+     * investors' shares need to be scaled down proportionally.
+     * The UI uses this to show a preview warning before the user confirms.
+     */
+    private val _redistributionPreview = MutableStateFlow<List<ShareRedistributionPreview>>(emptyList())
+    val redistributionPreview: StateFlow<List<ShareRedistributionPreview>> = _redistributionPreview.asStateFlow()
 
     val isFormValid: StateFlow<Boolean> = _formState
         .map {
@@ -75,6 +100,9 @@ class AddShopInvestmentViewModel(
     private lateinit var shopInvestorRepo: ShopInvestorRepository
     private lateinit var shopRepo: ShopRepository
     private lateinit var investorRepo: InvestorRepository
+
+    /** Cache of investorId → name, loaded once per shop selection to build preview. */
+    private val investorNameCache = mutableMapOf<Int, String>()
 
     /**
      * @param prefilledInvestorId > 0 → coming from InvestorDetailScreen (investor locked)
@@ -113,21 +141,73 @@ class AddShopInvestmentViewModel(
 
     fun selectShop(shopId: Int, shopName: String) {
         _formState.update { it.copy(selectedShopId = shopId, selectedShopName = shopName, shopError = null) }
-        loadRemaining(shopId)
+        loadRemainingAndCache(shopId)
+        recomputePreview()
     }
 
     fun selectInvestor(investorId: Int, investorName: String) {
         _formState.update { it.copy(selectedInvestorId = investorId, selectedInvestorName = investorName, investorError = null) }
     }
 
-    private fun loadRemaining(shopId: Int) = viewModelScope.launch {
-        val allocated = shopInvestorRepo.getTotalPercentageForShop(shopId)
+    private fun loadRemainingAndCache(shopId: Int) = viewModelScope.launch {
+        val existing = shopInvestorRepo.getActiveInvestorsRaw(shopId)
+        val allocated = existing.sumOf { it.sharePercentage }
         _remainingPercentage.value = 100.0 - allocated
+
+        // Build name cache for preview labels
+        investorNameCache.clear()
+        existing.forEach { si ->
+            val name = investorRepo.getInvestorById(si.investorId)?.investorName
+                ?: "Investor #${si.investorId}"
+            investorNameCache[si.investorId] = name
+        }
     }
 
     fun updateSharePercentage(value: String) {
         if (value.isEmpty() || value.matches(Regex("^\\d*\\.?\\d*$"))) {
             _formState.update { it.copy(sharePercentage = value, shareError = null) }
+            recomputePreview()
+        }
+    }
+
+    /**
+     * Recalculates [redistributionPreview] whenever the shop or share % changes.
+     * Non-empty only when the new total would exceed 100 %, requiring proportional
+     * dilution of existing investors' shares.
+     */
+    private fun recomputePreview() {
+        val shopId = _formState.value.selectedShopId ?: run {
+            _redistributionPreview.value = emptyList()
+            return
+        }
+        val newShare = _formState.value.sharePercentage.toDoubleOrNull() ?: run {
+            _redistributionPreview.value = emptyList()
+            return
+        }
+        if (newShare <= 0.0 || newShare >= 100.0) {
+            _redistributionPreview.value = emptyList()
+            return
+        }
+
+        viewModelScope.launch {
+            val existing = shopInvestorRepo.getActiveInvestorsRaw(shopId)
+            val existingTotal = existing.sumOf { it.sharePercentage }
+
+            if (existingTotal + newShare <= 100.0) {
+                _redistributionPreview.value = emptyList()
+                return@launch
+            }
+
+            // Scale factor so that (existingTotal * scale + newShare) == 100
+            val scale = (100.0 - newShare) / existingTotal
+
+            _redistributionPreview.value = existing.map { si ->
+                ShareRedistributionPreview(
+                    investorName = investorNameCache[si.investorId] ?: "Investor #${si.investorId}",
+                    oldShare = si.sharePercentage,
+                    newShare = si.sharePercentage * scale
+                )
+            }
         }
     }
 
@@ -151,10 +231,8 @@ class AddShopInvestmentViewModel(
             _formState.update { it.copy(shareError = "Enter a valid share percentage") }
             return@launch
         }
-        if (share > _remainingPercentage.value) {
-            _formState.update {
-                it.copy(shareError = "Only ${String.format("%.1f", _remainingPercentage.value)}% remaining")
-            }
+        if (share >= 100.0) {
+            _formState.update { it.copy(shareError = "Share must be less than 100%") }
             return@launch
         }
         if (shopInvestorRepo.isInvestorInShop(shopId, investorId)) {
@@ -163,6 +241,19 @@ class AddShopInvestmentViewModel(
         }
 
         try {
+            // If total would exceed 100 %, proportionally scale existing investors first
+            val existing = shopInvestorRepo.getActiveInvestorsRaw(shopId)
+            val existingTotal = existing.sumOf { it.sharePercentage }
+
+            if (existingTotal + share > 100.0) {
+                val scale = (100.0 - share) / existingTotal
+                existing.forEach { si ->
+                    shopInvestorRepo.updateShopInvestor(
+                        si.copy(sharePercentage = si.sharePercentage * scale)
+                    )
+                }
+            }
+
             shopInvestorRepo.insertShopInvestor(
                 ShopInvestor(
                     shopId = shopId,

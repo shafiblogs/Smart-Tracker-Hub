@@ -15,6 +15,7 @@ import kotlinx.coroutines.launch
  * Loads the settlement history for a shop:
  *  - List of YearEndSettlement records (most recent first)
  *  - When the user expands a settlement → loads its per-investor entries
+ *  - "Mark as Paid" dialog for each entry that still has an outstanding balance
  *
  * Created by Muhammed Shafi on 19/02/2026.
  * Moro Hub
@@ -28,6 +29,8 @@ data class SettlementHistoryUiState(
     val expandedEntries: List<SettlementEntryWithName> = emptyList(),
     val isLoading: Boolean = true,
     val isLoadingEntries: Boolean = false,
+    /** Non-null when the "Mark as Paid" dialog is open for this entry. */
+    val dialogEntry: SettlementEntryWithName? = null,
     val error: String? = null
 )
 
@@ -40,11 +43,13 @@ class SettlementHistoryViewModel : ViewModel() {
     private lateinit var db: AppDatabase
 
     private var initialized = false
+    private var currentShopId: Int = 0
 
     fun init(context: Context, shopId: Int) {
         if (initialized) return
         initialized = true
 
+        currentShopId = shopId
         db = AppDatabase.getDatabase(context)
         settlementRepo = YearEndSettlementRepository(db.yearEndSettlementDao())
 
@@ -87,6 +92,49 @@ class SettlementHistoryViewModel : ViewModel() {
                         isLoadingEntries = false
                     )
                 }
+            }
+        }
+    }
+
+    // ── Mark as Paid dialog ────────────────────────────────────────────────
+
+    /** Opens the "Mark as Paid" dialog for [entry]. */
+    fun showMarkPaidDialog(entry: SettlementEntryWithName) {
+        _uiState.value = _uiState.value.copy(dialogEntry = entry)
+    }
+
+    /** Closes the "Mark as Paid" dialog without saving. */
+    fun dismissMarkPaidDialog() {
+        _uiState.value = _uiState.value.copy(dialogEntry = null)
+    }
+
+    /**
+     * Persists the settlement payment and refreshes the expanded entries list.
+     *
+     * @param entry      the entry being settled
+     * @param paidAmount the amount actually transferred
+     * @param paidDate   epoch-millis of the transfer date
+     */
+    fun markEntrySettled(
+        entry: SettlementEntryWithName,
+        paidAmount: Double,
+        paidDate: Long
+    ) {
+        viewModelScope.launch {
+            try {
+                settlementRepo.markEntrySettled(entry, paidAmount, paidDate)
+                _uiState.value = _uiState.value.copy(dialogEntry = null)
+                // Refresh the expanded entries so the UI reflects the change immediately
+                val settlementId = entry.settlementId
+                settlementRepo.getSettlementEntries(settlementId).collect { entries ->
+                    _uiState.value = _uiState.value.copy(expandedEntries = entries)
+                    return@collect
+                }
+            } catch (e: Exception) {
+                _uiState.value = _uiState.value.copy(
+                    error = "Failed to record payment: ${e.localizedMessage}",
+                    dialogEntry = null
+                )
             }
         }
     }
