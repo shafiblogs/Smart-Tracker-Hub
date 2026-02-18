@@ -40,6 +40,10 @@ class ShopInvestorRepository(private val shopInvestorDao: ShopInvestorDao) {
     suspend fun getActiveInvestorsRaw(shopId: Int): List<ShopInvestor> =
         shopInvestorDao.getActiveInvestorsRaw(shopId)
 
+    /** Returns only investors who joined on or before [asOfDate]. */
+    suspend fun getActiveInvestorsAsOf(shopId: Int, asOfDate: Long): List<ShopInvestor> =
+        shopInvestorDao.getActiveInvestorsAsOf(shopId, asOfDate)
+
     suspend fun insertShopInvestor(shopInvestor: ShopInvestor): Long =
         shopInvestorDao.insertShopInvestor(shopInvestor)
 

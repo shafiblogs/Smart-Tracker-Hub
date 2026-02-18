@@ -108,7 +108,10 @@ class SettlementCalculatorViewModel : ViewModel() {
         _uiState.value = _uiState.value.copy(isLoading = true, error = null)
         try {
             val fromDate = _uiState.value.periodStartDate
-            val activeInvestors = shopInvestorRepo.getActiveInvestorsRaw(shopId)
+            val settlementDate = _uiState.value.settlementDate
+            // Only include investors who were active (joined) on or before the settlement date.
+            // This ensures a new investor who joined in Year 3 does not appear in a Year 1–2 settlement.
+            val activeInvestors = shopInvestorRepo.getActiveInvestorsAsOf(shopId, settlementDate)
 
             // Total invested in this period only
             val totalInvested = transactionRepo.getTotalPaidForShopSince(shopId, fromDate)

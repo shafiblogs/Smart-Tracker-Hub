@@ -97,6 +97,14 @@ interface ShopInvestorDao {
     @Query("SELECT * FROM shop_investor WHERE shopId = :shopId AND status = 'Active'")
     suspend fun getActiveInvestorsRaw(shopId: Int): List<ShopInvestor>
 
+    /**
+     * Active investors who joined on or before [asOfDate].
+     * Used in period-based settlement so a new investor added after the period
+     * is NOT included in earlier settlements.
+     */
+    @Query("SELECT * FROM shop_investor WHERE shopId = :shopId AND status = 'Active' AND joinedDate <= :asOfDate")
+    suspend fun getActiveInvestorsAsOf(shopId: Int, asOfDate: Long): List<ShopInvestor>
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertShopInvestor(shopInvestor: ShopInvestor): Long
 
