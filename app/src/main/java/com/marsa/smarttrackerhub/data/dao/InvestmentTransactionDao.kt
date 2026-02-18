@@ -96,6 +96,29 @@ interface InvestmentTransactionDao {
     """)
     suspend fun getTransactionsForShopSince(shopId: Int, fromDate: Long): List<PhaseTransactionDetail>
 
+    /**
+     * Total paid into a shop by ALL investors within a period [fromDate, ∞).
+     * Pass fromDate = 0 to include all transactions (first settlement ever).
+     */
+    @Query("""
+        SELECT COALESCE(SUM(t.amount), 0)
+        FROM investment_transaction t
+        INNER JOIN shop_investor si ON t.shopInvestorId = si.id
+        WHERE si.shopId = :shopId AND t.transactionDate >= :fromDate
+    """)
+    suspend fun getTotalPaidForShopSince(shopId: Int, fromDate: Long): Double
+
+    /**
+     * Total paid by one investor in a shop within a period [fromDate, ∞).
+     */
+    @Query("""
+        SELECT COALESCE(SUM(t.amount), 0)
+        FROM investment_transaction t
+        INNER JOIN shop_investor si ON t.shopInvestorId = si.id
+        WHERE si.shopId = :shopId AND si.investorId = :investorId AND t.transactionDate >= :fromDate
+    """)
+    suspend fun getTotalPaidByInvestorForShopSince(shopId: Int, investorId: Int, fromDate: Long): Double
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertTransaction(transaction: InvestmentTransaction): Long
 

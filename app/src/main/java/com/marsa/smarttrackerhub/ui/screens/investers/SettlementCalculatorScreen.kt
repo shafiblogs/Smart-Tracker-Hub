@@ -1,5 +1,6 @@
 package com.marsa.smarttrackerhub.ui.screens.investers
 
+import android.app.DatePickerDialog
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -12,15 +13,16 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
@@ -37,19 +39,27 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.marsa.smarttrackerhub.domain.InvestorSettlementRow
+import java.text.SimpleDateFormat
+import java.util.Calendar
+import java.util.Date
+import java.util.Locale
 
 /**
- * Year-End Settlement Calculator for a specific shop.
+ * Settlement Calculator for a specific shop.
+ *
+ * Covers only the period since the last settlement (period-based).
+ * The user picks the settlement date via a date picker.
  *
  * Shows:
- *  - Total invested in the shop
+ *  - Period range (from last settlement date → chosen date)
+ *  - Total invested in this period
  *  - Per-investor breakdown: fair share vs actual paid vs balance
- *  - Year field + optional note
+ *  - Optional note
  *  - Confirm button → saves YearEndSettlement + SettlementEntry rows
  *
  * Created by Muhammed Shafi on 19/02/2026.
@@ -65,6 +75,7 @@ fun SettlementCalculatorScreen(
     val uiState by viewModel.uiState.collectAsState()
     val context = LocalContext.current
     val snackbarHostState = remember { SnackbarHostState() }
+    val dateFormat = SimpleDateFormat("dd MMM yyyy", Locale.ENGLISH)
 
     LaunchedEffect(shopId) { viewModel.init(context, shopId) }
     LaunchedEffect(uiState.saveSuccess) { if (uiState.saveSuccess) onSettlementSaved() }
@@ -85,7 +96,7 @@ fun SettlementCalculatorScreen(
                 Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         Text(
-                            "No investment data found.",
+                            "No investment data found for this period.",
                             style = MaterialTheme.typography.bodyLarge,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -108,7 +119,7 @@ fun SettlementCalculatorScreen(
                 ) {
                     item { Spacer(Modifier.height(8.dp)) }
 
-                    // ── Total Capital Card ──
+                    // ── Period + Total Capital Card ──
                     item {
                         Card(
                             modifier = Modifier.fillMaxWidth(),
@@ -128,9 +139,22 @@ fun SettlementCalculatorScreen(
                                     fontWeight = FontWeight.Bold,
                                     color = MaterialTheme.colorScheme.onPrimaryContainer
                                 )
+                                Spacer(Modifier.height(4.dp))
+                                // Period range label
+                                val periodStart = if (uiState.periodStartDate == 0L)
+                                    "Beginning"
+                                else
+                                    dateFormat.format(Date(uiState.periodStartDate))
+                                val periodEnd = dateFormat.format(Date(uiState.settlementDate))
+                                Text(
+                                    text = "Period: $periodStart → $periodEnd",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    fontStyle = FontStyle.Italic,
+                                    color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.75f)
+                                )
                                 Spacer(Modifier.height(8.dp))
                                 Text(
-                                    text = "Total Invested",
+                                    text = "Total Invested This Period",
                                     style = MaterialTheme.typography.labelMedium,
                                     color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f)
                                 )
@@ -144,16 +168,52 @@ fun SettlementCalculatorScreen(
                         }
                     }
 
-                    // ── Settlement Year ──
+                    // ── Settlement Date Picker ──
                     item {
-                        OutlinedTextField(
-                            value = uiState.year.toString(),
-                            onValueChange = { v -> v.toIntOrNull()?.let { viewModel.onYearChange(it) } },
-                            label = { Text("Settlement Year") },
-                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                            modifier = Modifier.fillMaxWidth(),
-                            singleLine = true
-                        )
+                        Column(modifier = Modifier.fillMaxWidth()) {
+                            Text(
+                                text = "Settlement Date",
+                                style = MaterialTheme.typography.bodyMedium,
+                                modifier = Modifier.padding(bottom = 4.dp)
+                            )
+                            OutlinedTextField(
+                                value = dateFormat.format(Date(uiState.settlementDate)),
+                                onValueChange = {},
+                                readOnly = true,
+                                modifier = Modifier.fillMaxWidth(),
+                                trailingIcon = {
+                                    IconButton(onClick = {
+                                        val cal = Calendar.getInstance().apply {
+                                            timeInMillis = uiState.settlementDate
+                                        }
+                                        DatePickerDialog(
+                                            context,
+                                            { _, year, month, day ->
+                                                val picked = Calendar.getInstance()
+                                                picked.set(year, month, day, 23, 59, 59)
+                                                picked.set(Calendar.MILLISECOND, 999)
+                                                viewModel.onSettlementDateChange(picked.timeInMillis)
+                                            },
+                                            cal.get(Calendar.YEAR),
+                                            cal.get(Calendar.MONTH),
+                                            cal.get(Calendar.DAY_OF_MONTH)
+                                        ).show()
+                                    }) {
+                                        Icon(
+                                            imageVector = Icons.Default.DateRange,
+                                            contentDescription = "Pick settlement date"
+                                        )
+                                    }
+                                },
+                                supportingText = {
+                                    Text(
+                                        text = "Transactions up to this date are included in the settlement.",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+                            )
+                        }
                     }
 
                     // ── Per-Investor Breakdown ──
@@ -331,8 +391,6 @@ private fun SettlementSummaryCard(rows: List<InvestorSettlementRow>) {
             Spacer(Modifier.height(8.dp))
             debtor.forEach { d ->
                 creditor.forEach { c ->
-                    // Amount to transfer = min(|debtor balance|, creditor balance)
-                    // For simplicity with 2-3 investors, show each debtor's full balance
                     val transferAmount = minOf(
                         kotlin.math.abs(d.balanceAmount),
                         c.balanceAmount

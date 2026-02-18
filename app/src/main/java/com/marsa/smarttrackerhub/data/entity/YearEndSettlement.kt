@@ -6,8 +6,11 @@ import androidx.room.Index
 import androidx.room.PrimaryKey
 
 /**
- * One record per shop per year when the annual settlement is confirmed.
- * Captures the total invested in that period and when it was settled.
+ * One record per settlement event for a shop.
+ *
+ * [settlementDate] is the user-chosen date marking the end of the period.
+ * The period starts right after the previous settlement's [settlementDate]
+ * (or from the beginning if this is the first settlement).
  *
  * Created by Muhammed Shafi on 19/02/2026.
  * Moro Hub
@@ -28,9 +31,9 @@ import androidx.room.PrimaryKey
 data class YearEndSettlement(
     @PrimaryKey(autoGenerate = true) val id: Int = 0,
     val shopId: Int,
-    val year: Int,                          // e.g. 2025
-    val totalInvested: Double,              // Sum of all transactions in this period
-    val settlementDate: Long,
+    val settlementDate: Long,               // User-chosen date marking end of the period
+    val periodStartDate: Long,              // Start of the period (0 = all time for first settlement)
+    val totalInvested: Double,              // Sum of all transactions in this period only
     val note: String = "",
-    val isCarriedForward: Boolean = true    // Balances roll into next year
+    val isCarriedForward: Boolean = true    // Balances roll into next period
 )

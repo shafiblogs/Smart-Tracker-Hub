@@ -30,6 +30,12 @@ class InvestmentTransactionRepository(private val dao: InvestmentTransactionDao)
     suspend fun getTransactionsForShopSince(shopId: Int, fromDate: Long): List<PhaseTransactionDetail> =
         dao.getTransactionsForShopSince(shopId, fromDate)
 
+    suspend fun getTotalPaidForShopSince(shopId: Int, fromDate: Long): Double =
+        dao.getTotalPaidForShopSince(shopId, fromDate)
+
+    suspend fun getTotalPaidByInvestorForShopSince(shopId: Int, investorId: Int, fromDate: Long): Double =
+        dao.getTotalPaidByInvestorForShopSince(shopId, investorId, fromDate)
+
     suspend fun insertTransaction(transaction: InvestmentTransaction): Long =
         dao.insertTransaction(transaction)
 

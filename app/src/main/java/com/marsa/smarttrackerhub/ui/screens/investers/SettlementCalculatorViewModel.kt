@@ -16,12 +16,19 @@ import kotlinx.coroutines.launch
 import java.util.Calendar
 
 /**
- * Computes year-end settlement rows for a shop:
- *  1. Loads all active ShopInvestors for the shop.
- *  2. For each investor → actualPaid = SUM of their transactions in this shop.
- *  3. totalInvested = SUM of ALL transactions for the shop.
- *  4. fairShare = sharePercentage / 100 × totalInvested
- *  5. balance = actualPaid - fairShare
+ * Computes a settlement for a shop covering the period from the last settlement
+ * date (exclusive) up to the user-chosen [settlementDate] (inclusive).
+ *
+ * Period logic:
+ *  - First settlement ever        → covers ALL transactions (fromDate = 0)
+ *  - Subsequent settlements       → covers only transactions after the previous
+ *                                   settlement's settlementDate
+ *
+ * Calculation per investor (within the period):
+ *  1. actualPaid  = SUM of their transactions in this period
+ *  2. totalInvested = SUM of ALL transactions in this period
+ *  3. fairShare   = sharePercentage / 100 × totalInvested
+ *  4. balance     = actualPaid - fairShare
  *       > 0 → investor overpaid → others owe them
  *       < 0 → investor underpaid → they owe others
  *
@@ -33,7 +40,10 @@ import java.util.Calendar
  */
 data class SettlementCalculatorUiState(
     val shopName: String = "",
-    val year: Int = Calendar.getInstance().get(Calendar.YEAR),
+    /** User-chosen end-of-period date (epoch millis). Defaults to today. */
+    val settlementDate: Long = todayStartOfDay(),
+    /** Start of the period (0 = all time for the very first settlement). */
+    val periodStartDate: Long = 0L,
     val totalInvested: Double = 0.0,
     val rows: List<InvestorSettlementRow> = emptyList(),
     val note: String = "",
@@ -42,6 +52,15 @@ data class SettlementCalculatorUiState(
     val saveSuccess: Boolean = false,
     val error: String? = null
 )
+
+private fun todayStartOfDay(): Long {
+    val cal = Calendar.getInstance()
+    cal.set(Calendar.HOUR_OF_DAY, 0)
+    cal.set(Calendar.MINUTE, 0)
+    cal.set(Calendar.SECOND, 0)
+    cal.set(Calendar.MILLISECOND, 0)
+    return cal.timeInMillis
+}
 
 class SettlementCalculatorViewModel : ViewModel() {
 
@@ -71,11 +90,15 @@ class SettlementCalculatorViewModel : ViewModel() {
             _uiState.value = _uiState.value.copy(
                 shopName = shop?.shopName ?: "Shop #$shopId"
             )
+            // Determine period start from the last settlement
+            val lastSettlement = settlementRepo.getLatestSettlement(shopId)
+            val periodStart = if (lastSettlement != null) lastSettlement.settlementDate + 1 else 0L
+            _uiState.value = _uiState.value.copy(periodStartDate = periodStart)
             calculateSettlement()
         }
     }
 
-    /** Re-runs the calculation (e.g. after year change). */
+    /** Re-runs the calculation (called when user changes the settlement date). */
     fun recalculate() {
         if (!initialized) return
         viewModelScope.launch { calculateSettlement() }
@@ -84,13 +107,18 @@ class SettlementCalculatorViewModel : ViewModel() {
     private suspend fun calculateSettlement() {
         _uiState.value = _uiState.value.copy(isLoading = true, error = null)
         try {
+            val fromDate = _uiState.value.periodStartDate
             val activeInvestors = shopInvestorRepo.getActiveInvestorsRaw(shopId)
-            val totalInvested = transactionRepo.getTotalPaidForShop(shopId)
+
+            // Total invested in this period only
+            val totalInvested = transactionRepo.getTotalPaidForShopSince(shopId, fromDate)
 
             val rows = activeInvestors.map { si ->
-                // Resolve investor name from DB
                 val investor = db.investorDao().getInvestorById(si.investorId)
-                val actualPaid = transactionRepo.getTotalPaidByInvestorForShop(shopId, si.investorId)
+                // Amount this investor paid in this period only
+                val actualPaid = transactionRepo.getTotalPaidByInvestorForShopSince(
+                    shopId, si.investorId, fromDate
+                )
                 val fairShare = (si.sharePercentage / 100.0) * totalInvested
                 val balance = actualPaid - fairShare
 
@@ -118,8 +146,11 @@ class SettlementCalculatorViewModel : ViewModel() {
         _uiState.value = _uiState.value.copy(note = note)
     }
 
-    fun onYearChange(year: Int) {
-        _uiState.value = _uiState.value.copy(year = year)
+    /** Called when user picks a new settlement date from the date picker. */
+    fun onSettlementDateChange(dateMillis: Long) {
+        _uiState.value = _uiState.value.copy(settlementDate = dateMillis)
+        // No need to recalculate — the period start is fixed (based on last settlement).
+        // The settlement date is just a label/cutoff stored with the record.
     }
 
     /** Saves the computed settlement. Navigates back via saveSuccess flag. */
@@ -132,15 +163,15 @@ class SettlementCalculatorViewModel : ViewModel() {
             try {
                 val settlement = YearEndSettlement(
                     shopId = shopId,
-                    year = state.year,
+                    settlementDate = state.settlementDate,
+                    periodStartDate = state.periodStartDate,
                     totalInvested = state.totalInvested,
-                    settlementDate = System.currentTimeMillis(),
                     note = state.note,
                     isCarriedForward = true
                 )
                 val entries = state.rows.map { row ->
                     SettlementEntry(
-                        settlementId = 0, // will be replaced inside saveSettlement()
+                        settlementId = 0, // replaced inside saveSettlement()
                         investorId = row.investorId,
                         fairShareAmount = row.fairShareAmount,
                         actualPaidAmount = row.actualPaidAmount,

@@ -18,7 +18,7 @@ import kotlinx.coroutines.flow.Flow
 interface YearEndSettlementDao {
 
     /** All settlements for a shop, most recent first. */
-    @Query("SELECT * FROM year_end_settlement WHERE shopId = :shopId ORDER BY year DESC, settlementDate DESC")
+    @Query("SELECT * FROM year_end_settlement WHERE shopId = :shopId ORDER BY settlementDate DESC")
     fun getSettlementsForShop(shopId: Int): Flow<List<YearEndSettlement>>
 
     /** Latest settlement for a shop (to determine period start for next calculation). */

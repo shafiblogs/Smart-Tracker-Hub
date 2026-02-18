@@ -37,6 +37,9 @@ import com.marsa.smarttrackerhub.data.helper.Converters
  *   - ShopInvestor: removed investmentAmount/investmentDate, added status/joinedDate
  *   - Added InvestmentTransaction (phase-based payments)
  *   - Added YearEndSettlement + SettlementEntry (annual reconciliation)
+ * v3 — Settlement period-based:
+ *   - YearEndSettlement: removed `year` Int, added `periodStartDate` Long
+ *   - Settlement now covers a date range instead of a calendar year
  */
 
 @Database(
@@ -52,7 +55,7 @@ import com.marsa.smarttrackerhub.data.helper.Converters
         YearEndSettlement::class,
         SettlementEntry::class
     ],
-    version = 2
+    version = 3
 )
 @TypeConverters(Converters::class)
 abstract class AppDatabase : RoomDatabase() {

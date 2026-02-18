@@ -180,13 +180,17 @@ private fun SettlementHistoryCard(
             ) {
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
-                        text = "Year ${settlement.year}",
+                        text = dateFormat.format(Date(settlement.settlementDate)),
                         style = MaterialTheme.typography.titleSmall,
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.onSurface
                     )
+                    val periodStart = if (settlement.periodStartDate == 0L)
+                        "Beginning"
+                    else
+                        dateFormat.format(Date(settlement.periodStartDate))
                     Text(
-                        text = dateFormat.format(Date(settlement.settlementDate)),
+                        text = "Period: $periodStart → ${dateFormat.format(Date(settlement.settlementDate))}",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
