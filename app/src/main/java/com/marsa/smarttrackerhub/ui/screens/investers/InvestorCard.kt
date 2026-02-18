@@ -40,6 +40,7 @@ fun InvestorCard(
             .fillMaxWidth()
             .clickable(onClick = onCardClick),
         shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
         Column(
@@ -53,7 +54,8 @@ fun InvestorCard(
                 style = MaterialTheme.typography.titleLarge.copy(
                     fontSize = 20.sp,
                     fontWeight = FontWeight.Bold
-                )
+                ),
+                color = MaterialTheme.colorScheme.onSurface
             )
 
             if (investor.investorEmail.isNotBlank()) {
@@ -61,7 +63,7 @@ fun InvestorCard(
                 Text(
                     text = investor.investorEmail,
                     style = MaterialTheme.typography.bodyMedium.copy(fontSize = 14.sp),
-                    color = Color.Gray
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
 
@@ -85,7 +87,7 @@ fun InvestorCard(
             }
 
             Spacer(modifier = Modifier.height(16.dp))
-            HorizontalDivider(color = Color.LightGray.copy(alpha = 0.5f))
+            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
             Spacer(modifier = Modifier.height(16.dp))
 
             // Total invested
@@ -111,7 +113,7 @@ private fun InfoColumn(
         Text(
             text = label,
             style = MaterialTheme.typography.labelMedium.copy(fontSize = 12.sp),
-            color = Color.Gray
+            color = MaterialTheme.colorScheme.onSurfaceVariant
         )
         Spacer(modifier = Modifier.height(4.dp))
         Text(
@@ -120,7 +122,7 @@ private fun InfoColumn(
                 fontSize = 14.sp,
                 fontWeight = valueFontWeight
             ),
-            color = valueColor
+            color = if (valueColor == Color.Unspecified) MaterialTheme.colorScheme.onSurface else valueColor
         )
     }
 }

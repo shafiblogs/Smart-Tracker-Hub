@@ -41,7 +41,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
@@ -304,7 +303,7 @@ fun AddShopScreen(
                 }
 
                 Spacer(modifier = Modifier.height(24.dp))
-                HorizontalDivider(color = Color.LightGray)
+                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
                 Spacer(modifier = Modifier.height(24.dp))
 
                 // ============ ZAKATH INFORMATION SECTION ============
@@ -441,7 +440,7 @@ fun AddShopScreen(
                 // ============ INVESTORS SECTION (only for existing shops) ============
                 if (shopId != null) {
                     Spacer(modifier = Modifier.height(24.dp))
-                    HorizontalDivider(color = Color.LightGray)
+                    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
                     Spacer(modifier = Modifier.height(24.dp))
 
                     Row(
@@ -468,7 +467,7 @@ fun AddShopScreen(
                         Text(
                             text = "No investors yet",
                             style = MaterialTheme.typography.bodyMedium,
-                            color = Color.Gray,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier.padding(vertical = 8.dp)
                         )
                     } else {
@@ -563,7 +562,7 @@ private fun ShopInvestorRow(investor: ShopInvestorSummary) {
                 Text(
                     text = "Paid: AED ${String.format("%,.2f", investor.totalPaid)}",
                     style = MaterialTheme.typography.bodySmall,
-                    color = Color.Gray
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
             Surface(

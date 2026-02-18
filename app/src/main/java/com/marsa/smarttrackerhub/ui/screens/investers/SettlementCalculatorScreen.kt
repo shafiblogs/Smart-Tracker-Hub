@@ -66,19 +66,9 @@ fun SettlementCalculatorScreen(
     val context = LocalContext.current
     val snackbarHostState = remember { SnackbarHostState() }
 
-    LaunchedEffect(shopId) {
-        viewModel.init(context, shopId)
-    }
-
-    // Navigate back once saved
-    LaunchedEffect(uiState.saveSuccess) {
-        if (uiState.saveSuccess) onSettlementSaved()
-    }
-
-    // Show errors in snackbar
-    LaunchedEffect(uiState.error) {
-        uiState.error?.let { snackbarHostState.showSnackbar(it) }
-    }
+    LaunchedEffect(shopId) { viewModel.init(context, shopId) }
+    LaunchedEffect(uiState.saveSuccess) { if (uiState.saveSuccess) onSettlementSaved() }
+    LaunchedEffect(uiState.error) { uiState.error?.let { snackbarHostState.showSnackbar(it) } }
 
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
@@ -97,12 +87,12 @@ fun SettlementCalculatorScreen(
                         Text(
                             "No investment data found.",
                             style = MaterialTheme.typography.bodyLarge,
-                            color = Color.Gray
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                         Text(
                             "Record transactions first.",
                             style = MaterialTheme.typography.bodyMedium,
-                            color = Color.Gray
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                 }
@@ -176,14 +166,10 @@ fun SettlementCalculatorScreen(
                         )
                     }
 
-                    items(uiState.rows) { row ->
-                        SettlementRowCard(row = row)
-                    }
+                    items(uiState.rows) { row -> SettlementRowCard(row = row) }
 
                     // ── Who owes whom summary ──
-                    item {
-                        SettlementSummaryCard(rows = uiState.rows)
-                    }
+                    item { SettlementSummaryCard(rows = uiState.rows) }
 
                     // ── Note ──
                     item {
@@ -201,7 +187,10 @@ fun SettlementCalculatorScreen(
                     item {
                         Button(
                             onClick = viewModel::confirmSettlement,
-                            modifier = Modifier.fillMaxWidth(),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(56.dp),
+                            shape = MaterialTheme.shapes.medium,
                             enabled = !uiState.isSaving
                         ) {
                             if (uiState.isSaving) {
@@ -217,7 +206,11 @@ fun SettlementCalculatorScreen(
                                     modifier = Modifier.size(18.dp)
                                 )
                                 Spacer(Modifier.size(8.dp))
-                                Text("Confirm & Save Settlement")
+                                Text(
+                                    "Confirm & Save Settlement",
+                                    fontSize = 16.sp,
+                                    fontWeight = FontWeight.Medium
+                                )
                             }
                         }
                     }
@@ -229,7 +222,7 @@ fun SettlementCalculatorScreen(
     }
 }
 
-// ── Per-investor settlement card ─────────────────────────────────────────
+// ── Per-investor settlement card ──────────────────────────────────────────
 
 @Composable
 private fun SettlementRowCard(row: InvestorSettlementRow) {
@@ -237,18 +230,19 @@ private fun SettlementRowCard(row: InvestorSettlementRow) {
     val isBalanced = row.balanceAmount == 0.0
 
     val balanceColor = when {
-        isBalanced -> Color.Gray
-        isOverpaid -> Color(0xFF2E7D32)  // green — overpaid, owed back
-        else -> MaterialTheme.colorScheme.error  // red — underpaid, owes
+        isBalanced -> MaterialTheme.colorScheme.onSurfaceVariant
+        isOverpaid -> MaterialTheme.colorScheme.primary    // overpaid → owed back
+        else       -> MaterialTheme.colorScheme.error      // underpaid → owes
     }
     val balanceLabel = when {
         isBalanced -> "Settled"
         isOverpaid -> "Overpaid — owed back"
-        else -> "Underpaid — owes"
+        else       -> "Underpaid — owes"
     }
 
     Card(
         modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
     ) {
         Column(
@@ -264,7 +258,8 @@ private fun SettlementRowCard(row: InvestorSettlementRow) {
                 Text(
                     text = row.investorName,
                     style = MaterialTheme.typography.titleSmall,
-                    fontWeight = FontWeight.Bold
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface
                 )
                 Text(
                     text = "${String.format("%.1f", row.sharePercentage)}% share",
@@ -273,7 +268,7 @@ private fun SettlementRowCard(row: InvestorSettlementRow) {
                 )
             }
             Spacer(Modifier.height(10.dp))
-            HorizontalDivider(color = Color.LightGray.copy(alpha = 0.5f))
+            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
             Spacer(Modifier.height(10.dp))
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -306,12 +301,12 @@ private fun SettlementRowCard(row: InvestorSettlementRow) {
     }
 }
 
-// ── Settlement summary: who pays whom ────────────────────────────────────
+// ── Settlement summary card ───────────────────────────────────────────────
 
 @Composable
 private fun SettlementSummaryCard(rows: List<InvestorSettlementRow>) {
-    val debtor = rows.filter { it.balanceAmount < 0 }   // underpaid — they owe
-    val creditor = rows.filter { it.balanceAmount > 0 } // overpaid  — owed back
+    val debtor   = rows.filter { it.balanceAmount < 0 }   // underpaid — they owe
+    val creditor = rows.filter { it.balanceAmount > 0 }   // overpaid  — owed back
 
     if (debtor.isEmpty() && creditor.isEmpty()) return
 
@@ -366,7 +361,7 @@ private fun SettlementMetric(
         Text(
             text = label,
             style = MaterialTheme.typography.labelSmall,
-            color = Color.Gray
+            color = MaterialTheme.colorScheme.onSurfaceVariant
         )
         Spacer(Modifier.height(2.dp))
         Text(

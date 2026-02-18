@@ -32,7 +32,6 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -47,7 +46,7 @@ import java.util.Locale
 /**
  * Full investment dashboard for a shop showing:
  *  - Capital summary (total raised, % allocated, investor count)
- *  - Per-investor breakdown (share %, total paid)
+ *  - Per-investor breakdown (share %, total paid, fair share, balance)
  *  - All transactions grouped by phase
  *  - FABs: Add Transaction, Assign Investor, Year-End Settlement
  *
@@ -82,23 +81,30 @@ fun ShopInvestmentDashboardScreen(
                     onClick = { onSettlementClick(shopId) },
                     containerColor = MaterialTheme.colorScheme.tertiaryContainer
                 ) {
-                    Icon(Icons.Default.DateRange, contentDescription = "Year-End Settlement",
-                        tint = MaterialTheme.colorScheme.onTertiaryContainer)
+                    Icon(
+                        Icons.Default.DateRange,
+                        contentDescription = "Year-End Settlement",
+                        tint = MaterialTheme.colorScheme.onTertiaryContainer
+                    )
                 }
                 // Assign new investor
                 FloatingActionButton(
                     onClick = { onAssignInvestorClick(shopId) },
                     containerColor = MaterialTheme.colorScheme.secondaryContainer
                 ) {
-                    Icon(Icons.Default.Person, contentDescription = "Assign Investor",
-                        tint = MaterialTheme.colorScheme.onSecondaryContainer)
+                    Icon(
+                        Icons.Default.Person,
+                        contentDescription = "Assign Investor",
+                        tint = MaterialTheme.colorScheme.onSecondaryContainer
+                    )
                 }
                 // Add transaction (primary)
                 ExtendedFloatingActionButton(
                     onClick = { onAddTransactionClick(shopId) },
                     icon = { Icon(Icons.Default.Add, contentDescription = null) },
                     text = { Text("Record Payment") },
-                    containerColor = MaterialTheme.colorScheme.primary
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    contentColor = MaterialTheme.colorScheme.onPrimary
                 )
             }
         }
@@ -109,6 +115,7 @@ fun ShopInvestmentDashboardScreen(
                     CircularProgressIndicator()
                 }
             }
+
             else -> {
                 LazyColumn(
                     modifier = Modifier
@@ -123,7 +130,9 @@ fun ShopInvestmentDashboardScreen(
                     item {
                         Card(
                             modifier = Modifier.fillMaxWidth(),
-                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer),
+                            colors = CardDefaults.cardColors(
+                                containerColor = MaterialTheme.colorScheme.primaryContainer
+                            ),
                             elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
                         ) {
                             Column(
@@ -132,8 +141,15 @@ fun ShopInvestmentDashboardScreen(
                                     .padding(16.dp)
                             ) {
                                 Text(
+                                    text = uiState.shopName.ifBlank { "Investment Dashboard" },
+                                    style = MaterialTheme.typography.titleSmall,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.onPrimaryContainer
+                                )
+                                Spacer(Modifier.height(4.dp))
+                                Text(
                                     text = "Capital Overview",
-                                    style = MaterialTheme.typography.labelMedium,
+                                    style = MaterialTheme.typography.labelSmall,
                                     color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f)
                                 )
                                 Spacer(Modifier.height(12.dp))
@@ -173,8 +189,8 @@ fun ShopInvestmentDashboardScreen(
                     if (uiState.investors.isEmpty()) {
                         item {
                             Text(
-                                "No investors assigned yet. Tap 👤+ to assign one.",
-                                color = Color.Gray,
+                                "No investors assigned yet. Tap the person icon to assign one.",
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 style = MaterialTheme.typography.bodyMedium,
                                 modifier = Modifier.padding(vertical = 8.dp)
                             )
@@ -190,7 +206,7 @@ fun ShopInvestmentDashboardScreen(
 
                     // ── Phase Transactions ──
                     item {
-                        HorizontalDivider(color = Color.LightGray)
+                        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
                         Spacer(Modifier.height(4.dp))
                         Text(
                             text = "Payment History",
@@ -203,14 +219,13 @@ fun ShopInvestmentDashboardScreen(
                     if (uiState.transactions.isEmpty()) {
                         item {
                             Text(
-                                "No payments recorded yet. Tap '+ Record Payment' to add one.",
-                                color = Color.Gray,
+                                "No payments recorded yet. Tap 'Record Payment' to add one.",
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 style = MaterialTheme.typography.bodyMedium,
                                 modifier = Modifier.padding(vertical = 8.dp)
                             )
                         }
                     } else {
-                        // Group by phase
                         val grouped = uiState.transactions.groupBy { it.phase }
                         grouped.forEach { (phase, txList) ->
                             item {
@@ -225,6 +240,8 @@ fun ShopInvestmentDashboardScreen(
         }
     }
 }
+
+// ── Capital metric column ─────────────────────────────────────────────────
 
 @Composable
 private fun CapitalMetric(
@@ -248,6 +265,8 @@ private fun CapitalMetric(
     }
 }
 
+// ── Per-investor breakdown card ────────────────────────────────────────────
+
 @Composable
 private fun InvestorBreakdownCard(
     investor: ShopInvestorSummary,
@@ -256,9 +275,16 @@ private fun InvestorBreakdownCard(
     val fairShare = if (totalShopCapital > 0)
         (investor.sharePercentage / 100.0) * totalShopCapital else 0.0
     val balance = investor.totalPaid - fairShare
+    val isActive = investor.status == "Active"
+
+    val balanceColor = when {
+        balance >= 0 -> MaterialTheme.colorScheme.primary
+        else -> MaterialTheme.colorScheme.error
+    }
 
     Card(
         modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
     ) {
         Column(
@@ -275,17 +301,18 @@ private fun InvestorBreakdownCard(
                     Text(
                         text = investor.investorName,
                         style = MaterialTheme.typography.bodyMedium,
-                        fontWeight = FontWeight.SemiBold
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.onSurface
                     )
                     Text(
                         text = "Share: ${String.format("%.1f", investor.sharePercentage)}%",
                         style = MaterialTheme.typography.bodySmall,
-                        color = Color.Gray
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
                 // Status chip
                 Surface(
-                    color = if (investor.status == "Active")
+                    color = if (isActive)
                         MaterialTheme.colorScheme.primaryContainer
                     else MaterialTheme.colorScheme.errorContainer,
                     shape = MaterialTheme.shapes.small
@@ -294,20 +321,23 @@ private fun InvestorBreakdownCard(
                         text = investor.status,
                         modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp),
                         style = MaterialTheme.typography.labelSmall,
-                        color = if (investor.status == "Active")
+                        color = if (isActive)
                             MaterialTheme.colorScheme.onPrimaryContainer
                         else MaterialTheme.colorScheme.onErrorContainer
                     )
                 }
             }
             Spacer(Modifier.height(10.dp))
-            HorizontalDivider(color = Color.LightGray.copy(alpha = 0.4f))
+            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
             Spacer(Modifier.height(10.dp))
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                InvestorMetric("Paid", "AED ${String.format("%,.0f", investor.totalPaid)}")
+                InvestorMetric(
+                    "Paid",
+                    "AED ${String.format("%,.0f", investor.totalPaid)}"
+                )
                 InvestorMetric(
                     "Fair Share",
                     "AED ${String.format("%,.0f", fairShare)}",
@@ -315,8 +345,8 @@ private fun InvestorBreakdownCard(
                 )
                 InvestorMetric(
                     label = if (balance >= 0) "Overpaid" else "Underpaid",
-                    value = "AED ${String.format("%,.0f", Math.abs(balance))}",
-                    valueColor = if (balance >= 0) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error,
+                    value = "AED ${String.format("%,.0f", kotlin.math.abs(balance))}",
+                    valueColor = balanceColor,
                     alignment = Alignment.End
                 )
             }
@@ -324,15 +354,21 @@ private fun InvestorBreakdownCard(
     }
 }
 
+// ── Investor metric column ────────────────────────────────────────────────
+
 @Composable
 private fun InvestorMetric(
     label: String,
     value: String,
-    valueColor: androidx.compose.ui.graphics.Color = Color.Unspecified,
+    valueColor: androidx.compose.ui.graphics.Color = MaterialTheme.colorScheme.onSurface,
     alignment: Alignment.Horizontal = Alignment.Start
 ) {
     Column(horizontalAlignment = alignment) {
-        Text(text = label, style = MaterialTheme.typography.labelSmall, color = Color.Gray)
+        Text(
+            text = label,
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
         Spacer(Modifier.height(2.dp))
         Text(
             text = value,
@@ -344,6 +380,8 @@ private fun InvestorMetric(
     }
 }
 
+// ── Phase group card ──────────────────────────────────────────────────────
+
 @Composable
 private fun PhaseGroup(phase: String, transactions: List<PhaseTransactionDetail>) {
     val dateFormat = SimpleDateFormat("dd MMM yyyy", Locale.ENGLISH)
@@ -351,6 +389,7 @@ private fun PhaseGroup(phase: String, transactions: List<PhaseTransactionDetail>
 
     Card(
         modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
     ) {
         Column(
@@ -378,7 +417,7 @@ private fun PhaseGroup(phase: String, transactions: List<PhaseTransactionDetail>
                 )
             }
             Spacer(Modifier.height(10.dp))
-            HorizontalDivider(color = Color.LightGray.copy(alpha = 0.4f))
+            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
 
             transactions.forEach { tx ->
                 Spacer(Modifier.height(10.dp))
@@ -391,18 +430,19 @@ private fun PhaseGroup(phase: String, transactions: List<PhaseTransactionDetail>
                         Text(
                             text = tx.investorName,
                             style = MaterialTheme.typography.bodyMedium,
-                            fontWeight = FontWeight.Medium
+                            fontWeight = FontWeight.Medium,
+                            color = MaterialTheme.colorScheme.onSurface
                         )
                         Text(
                             text = dateFormat.format(Date(tx.transactionDate)),
                             style = MaterialTheme.typography.bodySmall,
-                            color = Color.Gray
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                         if (tx.note.isNotBlank()) {
                             Text(
                                 text = tx.note,
                                 style = MaterialTheme.typography.bodySmall,
-                                color = Color.Gray
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
                     }

@@ -33,8 +33,8 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -59,9 +59,7 @@ fun SettlementHistoryScreen(shopId: Int) {
     val uiState by viewModel.uiState.collectAsState()
     val context = LocalContext.current
 
-    LaunchedEffect(shopId) {
-        viewModel.init(context, shopId)
-    }
+    LaunchedEffect(shopId) { viewModel.init(context, shopId) }
 
     Scaffold(containerColor = MaterialTheme.colorScheme.background) { paddingValues ->
         when {
@@ -77,12 +75,12 @@ fun SettlementHistoryScreen(shopId: Int) {
                         Text(
                             "No settlements recorded yet.",
                             style = MaterialTheme.typography.bodyLarge,
-                            color = Color.Gray
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                         Text(
                             "Use the calculator to create one.",
                             style = MaterialTheme.typography.bodyMedium,
-                            color = Color.Gray
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                 }
@@ -139,6 +137,7 @@ private fun SettlementHistoryCard(
 
     Card(
         modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
     ) {
         Column(modifier = Modifier.fillMaxWidth()) {
@@ -155,12 +154,13 @@ private fun SettlementHistoryCard(
                     Text(
                         text = "Year ${settlement.year}",
                         style = MaterialTheme.typography.titleSmall,
-                        fontWeight = FontWeight.Bold
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurface
                     )
                     Text(
                         text = dateFormat.format(Date(settlement.settlementDate)),
                         style = MaterialTheme.typography.bodySmall,
-                        color = Color.Gray
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
                 Column(horizontalAlignment = Alignment.End) {
@@ -173,16 +173,17 @@ private fun SettlementHistoryCard(
                     Text(
                         text = "Total Invested",
                         style = MaterialTheme.typography.labelSmall,
-                        color = Color.Gray
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
                 Icon(
-                    imageVector = if (isExpanded) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,
+                    imageVector = if (isExpanded) Icons.Default.KeyboardArrowUp
+                                  else Icons.Default.KeyboardArrowDown,
                     contentDescription = if (isExpanded) "Collapse" else "Expand",
                     modifier = Modifier
                         .padding(start = 8.dp)
                         .size(20.dp),
-                    tint = Color.Gray
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
 
@@ -198,15 +199,15 @@ private fun SettlementHistoryCard(
                         .padding(horizontal = 16.dp)
                         .padding(bottom = 16.dp)
                 ) {
-                    HorizontalDivider(color = Color.LightGray.copy(alpha = 0.5f))
+                    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
                     Spacer(Modifier.height(12.dp))
 
                     if (settlement.note.isNotBlank()) {
                         Text(
                             text = "Note: ${settlement.note}",
                             style = MaterialTheme.typography.bodySmall,
-                            color = Color.Gray,
-                            fontStyle = androidx.compose.ui.text.font.FontStyle.Italic
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            fontStyle = FontStyle.Italic
                         )
                         Spacer(Modifier.height(8.dp))
                     }
@@ -236,12 +237,13 @@ private fun SettlementHistoryCard(
 
 @Composable
 private fun SettlementEntryRow(entry: SettlementEntryWithName) {
-    val isOverpaid = entry.balanceAmount > 0
-    val isBalanced = entry.balanceAmount == 0.0
+    val isOverpaid  = entry.balanceAmount > 0
+    val isBalanced  = entry.balanceAmount == 0.0
+
     val balanceColor = when {
-        isBalanced -> Color.Gray
-        isOverpaid -> Color(0xFF2E7D32)
-        else -> MaterialTheme.colorScheme.error
+        isBalanced -> MaterialTheme.colorScheme.onSurfaceVariant
+        isOverpaid -> MaterialTheme.colorScheme.primary    // overpaid → owed back
+        else       -> MaterialTheme.colorScheme.error      // underpaid → owes
     }
 
     Column(
@@ -258,13 +260,14 @@ private fun SettlementEntryRow(entry: SettlementEntryWithName) {
                 text = entry.investorName,
                 style = MaterialTheme.typography.bodyMedium,
                 fontWeight = FontWeight.SemiBold,
+                color = MaterialTheme.colorScheme.onSurface,
                 modifier = Modifier.weight(1f)
             )
             Text(
                 text = when {
                     isBalanced -> "Settled"
                     isOverpaid -> "+AED ${String.format("%,.2f", entry.balanceAmount)}"
-                    else -> "−AED ${String.format("%,.2f", kotlin.math.abs(entry.balanceAmount))}"
+                    else       -> "−AED ${String.format("%,.2f", kotlin.math.abs(entry.balanceAmount))}"
                 },
                 style = MaterialTheme.typography.bodyMedium,
                 fontWeight = FontWeight.Bold,
@@ -279,12 +282,12 @@ private fun SettlementEntryRow(entry: SettlementEntryWithName) {
             Text(
                 text = "Fair: AED ${String.format("%,.2f", entry.fairShareAmount)}",
                 style = MaterialTheme.typography.labelSmall,
-                color = Color.Gray
+                color = MaterialTheme.colorScheme.onSurfaceVariant
             )
             Text(
                 text = "Paid: AED ${String.format("%,.2f", entry.actualPaidAmount)}",
                 style = MaterialTheme.typography.labelSmall,
-                color = Color.Gray
+                color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
     }

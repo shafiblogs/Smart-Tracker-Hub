@@ -105,7 +105,11 @@ fun InvestorDetailScreen(
 
             uiState.investor == null -> {
                 Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    Text("Investor not found")
+                    Text(
+                        "Investor not found",
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
                 }
             }
 
@@ -123,6 +127,9 @@ fun InvestorDetailScreen(
                     item {
                         Card(
                             modifier = Modifier.fillMaxWidth(),
+                            colors = CardDefaults.cardColors(
+                                containerColor = MaterialTheme.colorScheme.surface
+                            ),
                             elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
                         ) {
                             Column(
@@ -202,7 +209,7 @@ fun InvestorDetailScreen(
                             ) {
                                 Text(
                                     "Not assigned to any shop yet. Tap + to assign.",
-                                    color = Color.Gray,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                                     style = MaterialTheme.typography.bodyMedium
                                 )
                             }
@@ -235,6 +242,9 @@ private fun InvestorShopSummaryCard(
         modifier = Modifier
             .fillMaxWidth()
             .clickable(onClick = onClick),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surface
+        ),
         elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
     ) {
         Column(
@@ -251,13 +261,14 @@ private fun InvestorShopSummaryCard(
                     Text(
                         text = summary.shopName,
                         style = MaterialTheme.typography.titleSmall,
-                        fontWeight = FontWeight.Bold
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurface
                     )
                     if (summary.shopAddress.isNotBlank()) {
                         Text(
                             text = summary.shopAddress,
                             style = MaterialTheme.typography.bodySmall,
-                            color = Color.Gray
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                 }
@@ -270,7 +281,7 @@ private fun InvestorShopSummaryCard(
             }
 
             Spacer(Modifier.height(12.dp))
-            HorizontalDivider(color = Color.LightGray.copy(alpha = 0.5f))
+            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
             Spacer(Modifier.height(12.dp))
 
             Row(
@@ -326,13 +337,14 @@ private fun InvestorDetailRow(label: String, value: String) {
         Text(
             text = label,
             style = MaterialTheme.typography.bodyMedium,
-            color = Color.Gray,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
             fontSize = 13.sp
         )
         Text(
             text = value,
             style = MaterialTheme.typography.bodyMedium,
             fontWeight = FontWeight.Medium,
+            color = MaterialTheme.colorScheme.onSurface,
             fontSize = 13.sp
         )
     }
@@ -371,7 +383,7 @@ private fun InvestorShopMetric(
         Text(
             text = label,
             style = MaterialTheme.typography.labelSmall,
-            color = Color.Gray
+            color = MaterialTheme.colorScheme.onSurfaceVariant
         )
         Spacer(Modifier.height(2.dp))
         Text(

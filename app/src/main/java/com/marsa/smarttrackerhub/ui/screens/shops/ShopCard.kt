@@ -54,6 +54,7 @@ fun ShopCard(
         modifier = Modifier
             .fillMaxWidth()
             .clickable(onClick = onCardClick),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
         Column(
@@ -73,7 +74,8 @@ fun ShopCard(
                         style = MaterialTheme.typography.titleLarge.copy(
                             fontSize = 20.sp,
                             fontWeight = FontWeight.Bold
-                        )
+                        ),
+                        color = MaterialTheme.colorScheme.onSurface
                     )
                     Spacer(modifier = Modifier.height(6.dp))
                     Text(
@@ -81,12 +83,12 @@ fun ShopCard(
                         style = MaterialTheme.typography.bodyMedium.copy(
                             fontSize = 14.sp
                         ),
-                        color = Color.Gray,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                         lineHeight = 18.sp
                     )
                 }
 
-                // Edit and Share buttons
+                // Share button
                 IconButton(
                     onClick = onShareClick,
                     modifier = Modifier.size(40.dp)
@@ -140,10 +142,16 @@ fun ShopCard(
             }
 
             Spacer(modifier = Modifier.height(16.dp))
-            HorizontalDivider(color = Color.LightGray.copy(alpha = 0.5f))
+            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
             Spacer(modifier = Modifier.height(16.dp))
 
             // Zakath Status and Amount
+            val zakathStatusColor = when (shop.zakathStatus) {
+                "Paid"    -> MaterialTheme.colorScheme.primary
+                "Pending" -> MaterialTheme.colorScheme.error
+                else      -> MaterialTheme.colorScheme.onSurfaceVariant
+            }
+
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween
@@ -151,11 +159,7 @@ fun ShopCard(
                 InfoColumn(
                     label = "Zakath Status",
                     value = shop.zakathStatus,
-                    valueColor = when (shop.zakathStatus) {
-                        "Paid" -> Color(0xFF4CAF50)
-                        "Pending" -> Color(0xFFFF9800)
-                        else -> Color.Gray
-                    }
+                    valueColor = zakathStatusColor
                 )
 
                 InfoColumn(
@@ -187,7 +191,7 @@ fun ShopCard(
             }
 
             Spacer(modifier = Modifier.height(16.dp))
-            HorizontalDivider(color = Color.LightGray.copy(alpha = 0.5f))
+            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
             Spacer(modifier = Modifier.height(16.dp))
 
             // License Expiry with Status Indicator
@@ -243,7 +247,7 @@ private fun InfoColumn(
             style = MaterialTheme.typography.labelMedium.copy(
                 fontSize = 12.sp
             ),
-            color = Color.Gray
+            color = MaterialTheme.colorScheme.onSurfaceVariant
         )
         Spacer(modifier = Modifier.height(4.dp))
         Text(
@@ -252,7 +256,7 @@ private fun InfoColumn(
                 fontSize = 14.sp,
                 fontWeight = valueFontWeight
             ),
-            color = valueColor
+            color = if (valueColor == Color.Unspecified) MaterialTheme.colorScheme.onSurface else valueColor
         )
     }
 }
