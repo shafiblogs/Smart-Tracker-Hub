@@ -7,83 +7,98 @@ import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import androidx.room.Update
 import com.marsa.smarttrackerhub.data.entity.ShopInvestor
-import com.marsa.smarttrackerhub.domain.InvestorShopDetail
-import com.marsa.smarttrackerhub.domain.ShopInvestorDetail
+import com.marsa.smarttrackerhub.domain.InvestorShopSummary
+import com.marsa.smarttrackerhub.domain.ShopInvestorSummary
 import kotlinx.coroutines.flow.Flow
 
 /**
- * Created by Muhammed Shafi on 16/02/2026.
+ * Created by Muhammed Shafi on 19/02/2026.
  * Moro Hub
  * muhammed.poyil@morohub.com
  */
 @Dao
 interface ShopInvestorDao {
 
-    // Get all investors for a specific shop with details
+    /**
+     * All investors in a shop with their total paid amount (SUM of all transactions).
+     * Used in ShopInvestmentDashboard.
+     */
     @Query("""
-        SELECT 
-            si.id as shopInvestorId,
-            i.id as investorId,
+        SELECT
+            si.id            AS shopInvestorId,
+            i.id             AS investorId,
             i.investorName,
-            i.investorEmail,
-            i.investorPhone,
             si.sharePercentage,
-            si.investmentAmount,
-            si.investmentDate
+            COALESCE(SUM(t.amount), 0) AS totalPaid,
+            si.status,
+            si.joinedDate
         FROM shop_investor si
         INNER JOIN investor_info i ON si.investorId = i.id
+        LEFT JOIN investment_transaction t ON t.shopInvestorId = si.id
         WHERE si.shopId = :shopId
+        GROUP BY si.id
         ORDER BY si.sharePercentage DESC
     """)
-    fun getInvestorsForShop(shopId: Int): Flow<List<ShopInvestorDetail>>
+    fun getInvestorsForShop(shopId: Int): Flow<List<ShopInvestorSummary>>
 
-    // Get all shops for a specific investor with details
+    /**
+     * All shops an investor is in, with total paid in each shop.
+     * Used in InvestorDetailScreen.
+     */
     @Query("""
-        SELECT 
-            si.id as shopInvestorId,
-            s.id as shopId,
+        SELECT
+            si.id            AS shopInvestorId,
+            s.id             AS shopId,
             s.shopName,
             s.shopAddress,
             si.sharePercentage,
-            si.investmentAmount,
-            si.investmentDate
+            COALESCE(SUM(t.amount), 0) AS totalPaid,
+            si.status,
+            si.joinedDate
         FROM shop_investor si
         INNER JOIN shop_info s ON si.shopId = s.id
+        LEFT JOIN investment_transaction t ON t.shopInvestorId = si.id
         WHERE si.investorId = :investorId
-        ORDER BY si.investmentDate DESC
+        GROUP BY si.id
+        ORDER BY si.joinedDate DESC
     """)
-    fun getShopsForInvestor(investorId: Int): Flow<List<InvestorShopDetail>>
+    fun getShopsForInvestor(investorId: Int): Flow<List<InvestorShopSummary>>
 
-    // Get total investment for a shop
-    @Query("SELECT COALESCE(SUM(investmentAmount), 0) FROM shop_investor WHERE shopId = :shopId")
-    suspend fun getTotalInvestmentForShop(shopId: Int): Double
-
-    // Get total percentage allocated for a shop
-    @Query("SELECT COALESCE(SUM(sharePercentage), 0) FROM shop_investor WHERE shopId = :shopId")
+    /** Total share % already allocated for a shop (to validate new entries ≤ 100%). */
+    @Query("SELECT COALESCE(SUM(sharePercentage), 0) FROM shop_investor WHERE shopId = :shopId AND status = 'Active'")
     suspend fun getTotalPercentageForShop(shopId: Int): Double
 
-    // Get total invested by an investor across all shops
-    @Query("SELECT COALESCE(SUM(investmentAmount), 0) FROM shop_investor WHERE investorId = :investorId")
-    suspend fun getTotalInvestedByInvestor(investorId: Int): Double
-
-    // Get shop count for an investor
-    @Query("SELECT COUNT(*) FROM shop_investor WHERE investorId = :investorId")
-    suspend fun getShopCountForInvestor(investorId: Int): Int
-
-    // Get investor count for a shop
-    @Query("SELECT COUNT(*) FROM shop_investor WHERE shopId = :shopId")
+    /** Number of active investors in a shop. */
+    @Query("SELECT COUNT(*) FROM shop_investor WHERE shopId = :shopId AND status = 'Active'")
     suspend fun getInvestorCountForShop(shopId: Int): Int
 
-    // Check if investor already exists in shop
+    /** Number of shops this investor is active in. */
+    @Query("SELECT COUNT(*) FROM shop_investor WHERE investorId = :investorId AND status = 'Active'")
+    suspend fun getShopCountForInvestor(investorId: Int): Int
+
+    /** Total paid by this investor across ALL shops (for investor list card). */
+    @Query("""
+        SELECT COALESCE(SUM(t.amount), 0)
+        FROM investment_transaction t
+        INNER JOIN shop_investor si ON t.shopInvestorId = si.id
+        WHERE si.investorId = :investorId
+    """)
+    suspend fun getTotalPaidByInvestor(investorId: Int): Double
+
+    /** Check if investor is already assigned to this shop. */
     @Query("SELECT COUNT(*) FROM shop_investor WHERE shopId = :shopId AND investorId = :investorId")
     suspend fun isInvestorInShop(shopId: Int, investorId: Int): Int
 
-    // Get specific shop-investor record
+    /** Get specific record by id. */
     @Query("SELECT * FROM shop_investor WHERE id = :id")
     suspend fun getShopInvestorById(id: Int): ShopInvestor?
 
+    /** Get all ShopInvestor records for a shop (raw, for settlement calculations). */
+    @Query("SELECT * FROM shop_investor WHERE shopId = :shopId AND status = 'Active'")
+    suspend fun getActiveInvestorsRaw(shopId: Int): List<ShopInvestor>
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun insertShopInvestor(shopInvestor: ShopInvestor)
+    suspend fun insertShopInvestor(shopInvestor: ShopInvestor): Long
 
     @Update
     suspend fun updateShopInvestor(shopInvestor: ShopInvestor)

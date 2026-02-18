@@ -1,6 +1,5 @@
 package com.marsa.smarttrackerhub.ui.screens.investers
 
-import android.app.DatePickerDialog
 import android.widget.Toast
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -9,16 +8,11 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
@@ -36,20 +30,15 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.marsa.smarttrackerhub.ui.components.DropdownField
-import java.text.SimpleDateFormat
-import java.util.Calendar
-import java.util.Date
-import java.util.Locale
+import androidx.compose.foundation.text.KeyboardOptions
 
 /**
- * Created by Muhammed Shafi on 18/02/2026.
+ * Assigns an investor to a shop with a fixed share percentage.
+ * Actual payment amounts are recorded separately via AddTransactionScreen.
+ *
+ * Created by Muhammed Shafi on 19/02/2026.
  * Moro Hub
  * muhammed.poyil@morohub.com
- */
-
-/**
- * @param prefilledInvestorId  Pass > 0 when arriving from InvestorDetailScreen (investor is locked)
- * @param prefilledShopId      Pass > 0 when arriving from AddShopScreen (shop is locked)
  */
 @Composable
 fun AddShopInvestmentScreen(
@@ -64,9 +53,8 @@ fun AddShopInvestmentScreen(
     val isValid by viewModel.isFormValid.collectAsState()
     val isSaved by viewModel.isSaved.collectAsState()
     val error by viewModel.error.collectAsState()
-    val allocatedPercentage by viewModel.allocatedPercentage.collectAsState()
+    val remainingPercentage by viewModel.remainingPercentage.collectAsState()
     val context = LocalContext.current
-    val dateFormat = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault())
 
     val shopLocked = prefilledShopId > 0
     val investorLocked = prefilledInvestorId > 0
@@ -98,82 +86,72 @@ fun AddShopInvestmentScreen(
                     .padding(vertical = 16.dp)
             ) {
                 Text(
-                    text = "Investment Details",
+                    text = "Assign Investor to Shop",
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.primary
                 )
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = "Set the fixed share % for this investor. Payment amounts are recorded separately per phase.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
 
-                Spacer(modifier = Modifier.height(16.dp))
+                Spacer(modifier = Modifier.height(20.dp))
 
-                // ── Shop Dropdown (locked when shopLocked) ──
+                // ── Shop Dropdown ──
                 DropdownField(
                     label = "Shop",
                     selectedValue = state.selectedShopName.ifBlank { "Select a shop" },
                     options = shops.map { it.shopName },
-                    onOptionSelected = { selectedName ->
-                        val shop = shops.find { it.shopName == selectedName }
-                        shop?.let { viewModel.selectShop(it.id, it.shopName) }
+                    onOptionSelected = { name ->
+                        shops.find { it.shopName == name }?.let { viewModel.selectShop(it.id, it.shopName) }
                     },
                     modifier = Modifier.fillMaxWidth(),
                     enabled = !shopLocked
                 )
-
                 if (state.shopError != null) {
-                    Text(
-                        text = state.shopError!!,
-                        color = MaterialTheme.colorScheme.error,
+                    Text(state.shopError!!, color = MaterialTheme.colorScheme.error,
                         style = MaterialTheme.typography.bodySmall,
-                        modifier = Modifier.padding(top = 4.dp, start = 4.dp)
-                    )
+                        modifier = Modifier.padding(top = 4.dp, start = 4.dp))
                 }
 
+                // Remaining % info card
                 if (state.selectedShopId != null) {
                     Spacer(modifier = Modifier.height(8.dp))
                     Card(
                         modifier = Modifier.fillMaxWidth(),
-                        colors = CardDefaults.cardColors(
-                            containerColor = MaterialTheme.colorScheme.primaryContainer
-                        ),
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer),
                         elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
                     ) {
-                        Column(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(12.dp)
-                        ) {
-                            Text(
-                                text = "Allocated: ${String.format("%.1f", allocatedPercentage)}%  •  Remaining: ${String.format("%.1f", 100.0 - allocatedPercentage)}%",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onPrimaryContainer,
-                                fontWeight = FontWeight.Medium
-                            )
-                        }
+                        Text(
+                            text = "Remaining to allocate: ${String.format("%.1f", remainingPercentage)}%",
+                            modifier = Modifier.padding(12.dp),
+                            style = MaterialTheme.typography.bodySmall,
+                            fontWeight = FontWeight.Medium,
+                            color = MaterialTheme.colorScheme.onPrimaryContainer
+                        )
                     }
                 }
 
                 Spacer(modifier = Modifier.height(16.dp))
 
-                // ── Investor Dropdown (locked when investorLocked) ──
+                // ── Investor Dropdown ──
                 DropdownField(
                     label = "Investor",
                     selectedValue = state.selectedInvestorName.ifBlank { "Select an investor" },
                     options = investors.map { it.investorName },
-                    onOptionSelected = { selectedName ->
-                        val investor = investors.find { it.investorName == selectedName }
-                        investor?.let { viewModel.selectInvestor(it.id, it.investorName) }
+                    onOptionSelected = { name ->
+                        investors.find { it.investorName == name }?.let { viewModel.selectInvestor(it.id, it.investorName) }
                     },
                     modifier = Modifier.fillMaxWidth(),
                     enabled = !investorLocked
                 )
-
                 if (state.investorError != null) {
-                    Text(
-                        text = state.investorError!!,
-                        color = MaterialTheme.colorScheme.error,
+                    Text(state.investorError!!, color = MaterialTheme.colorScheme.error,
                         style = MaterialTheme.typography.bodySmall,
-                        modifier = Modifier.padding(top = 4.dp, start = 4.dp)
-                    )
+                        modifier = Modifier.padding(top = 4.dp, start = 4.dp))
                 }
 
                 Spacer(modifier = Modifier.height(16.dp))
@@ -190,7 +168,7 @@ fun AddShopInvestmentScreen(
                         onValueChange = viewModel::updateSharePercentage,
                         modifier = Modifier.fillMaxWidth(),
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                        placeholder = { Text("e.g. 25.5") },
+                        placeholder = { Text("e.g. 45.0") },
                         suffix = { Text("%") },
                         isError = state.shareError != null,
                         supportingText = if (state.shareError != null) {
@@ -199,72 +177,12 @@ fun AddShopInvestmentScreen(
                     )
                 }
 
-                Spacer(modifier = Modifier.height(16.dp))
-
-                // ── Investment Amount ──
-                Column(modifier = Modifier.fillMaxWidth()) {
-                    Text(
-                        text = "Investment Amount",
-                        style = MaterialTheme.typography.bodyMedium,
-                        modifier = Modifier.padding(bottom = 4.dp)
-                    )
-                    OutlinedTextField(
-                        value = state.investmentAmount,
-                        onValueChange = viewModel::updateInvestmentAmount,
-                        modifier = Modifier.fillMaxWidth(),
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                        placeholder = { Text("Enter amount") },
-                        prefix = { Text("AED ") }
-                    )
-                }
-
-                Spacer(modifier = Modifier.height(16.dp))
-
-                // ── Investment Date ──
-                Column(modifier = Modifier.fillMaxWidth()) {
-                    Text(
-                        text = "Investment Date",
-                        style = MaterialTheme.typography.bodyMedium,
-                        modifier = Modifier.padding(bottom = 4.dp)
-                    )
-                    OutlinedTextField(
-                        value = dateFormat.format(Date(state.investmentDate)),
-                        onValueChange = {},
-                        readOnly = true,
-                        modifier = Modifier.fillMaxWidth(),
-                        trailingIcon = {
-                            IconButton(
-                                onClick = {
-                                    val calendar = Calendar.getInstance().apply {
-                                        timeInMillis = state.investmentDate
-                                    }
-                                    DatePickerDialog(
-                                        context,
-                                        { _, year, month, dayOfMonth ->
-                                            val selected = Calendar.getInstance()
-                                            selected.set(year, month, dayOfMonth, 0, 0, 0)
-                                            selected.set(Calendar.MILLISECOND, 0)
-                                            viewModel.updateInvestmentDate(selected.timeInMillis)
-                                        },
-                                        calendar.get(Calendar.YEAR),
-                                        calendar.get(Calendar.MONTH),
-                                        calendar.get(Calendar.DAY_OF_MONTH)
-                                    ).show()
-                                }
-                            ) {
-                                Icon(Icons.Default.DateRange, contentDescription = "Select Date")
-                            }
-                        }
-                    )
-                }
-
                 if (!error.isNullOrEmpty()) {
-                    Spacer(modifier = Modifier.height(16.dp))
+                    Spacer(modifier = Modifier.height(12.dp))
                     Text(
                         text = error ?: "",
                         color = MaterialTheme.colorScheme.error,
-                        fontSize = 14.sp,
-                        modifier = Modifier.padding(top = 8.dp)
+                        fontSize = 14.sp
                     )
                 }
 
@@ -272,26 +190,22 @@ fun AddShopInvestmentScreen(
 
                 Button(
                     onClick = {
-                        viewModel.saveInvestment(
+                        viewModel.saveAssignment(
                             context = context,
                             onSuccess = {
-                                Toast.makeText(context, "Investment added successfully!", Toast.LENGTH_SHORT).show()
+                                Toast.makeText(context, "Investor assigned successfully!", Toast.LENGTH_SHORT).show()
                             },
-                            onFail = { errorMessage ->
-                                Toast.makeText(context, errorMessage, Toast.LENGTH_SHORT).show()
+                            onFail = { msg ->
+                                Toast.makeText(context, msg, Toast.LENGTH_SHORT).show()
                             }
                         )
                     },
                     enabled = isValid,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(56.dp),
+                    modifier = Modifier.fillMaxWidth().height(56.dp),
                     shape = MaterialTheme.shapes.medium,
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = MaterialTheme.colorScheme.primary
-                    )
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
                 ) {
-                    Text(text = "Add Investment", fontSize = 16.sp, fontWeight = FontWeight.Medium)
+                    Text("Assign Investor", fontSize = 16.sp, fontWeight = FontWeight.Medium)
                 }
 
                 Spacer(modifier = Modifier.height(16.dp))

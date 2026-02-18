@@ -1,5 +1,6 @@
 package com.marsa.smarttrackerhub.ui.screens.investers
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -9,11 +10,15 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material3.AssistChip
+import androidx.compose.material3.AssistChipDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -36,22 +41,24 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.marsa.smarttrackerhub.domain.InvestorShopDetail
-import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
+import com.marsa.smarttrackerhub.domain.InvestorShopSummary
 
 /**
+ * Shows an investor's portfolio:
+ *  - Investor contact info
+ *  - Portfolio summary (total paid across all shops, active shop count)
+ *  - Per-shop rows — tappable → ShopInvestmentDashboard
+ *
  * Created by Muhammed Shafi on 17/02/2026.
  * Moro Hub
  * muhammed.poyil@morohub.com
  */
-
 @Composable
 fun InvestorDetailScreen(
     investorId: Int,
     onEditClick: (Int) -> Unit,
-    onAddShopInvestmentClick: (Int) -> Unit
+    onAddShopInvestmentClick: (Int) -> Unit,
+    onShopDashboardClick: (shopId: Int) -> Unit = {}
 ) {
     val viewModel: InvestorDetailViewModel = viewModel()
     val uiState by viewModel.uiState.collectAsState()
@@ -79,12 +86,12 @@ fun InvestorDetailScreen(
                         tint = MaterialTheme.colorScheme.onSecondaryContainer
                     )
                 }
-                // Primary FAB: add shop investment
+                // Primary FAB: assign investor to a new shop
                 FloatingActionButton(
                     onClick = { onAddShopInvestmentClick(investorId) },
                     containerColor = MaterialTheme.colorScheme.primary
                 ) {
-                    Icon(Icons.Default.Add, contentDescription = "Add Shop Investment")
+                    Icon(Icons.Default.Add, contentDescription = "Assign to Shop")
                 }
             }
         }
@@ -130,14 +137,14 @@ fun InvestorDetailScreen(
                                     color = MaterialTheme.colorScheme.primary
                                 )
                                 Spacer(Modifier.height(12.dp))
-                                DetailRow(label = "Name", value = uiState.investor!!.investorName)
+                                InvestorDetailRow(label = "Name", value = uiState.investor!!.investorName)
                                 Spacer(Modifier.height(8.dp))
-                                DetailRow(
+                                InvestorDetailRow(
                                     label = "Email",
                                     value = uiState.investor!!.investorEmail.ifBlank { "—" }
                                 )
                                 Spacer(Modifier.height(8.dp))
-                                DetailRow(label = "Phone", value = uiState.investor!!.investorPhone)
+                                InvestorDetailRow(label = "Phone", value = uiState.investor!!.investorPhone)
                             }
                         }
                     }
@@ -157,30 +164,35 @@ fun InvestorDetailScreen(
                                     .padding(16.dp),
                                 horizontalArrangement = Arrangement.SpaceBetween
                             ) {
-                                SummaryMetric(
-                                    label = "Total Invested",
-                                    value = "AED ${String.format("%,.2f", uiState.totalInvested)}"
+                                InvestorSummaryMetric(
+                                    label = "Total Paid",
+                                    value = "AED ${String.format("%,.2f", uiState.totalPaidAllShops)}"
                                 )
-                                SummaryMetric(
-                                    label = "Shops",
-                                    value = uiState.shopCount.toString(),
+                                InvestorSummaryMetric(
+                                    label = "Active Shops",
+                                    value = uiState.activeShopCount.toString(),
+                                    alignment = Alignment.CenterHorizontally
+                                )
+                                InvestorSummaryMetric(
+                                    label = "All Shops",
+                                    value = uiState.shopSummaries.size.toString(),
                                     alignment = Alignment.End
                                 )
                             }
                         }
                     }
 
-                    // ── Shop Investments Section ──
+                    // ── Shop Portfolio Section ──
                     item {
                         Text(
-                            text = "Shop Investments",
+                            text = "Shop Portfolio",
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Bold,
                             color = MaterialTheme.colorScheme.primary
                         )
                     }
 
-                    if (uiState.shopInvestments.isEmpty()) {
+                    if (uiState.shopSummaries.isEmpty()) {
                         item {
                             Box(
                                 modifier = Modifier
@@ -189,15 +201,18 @@ fun InvestorDetailScreen(
                                 contentAlignment = Alignment.Center
                             ) {
                                 Text(
-                                    "No shop investments yet. Tap + to add one.",
+                                    "Not assigned to any shop yet. Tap + to assign.",
                                     color = Color.Gray,
                                     style = MaterialTheme.typography.bodyMedium
                                 )
                             }
                         }
                     } else {
-                        items(uiState.shopInvestments) { investment ->
-                            ShopInvestmentCard(investment = investment)
+                        items(uiState.shopSummaries) { summary ->
+                            InvestorShopSummaryCard(
+                                summary = summary,
+                                onClick = { onShopDashboardClick(summary.shopId) }
+                            )
                         }
                     }
 
@@ -209,11 +224,17 @@ fun InvestorDetailScreen(
     }
 }
 
+// ── Per-shop card ──────────────────────────────────────────────────────────
+
 @Composable
-private fun ShopInvestmentCard(investment: InvestorShopDetail) {
-    val dateFormat = SimpleDateFormat("dd MMM yyyy", Locale.ENGLISH)
+private fun InvestorShopSummaryCard(
+    summary: InvestorShopSummary,
+    onClick: () -> Unit
+) {
     Card(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick),
         elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
     ) {
         Column(
@@ -221,46 +242,83 @@ private fun ShopInvestmentCard(investment: InvestorShopDetail) {
                 .fillMaxWidth()
                 .padding(16.dp)
         ) {
-            Text(
-                text = investment.shopName,
-                style = MaterialTheme.typography.titleSmall,
-                fontWeight = FontWeight.Bold
-            )
-            Text(
-                text = investment.shopAddress,
-                style = MaterialTheme.typography.bodySmall,
-                color = Color.Gray
-            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = summary.shopName,
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.Bold
+                    )
+                    if (summary.shopAddress.isNotBlank()) {
+                        Text(
+                            text = summary.shopAddress,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = Color.Gray
+                        )
+                    }
+                }
+                Icon(
+                    imageVector = Icons.AutoMirrored.Filled.ArrowForward,
+                    contentDescription = "View Dashboard",
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(18.dp)
+                )
+            }
+
             Spacer(Modifier.height(12.dp))
             HorizontalDivider(color = Color.LightGray.copy(alpha = 0.5f))
             Spacer(Modifier.height(12.dp))
+
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                InvestmentMetric(
-                    label = "Share",
-                    value = "${String.format("%.1f", investment.sharePercentage)}%",
+                InvestorShopMetric(
+                    label = "My Share",
+                    value = "${String.format("%.1f", summary.sharePercentage)}%",
                     valueColor = MaterialTheme.colorScheme.primary
                 )
-                InvestmentMetric(
-                    label = "Amount",
-                    value = "AED ${String.format("%,.2f", investment.investmentAmount)}",
+                InvestorShopMetric(
+                    label = "Total Paid",
+                    value = "AED ${String.format("%,.2f", summary.totalPaid)}",
                     valueColor = MaterialTheme.colorScheme.primary,
                     alignment = Alignment.CenterHorizontally
                 )
-                InvestmentMetric(
-                    label = "Date",
-                    value = dateFormat.format(Date(investment.investmentDate)),
-                    alignment = Alignment.End
+                // Status chip
+                val isActive = summary.status == "Active"
+                AssistChip(
+                    onClick = {},
+                    label = {
+                        Text(
+                            text = summary.status,
+                            style = MaterialTheme.typography.labelSmall
+                        )
+                    },
+                    colors = AssistChipDefaults.assistChipColors(
+                        containerColor = if (isActive)
+                            MaterialTheme.colorScheme.secondaryContainer
+                        else
+                            MaterialTheme.colorScheme.errorContainer,
+                        labelColor = if (isActive)
+                            MaterialTheme.colorScheme.onSecondaryContainer
+                        else
+                            MaterialTheme.colorScheme.onErrorContainer
+                    )
                 )
             }
         }
     }
 }
 
+// ── Reusable composables ───────────────────────────────────────────────────
+
 @Composable
-private fun DetailRow(label: String, value: String) {
+private fun InvestorDetailRow(label: String, value: String) {
     Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.SpaceBetween
@@ -281,7 +339,7 @@ private fun DetailRow(label: String, value: String) {
 }
 
 @Composable
-private fun SummaryMetric(
+private fun InvestorSummaryMetric(
     label: String,
     value: String,
     alignment: Alignment.Horizontal = Alignment.Start
@@ -303,7 +361,7 @@ private fun SummaryMetric(
 }
 
 @Composable
-private fun InvestmentMetric(
+private fun InvestorShopMetric(
     label: String,
     value: String,
     valueColor: Color = Color.Unspecified,

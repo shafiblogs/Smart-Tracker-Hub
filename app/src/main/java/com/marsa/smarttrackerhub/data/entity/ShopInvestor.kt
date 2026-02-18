@@ -36,7 +36,7 @@ data class ShopInvestor(
     @PrimaryKey(autoGenerate = true) val id: Int = 0,
     val shopId: Int,
     val investorId: Int,
-    val sharePercentage: Double, // e.g., 40.5
-    val investmentAmount: Double, // Actual AED invested
-    val investmentDate: Long
+    val sharePercentage: Double,                        // Fixed share e.g. 45.0
+    val status: String = "Active",                      // Active | Withdrawn
+    val joinedDate: Long = System.currentTimeMillis()
 )

@@ -14,7 +14,7 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 /**
- * Created by Muhammed Shafi on 17/02/2026.
+ * Created by Muhammed Shafi on 19/02/2026.
  * Moro Hub
  * muhammed.poyil@morohub.com
  */
@@ -30,29 +30,30 @@ class InvestorDetailViewModel(
         val investorRepo = InvestorRepository(db.investorDao())
         val shopInvestorRepo = ShopInvestorRepository(db.shopInvestorDao())
 
-        // Load investor info + totals once
+        // Load static investor info once
         viewModelScope.launch {
             try {
                 val investor = investorRepo.getInvestorById(investorId)
-                val totalInvested = shopInvestorRepo.getTotalInvestedByInvestor(investorId)
-                val shopCount = shopInvestorRepo.getShopCountForInvestor(investorId)
-                _uiState.update {
-                    it.copy(
-                        investor = investor,
-                        totalInvested = totalInvested,
-                        shopCount = shopCount
-                    )
-                }
+                _uiState.update { it.copy(investor = investor) }
             } catch (e: Exception) {
                 _uiState.update { it.copy(error = e.localizedMessage, isLoading = false) }
             }
         }
 
-        // Collect shop investments as a Flow so list updates live
+        // Live shop summaries — updates whenever a transaction is added
         viewModelScope.launch {
             try {
-                shopInvestorRepo.getShopsForInvestor(investorId).collect { shops ->
-                    _uiState.update { it.copy(shopInvestments = shops, isLoading = false) }
+                shopInvestorRepo.getShopsForInvestor(investorId).collect { summaries ->
+                    val totalPaid = summaries.sumOf { it.totalPaid }
+                    val activeCount = summaries.count { it.status == "Active" }
+                    _uiState.update {
+                        it.copy(
+                            shopSummaries = summaries,
+                            totalPaidAllShops = totalPaid,
+                            activeShopCount = activeCount,
+                            isLoading = false
+                        )
+                    }
                 }
             } catch (e: Exception) {
                 _uiState.update { it.copy(error = e.localizedMessage, isLoading = false) }

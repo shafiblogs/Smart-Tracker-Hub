@@ -21,7 +21,10 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 /**
- * Created by Muhammed Shafi on 18/02/2026.
+ * Assigns an investor to a shop with a fixed share %.
+ * Actual money contributions are recorded separately via AddTransactionScreen.
+ *
+ * Created by Muhammed Shafi on 19/02/2026.
  * Moro Hub
  * muhammed.poyil@morohub.com
  */
@@ -32,8 +35,6 @@ data class ShopInvestmentFormState(
     val selectedInvestorId: Int? = null,
     val selectedInvestorName: String = "",
     val sharePercentage: String = "",
-    val investmentAmount: String = "",
-    val investmentDate: Long = System.currentTimeMillis(),
     val shareError: String? = null,
     val shopError: String? = null,
     val investorError: String? = null
@@ -58,18 +59,16 @@ class AddShopInvestmentViewModel(
     private val _error = MutableStateFlow<String?>(null)
     val error: StateFlow<String?> = _error
 
-    // Used to show remaining % available in the selected shop
-    private val _allocatedPercentage = MutableStateFlow(0.0)
-    val allocatedPercentage: StateFlow<Double> = _allocatedPercentage.asStateFlow()
+    /** Remaining % available to assign in the selected shop. */
+    private val _remainingPercentage = MutableStateFlow(100.0)
+    val remainingPercentage: StateFlow<Double> = _remainingPercentage.asStateFlow()
 
-    val isFormValid: StateFlow<Boolean> = formState
+    val isFormValid: StateFlow<Boolean> = _formState
         .map {
             it.selectedShopId != null &&
                     it.selectedInvestorId != null &&
                     it.sharePercentage.isNotBlank() &&
-                    (it.sharePercentage.toDoubleOrNull() ?: 0.0) > 0.0 &&
-                    it.investmentAmount.isNotBlank() &&
-                    (it.investmentAmount.toDoubleOrNull() ?: 0.0) > 0.0
+                    (it.sharePercentage.toDoubleOrNull() ?: 0.0) > 0.0
         }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(), false)
 
@@ -78,8 +77,8 @@ class AddShopInvestmentViewModel(
     private lateinit var investorRepo: InvestorRepository
 
     /**
-     * @param prefilledInvestorId  > 0 when arriving from InvestorDetailScreen (investor is fixed)
-     * @param prefilledShopId      > 0 when arriving from AddShopScreen (shop is fixed)
+     * @param prefilledInvestorId > 0 → coming from InvestorDetailScreen (investor locked)
+     * @param prefilledShopId     > 0 → coming from ShopInvestmentDashboard (shop locked)
      */
     fun initDatabase(context: Context, prefilledInvestorId: Int = 0, prefilledShopId: Int = 0) {
         val db = AppDatabase.getDatabase(context)
@@ -92,42 +91,38 @@ class AddShopInvestmentViewModel(
 
         if (prefilledInvestorId > 0) {
             viewModelScope.launch {
-                val investor = investorRepo.getInvestorById(prefilledInvestorId)
-                investor?.let { selectInvestor(it.id, it.investorName) }
+                investorRepo.getInvestorById(prefilledInvestorId)
+                    ?.let { selectInvestor(it.id, it.investorName) }
             }
         }
-
         if (prefilledShopId > 0) {
             viewModelScope.launch {
-                val shop = shopRepo.getShopById(prefilledShopId)
-                shop?.let { selectShop(it.id, it.shopName) }
+                shopRepo.getShopById(prefilledShopId)
+                    ?.let { selectShop(it.id, it.shopName) }
             }
         }
     }
 
     private fun loadShops() = viewModelScope.launch {
-        shopRepo.getAllShops().collect { list ->
-            _shops.value = list
-        }
+        shopRepo.getAllShops().collect { _shops.value = it }
     }
 
     private fun loadInvestors() = viewModelScope.launch {
-        investorRepo.getAllInvestors().collect { list ->
-            _investors.value = list
-        }
+        investorRepo.getAllInvestors().collect { _investors.value = it }
     }
 
     fun selectShop(shopId: Int, shopName: String) {
         _formState.update { it.copy(selectedShopId = shopId, selectedShopName = shopName, shopError = null) }
-        loadAllocatedPercentage(shopId)
+        loadRemaining(shopId)
     }
 
     fun selectInvestor(investorId: Int, investorName: String) {
         _formState.update { it.copy(selectedInvestorId = investorId, selectedInvestorName = investorName, investorError = null) }
     }
 
-    private fun loadAllocatedPercentage(shopId: Int) = viewModelScope.launch {
-        _allocatedPercentage.value = shopInvestorRepo.getTotalPercentageForShop(shopId)
+    private fun loadRemaining(shopId: Int) = viewModelScope.launch {
+        val allocated = shopInvestorRepo.getTotalPercentageForShop(shopId)
+        _remainingPercentage.value = 100.0 - allocated
     }
 
     fun updateSharePercentage(value: String) {
@@ -136,73 +131,49 @@ class AddShopInvestmentViewModel(
         }
     }
 
-    fun updateInvestmentAmount(value: String) {
-        if (value.isEmpty() || value.matches(Regex("^\\d*\\.?\\d*$"))) {
-            _formState.update { it.copy(investmentAmount = value) }
-        }
-    }
-
-    fun updateInvestmentDate(dateInMillis: Long) {
-        _formState.update { it.copy(investmentDate = dateInMillis) }
-    }
-
-    fun saveInvestment(
+    fun saveAssignment(
         context: Context,
         onSuccess: () -> Unit = {},
         onFail: (String) -> Unit = {}
     ) = viewModelScope.launch {
         val state = _formState.value
 
-        val shopId = state.selectedShopId
-        if (shopId == null) {
+        val shopId = state.selectedShopId ?: run {
             _formState.update { it.copy(shopError = "Please select a shop") }
             return@launch
         }
-
-        val investorId = state.selectedInvestorId
-        if (investorId == null) {
+        val investorId = state.selectedInvestorId ?: run {
             _formState.update { it.copy(investorError = "Please select an investor") }
             return@launch
         }
-
         val share = state.sharePercentage.toDoubleOrNull()
         if (share == null || share <= 0.0) {
             _formState.update { it.copy(shareError = "Enter a valid share percentage") }
             return@launch
         }
-
-        val remaining = 100.0 - _allocatedPercentage.value
-        if (share > remaining) {
-            _formState.update { it.copy(shareError = "Only ${String.format("%.1f", remaining)}% remaining for this shop") }
+        if (share > _remainingPercentage.value) {
+            _formState.update {
+                it.copy(shareError = "Only ${String.format("%.1f", _remainingPercentage.value)}% remaining")
+            }
             return@launch
         }
-
-        val amount = state.investmentAmount.toDoubleOrNull()
-        if (amount == null || amount <= 0.0) {
-            _error.value = "Enter a valid investment amount"
-            return@launch
-        }
-
-        // Check if this investor already has an entry for this shop
-        val alreadyExists = shopInvestorRepo.isInvestorInShop(shopId, investorId)
-        if (alreadyExists) {
-            onFail("This investor already has an investment in the selected shop")
+        if (shopInvestorRepo.isInvestorInShop(shopId, investorId)) {
+            onFail("This investor is already assigned to the selected shop")
             return@launch
         }
 
         try {
-            val shopInvestor = ShopInvestor(
-                shopId = shopId,
-                investorId = investorId,
-                sharePercentage = share,
-                investmentAmount = amount,
-                investmentDate = state.investmentDate
+            shopInvestorRepo.insertShopInvestor(
+                ShopInvestor(
+                    shopId = shopId,
+                    investorId = investorId,
+                    sharePercentage = share
+                )
             )
-            shopInvestorRepo.insertShopInvestor(shopInvestor)
             _isSaved.value = true
             onSuccess()
         } catch (e: Exception) {
-            onFail("Failed to save investment: ${e.localizedMessage}")
+            onFail("Failed to save: ${e.localizedMessage}")
         }
     }
 }
