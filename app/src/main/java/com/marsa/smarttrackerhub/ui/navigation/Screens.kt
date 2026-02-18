@@ -34,6 +34,12 @@ sealed class Screen(val route: String) {
     object InvestorDetail : Screen("investor_detail/{investorId}") {
         fun createRoute(investorId: Int) = "investor_detail/$investorId"
     }
+    // investorId > 0 means coming from investor detail (investor is pre-selected, pick shop)
+    // shopId > 0 means coming from shop detail (shop is pre-selected, pick investor)
+    object AddShopInvestment : Screen("add_shop_investment/{investorId}/{shopId}") {
+        fun createRoute(investorId: Int = 0, shopId: Int = 0) =
+            "add_shop_investment/$investorId/$shopId"
+    }
     object Employees : Screen("employees")
     object AddEmployee : Screen("add_employee/{employeeId}") {
         fun createRoute(employeeId: Int? = null) = if (employeeId != null) {

@@ -2,6 +2,7 @@ package com.marsa.smarttrackerhub.ui.screens.shops
 
 import android.app.DatePickerDialog
 import android.widget.Toast
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -13,6 +14,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.Button
@@ -25,8 +27,10 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -44,6 +48,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.marsa.smarttrackerhub.domain.ShopInvestorDetail
 import com.marsa.smarttrackerhub.ui.components.DropdownField
 import com.marsa.smarttrackerhub.ui.components.LabeledInputField
 import com.marsa.smarttrackerhub.ui.screens.enums.ShopType
@@ -57,7 +62,8 @@ import java.util.Locale
 @Composable
 fun AddShopScreen(
     shopId: Int? = null,
-    onShopCreated: () -> Unit
+    onShopCreated: () -> Unit,
+    onAddInvestorClick: (Int) -> Unit = {}
 ) {
     val viewModel: AddShopViewModel = viewModel()
     val state by viewModel.formState.collectAsState()
@@ -65,6 +71,7 @@ fun AddShopScreen(
     val isSaved by viewModel.isSaved.collectAsState()
     val error by viewModel.error.collectAsState()
     val zakathAmount by viewModel.zakathAmount.collectAsState()
+    val shopInvestors by viewModel.shopInvestors.collectAsState()
     val context = LocalContext.current
     val isLoaded by viewModel.isLoaded.collectAsState()
 
@@ -431,6 +438,47 @@ fun AddShopScreen(
                     enabled = isEditEnabled
                 )
 
+                // ============ INVESTORS SECTION (only for existing shops) ============
+                if (shopId != null) {
+                    Spacer(modifier = Modifier.height(24.dp))
+                    HorizontalDivider(color = Color.LightGray)
+                    Spacer(modifier = Modifier.height(24.dp))
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        SectionHeader(text = "Investors")
+                        OutlinedButton(
+                            onClick = { onAddInvestorClick(shopId) }
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Add,
+                                contentDescription = null,
+                                modifier = Modifier.padding(end = 4.dp)
+                            )
+                            Text("Add", fontSize = 13.sp)
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(12.dp))
+
+                    if (shopInvestors.isEmpty()) {
+                        Text(
+                            text = "No investors yet",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = Color.Gray,
+                            modifier = Modifier.padding(vertical = 8.dp)
+                        )
+                    } else {
+                        shopInvestors.forEach { investor ->
+                            ShopInvestorRow(investor = investor)
+                            Spacer(modifier = Modifier.height(8.dp))
+                        }
+                    }
+                }
+
                 // Error Display
                 if (!error.isNullOrEmpty()) {
                     Spacer(modifier = Modifier.height(16.dp))
@@ -491,4 +539,45 @@ private fun SectionHeader(text: String) {
         fontWeight = FontWeight.Bold,
         color = MaterialTheme.colorScheme.primary
     )
+}
+
+@Composable
+private fun ShopInvestorRow(investor: ShopInvestorDetail) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(12.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = investor.investorName,
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.SemiBold
+                )
+                Text(
+                    text = "AED ${String.format("%,.2f", investor.investmentAmount)}",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = Color.Gray
+                )
+            }
+            Surface(
+                color = MaterialTheme.colorScheme.primaryContainer,
+                shape = MaterialTheme.shapes.small
+            ) {
+                Text(
+                    text = "${String.format("%.1f", investor.sharePercentage)}%",
+                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
+                    style = MaterialTheme.typography.labelMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onPrimaryContainer
+                )
+            }
+        }
+    }
 }

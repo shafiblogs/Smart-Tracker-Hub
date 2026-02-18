@@ -57,6 +57,7 @@ import com.marsa.smarttrackerhub.ui.screens.employees.AddEmployeeScreen
 import com.marsa.smarttrackerhub.ui.screens.employees.EmployeesScreen
 import com.marsa.smarttrackerhub.ui.screens.home.HomeScreen
 import com.marsa.smarttrackerhub.ui.screens.investers.AddInvestorScreen
+import com.marsa.smarttrackerhub.ui.screens.investers.AddShopInvestmentScreen
 import com.marsa.smarttrackerhub.ui.screens.investers.InvestorDetailScreen
 import com.marsa.smarttrackerhub.ui.screens.investers.InvestorsScreen
 import com.marsa.smarttrackerhub.ui.screens.login.LoginScreen
@@ -157,10 +158,14 @@ fun SmartTrackerNavHost(navController: NavHostController) {
                 )
             ) { backStackEntry ->
                 val shopId = backStackEntry.arguments?.getInt("shopId")
+                val resolvedShopId = if (shopId == 0) null else shopId
                 AddShopScreen(
-                    shopId = if (shopId == 0) null else shopId,
+                    shopId = resolvedShopId,
                     onShopCreated = {
                         navController.popBackStack()
+                    },
+                    onAddInvestorClick = { id ->
+                        navController.navigate(Screen.AddShopInvestment.createRoute(shopId = id))
                     }
                 )
             }
@@ -240,9 +245,30 @@ fun SmartTrackerNavHost(navController: NavHostController) {
                     onEditClick = { id ->
                         navController.navigate(Screen.AddInvestor.createRoute(id))
                     },
-                    onAddShopInvestmentClick = { _ ->
-                        // Phase 3: navigate to AddShopInvestment screen
+                    onAddShopInvestmentClick = { id ->
+                        navController.navigate(Screen.AddShopInvestment.createRoute(investorId = id))
                     }
+                )
+            }
+            composable(
+                route = Screen.AddShopInvestment.route,
+                arguments = listOf(
+                    navArgument("investorId") {
+                        type = NavType.IntType
+                        defaultValue = 0
+                    },
+                    navArgument("shopId") {
+                        type = NavType.IntType
+                        defaultValue = 0
+                    }
+                )
+            ) { backStackEntry ->
+                val investorId = backStackEntry.arguments!!.getInt("investorId")
+                val shopId = backStackEntry.arguments!!.getInt("shopId")
+                AddShopInvestmentScreen(
+                    prefilledInvestorId = investorId,
+                    prefilledShopId = shopId,
+                    onSaveSuccess = { navController.popBackStack() }
                 )
             }
             composable(Screen.Employees.route) {
@@ -302,7 +328,8 @@ fun SmartTrackerNavHost(navController: NavHostController) {
                     }
 
                     Screen.Statement.route, Screen.ShopList.route, Screen.AddShop.route, Screen.Sale.route, Screen.Notifications.route,
-                    Screen.Investors.route, Screen.AddInvestor.route, Screen.InvestorDetail.route, Screen.Employees.route, Screen.AddEmployee.route,
+                    Screen.Investors.route, Screen.AddInvestor.route, Screen.InvestorDetail.route, Screen.AddShopInvestment.route,
+                    Screen.Employees.route, Screen.AddEmployee.route,
                     Screen.AccountSetup.route, Screen.Summary.route -> {
                         val titleText = when (currentRoute) {
                             Screen.AccountSetup.route -> "My Account"
@@ -312,6 +339,7 @@ fun SmartTrackerNavHost(navController: NavHostController) {
                             Screen.AddInvestor.route -> "Investor"
                             Screen.InvestorDetail.route -> "Investor Portfolio"
                             Screen.Investors.route -> "Investors"
+                            Screen.AddShopInvestment.route -> "Add Investment"
                             Screen.Sale.route -> "Sales"
                             Screen.Statement.route -> "Statements"
                             Screen.ShopList.route -> "Shops"
