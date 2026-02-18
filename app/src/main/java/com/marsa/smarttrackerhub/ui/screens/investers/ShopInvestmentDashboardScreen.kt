@@ -13,8 +13,8 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Assessment
-import androidx.compose.material.icons.filled.GroupAdd
+import androidx.compose.material.icons.filled.DateRange
+import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -82,7 +82,7 @@ fun ShopInvestmentDashboardScreen(
                     onClick = { onSettlementClick(shopId) },
                     containerColor = MaterialTheme.colorScheme.tertiaryContainer
                 ) {
-                    Icon(Icons.Default.Assessment, contentDescription = "Year-End Settlement",
+                    Icon(Icons.Default.DateRange, contentDescription = "Year-End Settlement",
                         tint = MaterialTheme.colorScheme.onTertiaryContainer)
                 }
                 // Assign new investor
@@ -90,7 +90,7 @@ fun ShopInvestmentDashboardScreen(
                     onClick = { onAssignInvestorClick(shopId) },
                     containerColor = MaterialTheme.colorScheme.secondaryContainer
                 ) {
-                    Icon(Icons.Default.GroupAdd, contentDescription = "Assign Investor",
+                    Icon(Icons.Default.Person, contentDescription = "Assign Investor",
                         tint = MaterialTheme.colorScheme.onSecondaryContainer)
                 }
                 // Add transaction (primary)
