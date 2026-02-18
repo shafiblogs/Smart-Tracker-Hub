@@ -10,5 +10,7 @@ import com.marsa.smarttrackerhub.data.entity.InvestorInfo
  */
 data class InvestorListUiState(
     val investors: List<InvestorInfo> = emptyList(),
+    // investorId → Pair(totalInvested, shopCount)
+    val portfolioTotals: Map<Int, Pair<Double, Int>> = emptyMap(),
     val isLoading: Boolean = false
 )
