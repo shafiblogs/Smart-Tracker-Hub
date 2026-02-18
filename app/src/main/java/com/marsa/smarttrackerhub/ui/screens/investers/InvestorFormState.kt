@@ -7,7 +7,10 @@ package com.marsa.smarttrackerhub.ui.screens.investers
  * muhammed.poyil@morohub.com
  */
 data class InvestorFormState(
+    val investorId: Int? = null,
     val investorName: String = "",
     val investorEmail: String = "",
-    val investorPhone: String = ""
+    val investorPhone: String = "",
+    val nameError: String? = null,
+    val phoneError: String? = null
 )

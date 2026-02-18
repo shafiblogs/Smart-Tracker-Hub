@@ -163,7 +163,21 @@ fun SmartTrackerNavHost(navController: NavHostController) {
                     }
                 )
             }
-            composable(Screen.AddInvestor.route) { AddInvestorScreen(onSaveSuccess = { navController.popBackStack() }) }
+            composable(
+                route = Screen.AddInvestor.route,
+                arguments = listOf(
+                    navArgument("investorId") {
+                        type = NavType.IntType
+                        defaultValue = 0
+                    }
+                )
+            ) { backStackEntry ->
+                val investorId = backStackEntry.arguments?.getInt("investorId")
+                AddInvestorScreen(
+                    investorId = if (investorId == 0) null else investorId,
+                    onSaveSuccess = { navController.popBackStack() }
+                )
+            }
             composable(
                 route = Screen.AddEmployee.route,
                 arguments = listOf(
@@ -204,9 +218,11 @@ fun SmartTrackerNavHost(navController: NavHostController) {
             }
             composable(Screen.Investors.route) {
                 InvestorsScreen(
-                    onItemClick = {},
+                    onItemClick = { investorId ->
+                        navController.navigate(Screen.AddInvestor.createRoute(investorId))
+                    },
                     onAddClick = {
-                        navController.navigate(Screen.AddInvestor.route)
+                        navController.navigate(Screen.AddInvestor.createRoute())
                     })
             }
             composable(Screen.Employees.route) {
@@ -273,6 +289,7 @@ fun SmartTrackerNavHost(navController: NavHostController) {
                             Screen.Notifications.route -> "Notifications"
                             Screen.AddShop.route -> "Shop"
                             Screen.AddEmployee.route -> "Employee"
+                            Screen.AddInvestor.route -> "Investor"
                             Screen.Investors.route -> "Investors"
                             Screen.Sale.route -> "Sales"
                             Screen.Statement.route -> "Statements"
