@@ -58,8 +58,12 @@ import com.marsa.smarttrackerhub.ui.screens.employees.EmployeesScreen
 import com.marsa.smarttrackerhub.ui.screens.home.HomeScreen
 import com.marsa.smarttrackerhub.ui.screens.investers.AddInvestorScreen
 import com.marsa.smarttrackerhub.ui.screens.investers.AddShopInvestmentScreen
+import com.marsa.smarttrackerhub.ui.screens.investers.AddTransactionScreen
 import com.marsa.smarttrackerhub.ui.screens.investers.InvestorDetailScreen
 import com.marsa.smarttrackerhub.ui.screens.investers.InvestorsScreen
+import com.marsa.smarttrackerhub.ui.screens.investers.SettlementCalculatorScreen
+import com.marsa.smarttrackerhub.ui.screens.investers.SettlementHistoryScreen
+import com.marsa.smarttrackerhub.ui.screens.investers.ShopInvestmentDashboardScreen
 import com.marsa.smarttrackerhub.ui.screens.login.LoginScreen
 import com.marsa.smarttrackerhub.ui.screens.notifications.NotificationsScreen
 import com.marsa.smarttrackerhub.ui.screens.sale.SaleScreen
@@ -165,7 +169,8 @@ fun SmartTrackerNavHost(navController: NavHostController) {
                         navController.popBackStack()
                     },
                     onAddInvestorClick = { id ->
-                        navController.navigate(Screen.AddShopInvestment.createRoute(shopId = id))
+                        // Navigate to ShopInvestmentDashboard for this shop
+                        navController.navigate(Screen.ShopInvestmentDashboard.createRoute(id))
                     }
                 )
             }
@@ -247,6 +252,9 @@ fun SmartTrackerNavHost(navController: NavHostController) {
                     },
                     onAddShopInvestmentClick = { id ->
                         navController.navigate(Screen.AddShopInvestment.createRoute(investorId = id))
+                    },
+                    onShopDashboardClick = { shopId ->
+                        navController.navigate(Screen.ShopInvestmentDashboard.createRoute(shopId))
                     }
                 )
             }
@@ -271,6 +279,74 @@ fun SmartTrackerNavHost(navController: NavHostController) {
                     onSaveSuccess = { navController.popBackStack() }
                 )
             }
+
+            // ── Shop Investment Dashboard ──────────────────────────────────────
+            composable(
+                route = Screen.ShopInvestmentDashboard.route,
+                arguments = listOf(
+                    navArgument("shopId") { type = NavType.IntType }
+                )
+            ) { backStackEntry ->
+                val shopId = backStackEntry.arguments!!.getInt("shopId")
+                ShopInvestmentDashboardScreen(
+                    shopId = shopId,
+                    onAssignInvestorClick = { id ->
+                        navController.navigate(Screen.AddShopInvestment.createRoute(shopId = id))
+                    },
+                    onAddTransactionClick = { id ->
+                        navController.navigate(Screen.AddTransaction.createRoute(shopId = id))
+                    },
+                    onSettlementClick = { id ->
+                        navController.navigate(Screen.SettlementCalculator.createRoute(id))
+                    }
+                )
+            }
+
+            // ── Add Transaction (record a phase payment) ──────────────────────
+            composable(
+                route = Screen.AddTransaction.route,
+                arguments = listOf(
+                    navArgument("shopId") { type = NavType.IntType },
+                    navArgument("shopInvestorId") {
+                        type = NavType.IntType
+                        defaultValue = 0
+                    }
+                )
+            ) { backStackEntry ->
+                val shopId = backStackEntry.arguments!!.getInt("shopId")
+                val shopInvestorId = backStackEntry.arguments!!.getInt("shopInvestorId")
+                AddTransactionScreen(
+                    shopId = shopId,
+                    prefilledInvestorId = if (shopInvestorId == 0) 0 else shopInvestorId,
+                    onSaveSuccess = { navController.popBackStack() }
+                )
+            }
+
+            // ── Settlement Calculator ─────────────────────────────────────────
+            composable(
+                route = Screen.SettlementCalculator.route,
+                arguments = listOf(
+                    navArgument("shopId") { type = NavType.IntType }
+                )
+            ) { backStackEntry ->
+                val shopId = backStackEntry.arguments!!.getInt("shopId")
+                SettlementCalculatorScreen(
+                    shopId = shopId,
+                    onSettlementSaved = { navController.popBackStack() }
+                )
+            }
+
+            // ── Settlement History ────────────────────────────────────────────
+            composable(
+                route = Screen.SettlementHistory.route,
+                arguments = listOf(
+                    navArgument("shopId") { type = NavType.IntType }
+                )
+            ) { backStackEntry ->
+                val shopId = backStackEntry.arguments!!.getInt("shopId")
+                SettlementHistoryScreen(shopId = shopId)
+            }
+
             composable(Screen.Employees.route) {
                 EmployeesScreen(
                     onEditClick = { employeeId ->
@@ -299,7 +375,6 @@ fun SmartTrackerNavHost(navController: NavHostController) {
                                     )
                                 )
                             },
-
                             navigationIcon = {
                                 IconButton(onClick = { scope.launch { drawerState.open() } }) {
                                     Icon(
@@ -327,8 +402,12 @@ fun SmartTrackerNavHost(navController: NavHostController) {
                         )
                     }
 
-                    Screen.Statement.route, Screen.ShopList.route, Screen.AddShop.route, Screen.Sale.route, Screen.Notifications.route,
-                    Screen.Investors.route, Screen.AddInvestor.route, Screen.InvestorDetail.route, Screen.AddShopInvestment.route,
+                    Screen.Statement.route, Screen.ShopList.route, Screen.AddShop.route,
+                    Screen.Sale.route, Screen.Notifications.route,
+                    Screen.Investors.route, Screen.AddInvestor.route,
+                    Screen.InvestorDetail.route, Screen.AddShopInvestment.route,
+                    Screen.ShopInvestmentDashboard.route, Screen.AddTransaction.route,
+                    Screen.SettlementCalculator.route, Screen.SettlementHistory.route,
                     Screen.Employees.route, Screen.AddEmployee.route,
                     Screen.AccountSetup.route, Screen.Summary.route -> {
                         val titleText = when (currentRoute) {
@@ -339,7 +418,11 @@ fun SmartTrackerNavHost(navController: NavHostController) {
                             Screen.AddInvestor.route -> "Investor"
                             Screen.InvestorDetail.route -> "Investor Portfolio"
                             Screen.Investors.route -> "Investors"
-                            Screen.AddShopInvestment.route -> "Add Investment"
+                            Screen.AddShopInvestment.route -> "Assign Investor"
+                            Screen.ShopInvestmentDashboard.route -> "Investment Dashboard"
+                            Screen.AddTransaction.route -> "Record Payment"
+                            Screen.SettlementCalculator.route -> "Year-End Settlement"
+                            Screen.SettlementHistory.route -> "Settlement History"
                             Screen.Sale.route -> "Sales"
                             Screen.Statement.route -> "Statements"
                             Screen.ShopList.route -> "Shops"
@@ -458,7 +541,6 @@ fun SmartTrackerNavHost(navController: NavHostController) {
                             Screen.Investors.route to "Investors",
                             Screen.AccountSetup.route to "My Account"
                         ) else listOf(
-
                             Screen.Statement.route to "Statement",
                             Screen.AccountSetup.route to "My Account"
                         )

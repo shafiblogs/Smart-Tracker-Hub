@@ -32,11 +32,11 @@ class InvestorListViewModel : ViewModel() {
 
     private fun loadInvestors() = viewModelScope.launch {
         investorRepo.getAllInvestors().collect { list ->
-            // Load portfolio totals for each investor
+            // Load portfolio totals for each investor using the new transaction-based method
             val totals = list.associate { investor ->
-                val totalInvested = shopInvestorRepo.getTotalInvestedByInvestor(investor.id)
+                val totalPaid = shopInvestorRepo.getTotalPaidByInvestor(investor.id)
                 val shopCount = shopInvestorRepo.getShopCountForInvestor(investor.id)
-                investor.id to Pair(totalInvested, shopCount)
+                investor.id to Pair(totalPaid, shopCount)
             }
             _uiState.value = InvestorListUiState(
                 investors = list,
