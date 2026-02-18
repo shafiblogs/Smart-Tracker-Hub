@@ -57,6 +57,7 @@ import com.marsa.smarttrackerhub.ui.screens.employees.AddEmployeeScreen
 import com.marsa.smarttrackerhub.ui.screens.employees.EmployeesScreen
 import com.marsa.smarttrackerhub.ui.screens.home.HomeScreen
 import com.marsa.smarttrackerhub.ui.screens.investers.AddInvestorScreen
+import com.marsa.smarttrackerhub.ui.screens.investers.InvestorDetailScreen
 import com.marsa.smarttrackerhub.ui.screens.investers.InvestorsScreen
 import com.marsa.smarttrackerhub.ui.screens.login.LoginScreen
 import com.marsa.smarttrackerhub.ui.screens.notifications.NotificationsScreen
@@ -219,11 +220,30 @@ fun SmartTrackerNavHost(navController: NavHostController) {
             composable(Screen.Investors.route) {
                 InvestorsScreen(
                     onItemClick = { investorId ->
-                        navController.navigate(Screen.AddInvestor.createRoute(investorId))
+                        navController.navigate(Screen.InvestorDetail.createRoute(investorId))
                     },
                     onAddClick = {
                         navController.navigate(Screen.AddInvestor.createRoute())
                     })
+            }
+            composable(
+                route = Screen.InvestorDetail.route,
+                arguments = listOf(
+                    navArgument("investorId") {
+                        type = NavType.IntType
+                    }
+                )
+            ) { backStackEntry ->
+                val investorId = backStackEntry.arguments!!.getInt("investorId")
+                InvestorDetailScreen(
+                    investorId = investorId,
+                    onEditClick = { id ->
+                        navController.navigate(Screen.AddInvestor.createRoute(id))
+                    },
+                    onAddShopInvestmentClick = { _ ->
+                        // Phase 3: navigate to AddShopInvestment screen
+                    }
+                )
             }
             composable(Screen.Employees.route) {
                 EmployeesScreen(
@@ -282,7 +302,7 @@ fun SmartTrackerNavHost(navController: NavHostController) {
                     }
 
                     Screen.Statement.route, Screen.ShopList.route, Screen.AddShop.route, Screen.Sale.route, Screen.Notifications.route,
-                    Screen.Investors.route, Screen.AddInvestor.route, Screen.Employees.route, Screen.AddEmployee.route,
+                    Screen.Investors.route, Screen.AddInvestor.route, Screen.InvestorDetail.route, Screen.Employees.route, Screen.AddEmployee.route,
                     Screen.AccountSetup.route, Screen.Summary.route -> {
                         val titleText = when (currentRoute) {
                             Screen.AccountSetup.route -> "My Account"
@@ -290,6 +310,7 @@ fun SmartTrackerNavHost(navController: NavHostController) {
                             Screen.AddShop.route -> "Shop"
                             Screen.AddEmployee.route -> "Employee"
                             Screen.AddInvestor.route -> "Investor"
+                            Screen.InvestorDetail.route -> "Investor Portfolio"
                             Screen.Investors.route -> "Investors"
                             Screen.Sale.route -> "Sales"
                             Screen.Statement.route -> "Statements"
