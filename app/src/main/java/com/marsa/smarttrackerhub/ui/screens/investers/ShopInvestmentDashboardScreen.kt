@@ -9,12 +9,17 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.DateRange
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Person
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -22,10 +27,13 @@ import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -34,6 +42,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -67,6 +76,20 @@ fun ShopInvestmentDashboardScreen(
 
     LaunchedEffect(shopId) {
         viewModel.init(context, shopId)
+    }
+
+    // Edit share % dialog
+    uiState.editingInvestor?.let {
+        EditShareDialog(
+            investorName = it.investorName,
+            currentShare = it.sharePercentage,
+            inputValue = uiState.editShareInput,
+            errorMessage = uiState.editShareError,
+            isSaving = uiState.isSavingShare,
+            onValueChange = viewModel::onEditShareInputChange,
+            onConfirm = viewModel::saveEditedShare,
+            onDismiss = viewModel::dismissEditShareDialog
+        )
     }
 
     Scaffold(
@@ -199,7 +222,8 @@ fun ShopInvestmentDashboardScreen(
                         items(uiState.investors) { investor ->
                             InvestorBreakdownCard(
                                 investor = investor,
-                                totalShopCapital = uiState.totalCapital
+                                totalShopCapital = uiState.totalCapital,
+                                onEditShareClick = { viewModel.showEditShareDialog(investor) }
                             )
                         }
                     }
@@ -270,7 +294,8 @@ private fun CapitalMetric(
 @Composable
 private fun InvestorBreakdownCard(
     investor: ShopInvestorSummary,
-    totalShopCapital: Double
+    totalShopCapital: Double,
+    onEditShareClick: () -> Unit
 ) {
     val fairShare = if (totalShopCapital > 0)
         (investor.sharePercentage / 100.0) * totalShopCapital else 0.0
@@ -310,21 +335,38 @@ private fun InvestorBreakdownCard(
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
-                // Status chip
-                Surface(
-                    color = if (isActive)
-                        MaterialTheme.colorScheme.primaryContainer
-                    else MaterialTheme.colorScheme.errorContainer,
-                    shape = MaterialTheme.shapes.small
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(4.dp)
                 ) {
-                    Text(
-                        text = investor.status,
-                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp),
-                        style = MaterialTheme.typography.labelSmall,
+                    // Status chip
+                    Surface(
                         color = if (isActive)
-                            MaterialTheme.colorScheme.onPrimaryContainer
-                        else MaterialTheme.colorScheme.onErrorContainer
-                    )
+                            MaterialTheme.colorScheme.primaryContainer
+                        else MaterialTheme.colorScheme.errorContainer,
+                        shape = MaterialTheme.shapes.small
+                    ) {
+                        Text(
+                            text = investor.status,
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = if (isActive)
+                                MaterialTheme.colorScheme.onPrimaryContainer
+                            else MaterialTheme.colorScheme.onErrorContainer
+                        )
+                    }
+                    // Edit share % button
+                    IconButton(
+                        onClick = onEditShareClick,
+                        modifier = Modifier.size(28.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Edit,
+                            contentDescription = "Edit share %",
+                            modifier = Modifier.size(16.dp),
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
                 }
             }
             Spacer(Modifier.height(10.dp))
@@ -378,6 +420,78 @@ private fun InvestorMetric(
             fontSize = 12.sp
         )
     }
+}
+
+// ── Edit Share % Dialog ───────────────────────────────────────────────────
+
+@Composable
+private fun EditShareDialog(
+    investorName: String,
+    currentShare: Double,
+    inputValue: String,
+    errorMessage: String?,
+    isSaving: Boolean,
+    onValueChange: (String) -> Unit,
+    onConfirm: () -> Unit,
+    onDismiss: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = { if (!isSaving) onDismiss() },
+        title = {
+            Text(
+                text = "Edit Share — $investorName",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold
+            )
+        },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text(
+                    text = "Current share: ${String.format("%.2f", currentShare)}%",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Text(
+                    text = "All investors' shares must add up to 100%. Edit each investor individually to reach the correct split.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                OutlinedTextField(
+                    value = inputValue,
+                    onValueChange = onValueChange,
+                    label = { Text("New Share %") },
+                    singleLine = true,
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                    isError = errorMessage != null,
+                    supportingText = errorMessage?.let {
+                        { Text(it, color = MaterialTheme.colorScheme.error) }
+                    },
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = onConfirm,
+                enabled = !isSaving
+            ) {
+                if (isSaving) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(16.dp),
+                        strokeWidth = 2.dp,
+                        color = MaterialTheme.colorScheme.onPrimary
+                    )
+                } else {
+                    Text("Save")
+                }
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss, enabled = !isSaving) {
+                Text("Cancel")
+            }
+        }
+    )
 }
 
 // ── Phase group card ──────────────────────────────────────────────────────
