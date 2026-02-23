@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="Theme.SmartTrackerHub" parent="android:Theme.Material.NoActionBar" />
+
+    <!--
+        Dark-mode PostSplash theme: the window background matches the dark
+        Compose splash background (#101412) so there is no flash when the
+        Activity starts in dark mode.
+    -->
+    <style name="Theme.SmartTrackerHub.PostSplash" parent="Theme.SmartTrackerHub">
+        <item name="android:windowBackground">@color/splash_background_dark</item>
+    </style>
+</resources>

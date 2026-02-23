@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -55,6 +56,14 @@ import kotlinx.coroutines.launch
 @Composable
 fun SplashScreen(onTimeout: () -> Unit) {
 
+    val isDark = isSystemInDarkTheme()
+
+    // Dark mode colours — match DarkColorScheme in Color.kt
+    val bgCenter  = if (isDark) Color(0xFF1A1F1D) else Color(0xFFFFFFFF)
+    val bgEdge    = if (isDark) Color(0xFF101412) else Color(0xFFF0EFEB)
+    val titleColor   = if (isDark) Color(0xFFE6E1E5) else Color(0xFF1D1B20)
+    val subtitleColor = if (isDark) Color(0xFF8E918F) else Color(0xFF404946)
+
     // ── Make status bar + nav bar transparent so the background fills edge-to-edge ──
     val view = LocalView.current
     if (!view.isInEditMode) {
@@ -63,8 +72,9 @@ fun SplashScreen(onTimeout: () -> Unit) {
             window.statusBarColor = Color.Transparent.toArgb()
             window.navigationBarColor = Color.Transparent.toArgb()
             WindowCompat.getInsetsController(window, view).apply {
-                isAppearanceLightStatusBars = true   // dark icons on light bg
-                isAppearanceLightNavigationBars = true
+                // Light mode → dark icons; Dark mode → light icons
+                isAppearanceLightStatusBars = !isDark
+                isAppearanceLightNavigationBars = !isDark
             }
         }
     }
@@ -96,16 +106,13 @@ fun SplashScreen(onTimeout: () -> Unit) {
         onTimeout()
     }
 
-    // ── Background: warm off-white matching app background ────────────────
+    // ── Background: adapts to light/dark theme ────────────────────────────
     Box(
         modifier = Modifier
             .fillMaxSize()
             .background(
                 Brush.radialGradient(
-                    colors = listOf(
-                        Color(0xFFFFFFFF),
-                        Color(0xFFF0EFEB)
-                    ),
+                    colors = listOf(bgCenter, bgEdge),
                     radius = 1200f
                 )
             ),
@@ -124,7 +131,7 @@ fun SplashScreen(onTimeout: () -> Unit) {
                 contentAlignment = Alignment.Center
             ) {
                 Canvas(modifier = Modifier.size(130.dp)) {
-                    drawTHLogo(this)
+                    drawTHLogo(this, isDark)
                 }
             }
 
@@ -138,7 +145,7 @@ fun SplashScreen(onTimeout: () -> Unit) {
                     fontSize = 32.sp,
                     letterSpacing = (-0.5).sp
                 ),
-                color = Color(0xFF1D1B20),
+                color = titleColor,
                 textAlign = TextAlign.Center,
                 modifier = Modifier
                     .alpha(textAlpha.value)
@@ -154,7 +161,7 @@ fun SplashScreen(onTimeout: () -> Unit) {
                     fontSize = 14.sp,
                     letterSpacing = 0.2.sp
                 ),
-                color = Color(0xFF404946),
+                color = subtitleColor,
                 textAlign = TextAlign.Center,
                 modifier = Modifier
                     .alpha(textAlpha.value)
@@ -166,22 +173,26 @@ fun SplashScreen(onTimeout: () -> Unit) {
 
 // ── TH Logo Canvas Drawing ────────────────────────────────────────────────────
 
-private fun drawTHLogo(scope: DrawScope) {
+private fun drawTHLogo(scope: DrawScope, isDark: Boolean = false) {
     val S = scope.size.width
     scope.run {
 
-        // ── Rounded white card shadow ─────────────────────────────────────
+        // ── Rounded card shadow ───────────────────────────────────────────
+        // Light mode: dark shadow; Dark mode: subtle lighter glow
+        val shadowColor = if (isDark) Color(0x28FFFFFF) else Color(0x18000000)
         drawRoundRect(
-            color = Color(0x18000000),
+            color = shadowColor,
             topLeft = Offset(S * 0.04f, S * 0.06f),
             size = Size(S * 0.92f, S * 0.92f),
             cornerRadius = CornerRadius(S * 0.22f),
         )
 
-        // ── White rounded card background ─────────────────────────────────
+        // ── Card background — white in light, dark surface in dark mode ───
+        val cardTop    = if (isDark) Color(0xFF232B28) else Color(0xFFFFFFFF)
+        val cardBottom = if (isDark) Color(0xFF1A211E) else Color(0xFFF4F4F6)
         drawRoundRect(
             brush = Brush.verticalGradient(
-                colors = listOf(Color(0xFFFFFFFF), Color(0xFFF4F4F6)),
+                colors = listOf(cardTop, cardBottom),
                 startY = 0f,
                 endY = S
             ),
