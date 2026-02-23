@@ -274,13 +274,9 @@ class ShopInvestmentDashboardViewModel(
      * Validates and saves the new share % for the editing investor.
      *
      * Validation:
-     * - New value must be > 0
-     * - Sum of all OTHER investors' shares + new value must equal exactly 100%
-     *   (within a 0.01 tolerance to account for rounding)
-     *
-     * The user is expected to have already agreed on what the correct split is
-     * (e.g. A sold 5% to C, so A goes 50→45, C goes 5→10).
-     * This dialog edits ONE investor at a time — the caller must run it per investor.
+     * - New value must be > 0 and ≤ 100
+     * - Adding this share on top of other ACTIVE investors must NOT exceed 100%
+     *   (going below 100% is allowed — the user may be freeing up space for a new investor)
      */
     fun saveEditedShare() {
         val investor = _uiState.value.editingInvestor ?: return
@@ -291,18 +287,18 @@ class ShopInvestmentDashboardViewModel(
             return
         }
 
-        // Only count OTHER ACTIVE investors — withdrawn investors' shares are
-        // orphaned and must not constrain the active total.
+        // Only count OTHER ACTIVE investors — withdrawn shares are orphaned.
         val otherTotal = _uiState.value.investors
             .filter { it.shopInvestorId != investor.shopInvestorId && it.status == "Active" }
             .sumOf { it.sharePercentage }
 
         val newTotal = otherTotal + newShare
-        if (abs(newTotal - 100.0) > 0.5) {
-            val remaining = 100.0 - otherTotal
+        // Only block if it would EXCEED 100% — going under is fine (frees room for new investors)
+        if (newTotal > 100.0 + 0.01) {
             _uiState.value = _uiState.value.copy(
-                editShareError = "Active investors hold ${String.format("%.1f", otherTotal)}%, " +
-                        "so this share must be ${String.format("%.1f", remaining)}%."
+                editShareError = "Total would be ${String.format("%.1f", newTotal)}%. " +
+                        "Other active investors hold ${String.format("%.1f", otherTotal)}%, " +
+                        "so max allowed here is ${String.format("%.1f", 100.0 - otherTotal)}%."
             )
             return
         }
