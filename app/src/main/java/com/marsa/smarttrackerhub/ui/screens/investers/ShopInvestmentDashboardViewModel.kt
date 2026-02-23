@@ -86,7 +86,10 @@ class ShopInvestmentDashboardViewModel(
                     txRepo!!.getTransactionsForShop(shopId)
                 ) { investors, transactions ->
                     val totalCapital = transactions.sumOf { it.amount }
-                    val allocatedPct = investors.sumOf { it.sharePercentage }
+                    // Only count active investors' shares in the allocated % header
+                    val allocatedPct = investors
+                        .filter { it.status == "Active" }
+                        .sumOf { it.sharePercentage }
                     ShopInvestmentDashboardUiState(
                         shopName = _uiState.value.shopName,
                         totalCapital = totalCapital,
@@ -288,17 +291,18 @@ class ShopInvestmentDashboardViewModel(
             return
         }
 
+        // Only count OTHER ACTIVE investors — withdrawn investors' shares are
+        // orphaned and must not constrain the active total.
         val otherTotal = _uiState.value.investors
-            .filter { it.shopInvestorId != investor.shopInvestorId }
+            .filter { it.shopInvestorId != investor.shopInvestorId && it.status == "Active" }
             .sumOf { it.sharePercentage }
 
         val newTotal = otherTotal + newShare
         if (abs(newTotal - 100.0) > 0.5) {
             val remaining = 100.0 - otherTotal
             _uiState.value = _uiState.value.copy(
-                editShareError = "Total must equal 100%. " +
-                        "Other investors hold ${String.format("%.2f", otherTotal)}%, " +
-                        "so this investor's share must be ${String.format("%.2f", remaining)}%."
+                editShareError = "Active investors hold ${String.format("%.1f", otherTotal)}%, " +
+                        "so this share must be ${String.format("%.1f", remaining)}%."
             )
             return
         }
