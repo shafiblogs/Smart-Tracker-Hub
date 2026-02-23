@@ -24,13 +24,25 @@ import kotlinx.coroutines.launch
  * Assigns an investor to a shop with a fixed share %.
  * Actual money contributions are recorded separately via AddTransactionScreen.
  *
- * When the new investor's share would push the total over 100 %, existing
- * investors' shares are scaled down proportionally so the total stays at 100 %.
+ * When the new investor's share would push the total over 100 %, the user
+ * can pick WHICH existing investor donates the % (rather than forcing a
+ * proportional dilution of everyone).
  *
  * Created by Muhammed Shafi on 19/02/2026.
  * Moro Hub
  * muhammed.poyil@morohub.com
  */
+
+/**
+ * One row in the donor-selection list: an existing active investor plus
+ * how much share they currently hold.
+ */
+data class DonorOption(
+    val shopInvestorId: Int,
+    val investorId: Int,
+    val investorName: String,
+    val currentShare: Double
+)
 
 /**
  * Preview item shown when adding the new investor requires redistributing
@@ -46,6 +58,16 @@ data class ShareRedistributionPreview(
     val newShare: Double
 )
 
+/**
+ * How excess share (when total > 100 %) should be handled.
+ */
+enum class DistributionMode {
+    /** Scale every existing active investor down proportionally (original behaviour). */
+    PROPORTIONAL,
+    /** Deduct the full new-investor share from one chosen investor. */
+    SINGLE_DONOR
+}
+
 data class ShopInvestmentFormState(
     val selectedShopId: Int? = null,
     val selectedShopName: String = "",
@@ -54,7 +76,18 @@ data class ShopInvestmentFormState(
     val sharePercentage: String = "",
     val shareError: String? = null,
     val shopError: String? = null,
-    val investorError: String? = null
+    val investorError: String? = null,
+
+    // ── Donor selection ──────────────────────────────────────────────────
+    /** Active investors available as donors (populated when total > remaining). */
+    val donorOptions: List<DonorOption> = emptyList(),
+    /** Which distribution mode the user has chosen. */
+    val distributionMode: DistributionMode = DistributionMode.PROPORTIONAL,
+    /** The donor chosen when mode == SINGLE_DONOR. */
+    val selectedDonorId: Int? = null,        // shopInvestorId
+    val selectedDonorName: String = "",
+    /** Error shown when chosen donor doesn't have enough share to give. */
+    val donorError: String? = null
 )
 
 class AddShopInvestmentViewModel(
@@ -81,19 +114,24 @@ class AddShopInvestmentViewModel(
     val remainingPercentage: StateFlow<Double> = _remainingPercentage.asStateFlow()
 
     /**
-     * Non-empty when adding the entered share % would exceed 100 % and existing
-     * investors' shares need to be scaled down proportionally.
-     * The UI uses this to show a preview warning before the user confirms.
+     * Non-empty when mode == PROPORTIONAL and adding the entered share % would
+     * exceed 100 %. Shows old → new for every existing investor.
      */
     private val _redistributionPreview = MutableStateFlow<List<ShareRedistributionPreview>>(emptyList())
     val redistributionPreview: StateFlow<List<ShareRedistributionPreview>> = _redistributionPreview.asStateFlow()
 
     val isFormValid: StateFlow<Boolean> = _formState
-        .map {
-            it.selectedShopId != null &&
-                    it.selectedInvestorId != null &&
-                    it.sharePercentage.isNotBlank() &&
-                    (it.sharePercentage.toDoubleOrNull() ?: 0.0) > 0.0
+        .map { s ->
+            val shareOk = s.selectedShopId != null &&
+                    s.selectedInvestorId != null &&
+                    s.sharePercentage.isNotBlank() &&
+                    (s.sharePercentage.toDoubleOrNull() ?: 0.0) > 0.0
+            if (!shareOk) return@map false
+            // When using single-donor mode a donor must be selected
+            val needsDonor = s.donorOptions.isNotEmpty() &&
+                    s.distributionMode == DistributionMode.SINGLE_DONOR
+            if (needsDonor && s.selectedDonorId == null) return@map false
+            true
         }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(), false)
 
@@ -101,7 +139,7 @@ class AddShopInvestmentViewModel(
     private lateinit var shopRepo: ShopRepository
     private lateinit var investorRepo: InvestorRepository
 
-    /** Cache of investorId → name, loaded once per shop selection to build preview. */
+    /** Cache of investorId → name, loaded once per shop selection. */
     private val investorNameCache = mutableMapOf<Int, String>()
 
     /**
@@ -149,38 +187,73 @@ class AddShopInvestmentViewModel(
         _formState.update { it.copy(selectedInvestorId = investorId, selectedInvestorName = investorName, investorError = null) }
     }
 
+    fun selectDistributionMode(mode: DistributionMode) {
+        _formState.update {
+            it.copy(
+                distributionMode = mode,
+                selectedDonorId = null,
+                selectedDonorName = "",
+                donorError = null
+            )
+        }
+        recomputePreview()
+    }
+
+    fun selectDonor(shopInvestorId: Int, donorName: String) {
+        _formState.update {
+            it.copy(
+                selectedDonorId = shopInvestorId,
+                selectedDonorName = donorName,
+                donorError = null
+            )
+        }
+        recomputePreview()
+    }
+
     private fun loadRemainingAndCache(shopId: Int) = viewModelScope.launch {
         val existing = shopInvestorRepo.getActiveInvestorsRaw(shopId)
         val allocated = existing.sumOf { it.sharePercentage }
         _remainingPercentage.value = 100.0 - allocated
 
-        // Build name cache for preview labels
+        // Build name cache and donor options
         investorNameCache.clear()
+        val donors = mutableListOf<DonorOption>()
         existing.forEach { si ->
             val name = investorRepo.getInvestorById(si.investorId)?.investorName
                 ?: "Investor #${si.investorId}"
             investorNameCache[si.investorId] = name
+            donors.add(
+                DonorOption(
+                    shopInvestorId = si.id,
+                    investorId = si.investorId,
+                    investorName = name,
+                    currentShare = si.sharePercentage
+                )
+            )
         }
+        _formState.update { it.copy(donorOptions = donors) }
     }
 
     fun updateSharePercentage(value: String) {
         if (value.isEmpty() || value.matches(Regex("^\\d*\\.?\\d*$"))) {
-            _formState.update { it.copy(sharePercentage = value, shareError = null) }
+            _formState.update { it.copy(sharePercentage = value, shareError = null, donorError = null) }
             recomputePreview()
         }
     }
 
     /**
-     * Recalculates [redistributionPreview] whenever the shop or share % changes.
-     * Non-empty only when the new total would exceed 100 %, requiring proportional
-     * dilution of existing investors' shares.
+     * Recalculates [redistributionPreview] whenever the shop, share %, mode, or
+     * donor selection changes.
+     * • PROPORTIONAL mode  → preview shows proportional dilution of all investors
+     * • SINGLE_DONOR mode  → preview shows only the chosen donor's before/after
      */
     private fun recomputePreview() {
-        val shopId = _formState.value.selectedShopId ?: run {
+        val state = _formState.value
+        val shopId = state.selectedShopId ?: run {
             _redistributionPreview.value = emptyList()
             return
         }
-        val newShare = _formState.value.sharePercentage.toDoubleOrNull() ?: run {
+        val newShare = state.sharePercentage.toDoubleOrNull() ?: run {
             _redistributionPreview.value = emptyList()
             return
         }
@@ -194,19 +267,42 @@ class AddShopInvestmentViewModel(
             val existingTotal = existing.sumOf { it.sharePercentage }
 
             if (existingTotal + newShare <= 100.0) {
+                // Still within limit — no redistribution needed
                 _redistributionPreview.value = emptyList()
                 return@launch
             }
 
-            // Scale factor so that (existingTotal * scale + newShare) == 100
-            val scale = (100.0 - newShare) / existingTotal
-
-            _redistributionPreview.value = existing.map { si ->
-                ShareRedistributionPreview(
-                    investorName = investorNameCache[si.investorId] ?: "Investor #${si.investorId}",
-                    oldShare = si.sharePercentage,
-                    newShare = si.sharePercentage * scale
-                )
+            when (state.distributionMode) {
+                DistributionMode.PROPORTIONAL -> {
+                    val scale = (100.0 - newShare) / existingTotal
+                    _redistributionPreview.value = existing.map { si ->
+                        ShareRedistributionPreview(
+                            investorName = investorNameCache[si.investorId] ?: "Investor #${si.investorId}",
+                            oldShare = si.sharePercentage,
+                            newShare = si.sharePercentage * scale
+                        )
+                    }
+                }
+                DistributionMode.SINGLE_DONOR -> {
+                    val donorId = state.selectedDonorId
+                    if (donorId == null) {
+                        _redistributionPreview.value = emptyList()
+                        return@launch
+                    }
+                    val donor = existing.find { it.id == donorId }
+                    if (donor == null) {
+                        _redistributionPreview.value = emptyList()
+                        return@launch
+                    }
+                    val excess = (existingTotal + newShare) - 100.0
+                    _redistributionPreview.value = listOf(
+                        ShareRedistributionPreview(
+                            investorName = investorNameCache[donor.investorId] ?: "Investor #${donor.investorId}",
+                            oldShare = donor.sharePercentage,
+                            newShare = donor.sharePercentage - excess
+                        )
+                    )
+                }
             }
         }
     }
@@ -241,16 +337,47 @@ class AddShopInvestmentViewModel(
         }
 
         try {
-            // If total would exceed 100 %, proportionally scale existing investors first
             val existing = shopInvestorRepo.getActiveInvestorsRaw(shopId)
             val existingTotal = existing.sumOf { it.sharePercentage }
 
             if (existingTotal + share > 100.0) {
-                val scale = (100.0 - share) / existingTotal
-                existing.forEach { si ->
-                    shopInvestorRepo.updateShopInvestor(
-                        si.copy(sharePercentage = si.sharePercentage * scale)
-                    )
+                when (state.distributionMode) {
+
+                    DistributionMode.PROPORTIONAL -> {
+                        // Scale every existing investor proportionally
+                        val scale = (100.0 - share) / existingTotal
+                        existing.forEach { si ->
+                            shopInvestorRepo.updateShopInvestor(
+                                si.copy(sharePercentage = si.sharePercentage * scale)
+                            )
+                        }
+                    }
+
+                    DistributionMode.SINGLE_DONOR -> {
+                        val donorSiId = state.selectedDonorId ?: run {
+                            _formState.update { it.copy(donorError = "Please select which investor gives their share") }
+                            return@launch
+                        }
+                        val donor = existing.find { it.id == donorSiId } ?: run {
+                            _formState.update { it.copy(donorError = "Selected donor not found") }
+                            return@launch
+                        }
+                        val excess = (existingTotal + share) - 100.0
+                        val newDonorShare = donor.sharePercentage - excess
+                        if (newDonorShare < 0.0) {
+                            val donorName = investorNameCache[donor.investorId] ?: "Selected investor"
+                            _formState.update {
+                                it.copy(
+                                    donorError = "$donorName only has ${String.format("%.1f", donor.sharePercentage)}% — " +
+                                            "not enough to give ${String.format("%.1f", excess)}%"
+                                )
+                            }
+                            return@launch
+                        }
+                        shopInvestorRepo.updateShopInvestor(
+                            donor.copy(sharePercentage = newDonorShare)
+                        )
+                    }
                 }
             }
 

@@ -1,6 +1,7 @@
 package com.marsa.smarttrackerhub.ui.screens.investers
 
 import android.widget.Toast
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -15,6 +16,8 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
@@ -38,8 +41,10 @@ import com.marsa.smarttrackerhub.ui.components.DropdownField
  * Assigns an investor to a shop with a fixed share percentage.
  * Actual payment amounts are recorded separately via AddTransactionScreen.
  *
- * If adding this investor would push the total past 100 %, a preview card
- * shows how existing investors' shares will be proportionally adjusted.
+ * When adding this investor would push the total past 100 %, the user can
+ * choose HOW to free up the required share:
+ *   • Proportional — scale every existing investor down equally
+ *   • From one investor — deduct the full amount from a specific investor
  *
  * Created by Muhammed Shafi on 19/02/2026.
  * Moro Hub
@@ -64,6 +69,12 @@ fun AddShopInvestmentScreen(
 
     val shopLocked = prefilledShopId > 0
     val investorLocked = prefilledInvestorId > 0
+
+    // Whether redistribution UI should be shown at all
+    val needsRedistribution = state.donorOptions.isNotEmpty() &&
+            (state.sharePercentage.toDoubleOrNull() ?: 0.0).let { newShare ->
+                newShare > 0.0 && (100.0 - remainingPercentage + newShare) > 100.0
+            }
 
     LaunchedEffect(Unit) {
         viewModel.initDatabase(
@@ -106,7 +117,7 @@ fun AddShopInvestmentScreen(
 
                 Spacer(modifier = Modifier.height(20.dp))
 
-                // ── Shop Dropdown ──
+                // ── Shop Dropdown ──────────────────────────────────────────
                 DropdownField(
                     label = "Shop",
                     selectedValue = state.selectedShopName.ifBlank { "Select a shop" },
@@ -126,7 +137,7 @@ fun AddShopInvestmentScreen(
                     )
                 }
 
-                // Current allocation info card
+                // ── Current allocation info card ───────────────────────────
                 if (state.selectedShopId != null) {
                     Spacer(modifier = Modifier.height(8.dp))
                     Card(
@@ -140,7 +151,7 @@ fun AddShopInvestmentScreen(
                             text = if (remainingPercentage > 0)
                                 "Available to allocate: ${String.format("%.1f", remainingPercentage)}%"
                             else
-                                "Fully allocated (100%). Adding a new investor will adjust existing shares.",
+                                "Fully allocated (100%). Adding a new investor will reduce an existing investor's share.",
                             modifier = Modifier.padding(12.dp),
                             style = MaterialTheme.typography.bodySmall,
                             fontWeight = FontWeight.Medium,
@@ -151,7 +162,7 @@ fun AddShopInvestmentScreen(
 
                 Spacer(modifier = Modifier.height(16.dp))
 
-                // ── Investor Dropdown ──
+                // ── Investor Dropdown ──────────────────────────────────────
                 DropdownField(
                     label = "Investor",
                     selectedValue = state.selectedInvestorName.ifBlank { "Select an investor" },
@@ -175,7 +186,7 @@ fun AddShopInvestmentScreen(
 
                 Spacer(modifier = Modifier.height(16.dp))
 
-                // ── Share Percentage ──
+                // ── Share Percentage ───────────────────────────────────────
                 Column(modifier = Modifier.fillMaxWidth()) {
                     Text(
                         text = "Share Percentage",
@@ -187,7 +198,7 @@ fun AddShopInvestmentScreen(
                         onValueChange = viewModel::updateSharePercentage,
                         modifier = Modifier.fillMaxWidth(),
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                        placeholder = { Text("e.g. 10.0") },
+                        placeholder = { Text("e.g. 5.0") },
                         suffix = { Text("%") },
                         isError = state.shareError != null,
                         supportingText = if (state.shareError != null) {
@@ -196,10 +207,105 @@ fun AddShopInvestmentScreen(
                     )
                 }
 
-                // ── Redistribution preview card ──
-                // Shown when adding this investor requires scaling down existing shares
+                // ── Redistribution section (only when total would exceed 100 %) ──
+                if (needsRedistribution) {
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.tertiaryContainer
+                        ),
+                        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+                    ) {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(14.dp)
+                        ) {
+                            Text(
+                                text = "Share source",
+                                style = MaterialTheme.typography.labelLarge,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onTertiaryContainer
+                            )
+                            Text(
+                                text = "The total would exceed 100 %. Choose how to free up the required share:",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onTertiaryContainer.copy(alpha = 0.8f)
+                            )
+
+                            Spacer(modifier = Modifier.height(10.dp))
+
+                            // ── Mode toggle chips ──────────────────────────
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                FilterChip(
+                                    selected = state.distributionMode == DistributionMode.PROPORTIONAL,
+                                    onClick = { viewModel.selectDistributionMode(DistributionMode.PROPORTIONAL) },
+                                    label = { Text("Reduce all equally", fontSize = 12.sp) },
+                                    modifier = Modifier.weight(1f),
+                                    colors = FilterChipDefaults.filterChipColors(
+                                        selectedContainerColor = MaterialTheme.colorScheme.tertiary,
+                                        selectedLabelColor = MaterialTheme.colorScheme.onTertiary
+                                    )
+                                )
+                                FilterChip(
+                                    selected = state.distributionMode == DistributionMode.SINGLE_DONOR,
+                                    onClick = { viewModel.selectDistributionMode(DistributionMode.SINGLE_DONOR) },
+                                    label = { Text("From one investor", fontSize = 12.sp) },
+                                    modifier = Modifier.weight(1f),
+                                    colors = FilterChipDefaults.filterChipColors(
+                                        selectedContainerColor = MaterialTheme.colorScheme.tertiary,
+                                        selectedLabelColor = MaterialTheme.colorScheme.onTertiary
+                                    )
+                                )
+                            }
+
+                            // ── Donor picker (only in SINGLE_DONOR mode) ───
+                            if (state.distributionMode == DistributionMode.SINGLE_DONOR) {
+                                Spacer(modifier = Modifier.height(10.dp))
+                                Text(
+                                    text = "Who gives their share?",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    fontWeight = FontWeight.Medium,
+                                    color = MaterialTheme.colorScheme.onTertiaryContainer
+                                )
+                                Spacer(modifier = Modifier.height(6.dp))
+                                DropdownField(
+                                    label = "Select investor",
+                                    selectedValue = state.selectedDonorName.ifBlank { "Choose investor" },
+                                    options = state.donorOptions.map { d ->
+                                        "${d.investorName}  (${String.format("%.1f", d.currentShare)}%)"
+                                    },
+                                    onOptionSelected = { label ->
+                                        val donor = state.donorOptions.find { d ->
+                                            label.startsWith(d.investorName)
+                                        }
+                                        donor?.let {
+                                            viewModel.selectDonor(it.shopInvestorId, it.investorName)
+                                        }
+                                    },
+                                    modifier = Modifier.fillMaxWidth()
+                                )
+                                if (state.donorError != null) {
+                                    Text(
+                                        text = state.donorError!!,
+                                        color = MaterialTheme.colorScheme.error,
+                                        style = MaterialTheme.typography.bodySmall,
+                                        modifier = Modifier.padding(top = 4.dp)
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // ── Redistribution preview card ────────────────────────────
                 if (redistributionPreview.isNotEmpty()) {
-                    Spacer(modifier = Modifier.height(12.dp))
+                    Spacer(modifier = Modifier.height(10.dp))
                     Card(
                         modifier = Modifier.fillMaxWidth(),
                         colors = CardDefaults.cardColors(
@@ -218,8 +324,14 @@ fun AddShopInvestmentScreen(
                                 fontWeight = FontWeight.Bold,
                                 color = MaterialTheme.colorScheme.onSecondaryContainer
                             )
+                            val previewDescription = when (state.distributionMode) {
+                                DistributionMode.PROPORTIONAL ->
+                                    "All existing investors will be scaled down proportionally:"
+                                DistributionMode.SINGLE_DONOR ->
+                                    "${state.selectedDonorName} will give their share to the new investor:"
+                            }
                             Text(
-                                text = "Adding this investor will proportionally reduce existing shares:",
+                                text = previewDescription,
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.8f)
                             )
@@ -252,7 +364,10 @@ fun AddShopInvestmentScreen(
                                         text = "${String.format("%.1f", preview.newShare)}%",
                                         style = MaterialTheme.typography.bodySmall,
                                         fontWeight = FontWeight.Bold,
-                                        color = MaterialTheme.colorScheme.onSecondaryContainer
+                                        color = if (preview.newShare < 0)
+                                            MaterialTheme.colorScheme.error
+                                        else
+                                            MaterialTheme.colorScheme.onSecondaryContainer
                                     )
                                 }
                             }
@@ -291,10 +406,12 @@ fun AddShopInvestmentScreen(
                     colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
                 ) {
                     Text(
-                        text = if (redistributionPreview.isNotEmpty())
-                            "Assign & Adjust Shares"
-                        else
-                            "Assign Investor",
+                        text = when {
+                            !needsRedistribution -> "Assign Investor"
+                            state.distributionMode == DistributionMode.SINGLE_DONOR ->
+                                "Assign & Transfer Share"
+                            else -> "Assign & Adjust Shares"
+                        },
                         fontSize = 16.sp,
                         fontWeight = FontWeight.Medium
                     )
