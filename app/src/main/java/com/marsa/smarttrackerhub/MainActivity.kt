@@ -15,6 +15,10 @@ import com.marsa.smarttrackerhub.ui.navigation.SmartTrackerNavHost
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
+        // Switch back to the real app theme immediately so the OS system
+        // splash screen (Android 12+) is dismissed before Compose renders.
+        // This prevents the double-splash: OS icon splash → our Compose splash.
+        setTheme(R.style.Theme_SmartTrackerHub)
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {

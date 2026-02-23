@@ -1,4 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <style name="Theme.SmartTrackerHub" parent="android:Theme.Material.Light.NoActionBar" />
+
+    <!--
+        PostSplashTheme: applied by MainActivity via setTheme() right after
+        the OS launch animation, so the Android 12+ system splash screen
+        exits immediately and our Compose SplashScreen is the only one shown.
+    -->
+    <style name="Theme.SmartTrackerHub.PostSplash" parent="Theme.SmartTrackerHub">
+        <item name="android:windowBackground">@color/splash_background</item>
+    </style>
 </resources>
