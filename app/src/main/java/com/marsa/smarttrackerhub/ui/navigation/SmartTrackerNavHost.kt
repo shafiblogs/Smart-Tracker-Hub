@@ -112,7 +112,7 @@ fun SmartTrackerNavHost(navController: NavHostController) {
     }
 
     val content: @Composable (PaddingValues) -> Unit = { paddingValues ->
-        val currentRoute = currentBackStackEntryAsState().value?.destination?.route
+        val currentRoute = navController.currentBackStackEntryAsState().value?.destination?.route
         NavHost(
             navController = navController,
             startDestination = Screen.Splash.route,
