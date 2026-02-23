@@ -9,6 +9,7 @@ import com.marsa.smarttrackerhub.data.entity.YearEndSettlement
 import com.marsa.smarttrackerhub.data.repository.YearEndSettlementRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
 /**
@@ -31,6 +32,9 @@ data class SettlementHistoryUiState(
     val isLoadingEntries: Boolean = false,
     /** Non-null when the "Mark as Paid" dialog is open for this entry. */
     val dialogEntry: SettlementEntryWithName? = null,
+    /** Non-null when the "Reverse/Delete Settlement" confirm dialog is open. */
+    val deletingSettlement: YearEndSettlement? = null,
+    val isDeleting: Boolean = false,
     val error: String? = null
 )
 
@@ -106,6 +110,72 @@ class SettlementHistoryViewModel : ViewModel() {
     /** Closes the "Mark as Paid" dialog without saving. */
     fun dismissMarkPaidDialog() {
         _uiState.value = _uiState.value.copy(dialogEntry = null)
+    }
+
+    // ── Reverse / Delete Settlement ────────────────────────────────────────
+
+    /** Opens the confirmation dialog for reversing/deleting a settlement. */
+    fun showDeleteSettlementDialog(settlement: YearEndSettlement) {
+        _uiState.value = _uiState.value.copy(deletingSettlement = settlement)
+    }
+
+    /** Dismisses the reversal confirmation without deleting. */
+    fun dismissDeleteSettlementDialog() {
+        _uiState.value = _uiState.value.copy(deletingSettlement = null)
+    }
+
+    /**
+     * Permanently deletes the settlement and all its entries.
+     * This effectively "reverses" the settlement, allowing it to be recalculated.
+     */
+    fun confirmDeleteSettlement() {
+        val settlement = _uiState.value.deletingSettlement ?: return
+        _uiState.value = _uiState.value.copy(isDeleting = true)
+        viewModelScope.launch {
+            try {
+                settlementRepo.deleteSettlement(settlement.id)
+                _uiState.value = _uiState.value.copy(
+                    deletingSettlement = null,
+                    isDeleting = false,
+                    // Collapse if the deleted settlement was expanded
+                    expandedSettlementId = if (_uiState.value.expandedSettlementId == settlement.id)
+                        null else _uiState.value.expandedSettlementId,
+                    expandedEntries = if (_uiState.value.expandedSettlementId == settlement.id)
+                        emptyList() else _uiState.value.expandedEntries
+                )
+            } catch (e: Exception) {
+                _uiState.value = _uiState.value.copy(
+                    error = "Failed to delete settlement: ${e.localizedMessage}",
+                    deletingSettlement = null,
+                    isDeleting = false
+                )
+            }
+        }
+    }
+
+    // ── Export / Report ────────────────────────────────────────────────────
+
+    /**
+     * Builds the full settlement report (all settlements + all their entries)
+     * and shares it via the system share sheet.
+     */
+    fun exportReport(context: Context) {
+        viewModelScope.launch {
+            val settlements = _uiState.value.settlements
+            val entriesBySettlement = mutableMapOf<Int, List<SettlementEntryWithName>>()
+
+            for (s in settlements) {
+                val entries = settlementRepo.getSettlementEntries(s.id).first()
+                entriesBySettlement[s.id] = entries
+            }
+
+            InvestorReportExporter.shareSettlementReport(
+                context = context,
+                shopName = _uiState.value.shopName,
+                settlements = settlements,
+                entriesBySettlement = entriesBySettlement
+            )
+        }
     }
 
     /**

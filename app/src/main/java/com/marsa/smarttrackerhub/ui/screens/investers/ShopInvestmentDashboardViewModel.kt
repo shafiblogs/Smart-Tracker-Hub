@@ -5,6 +5,7 @@ import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.marsa.smarttrackerhub.data.AppDatabase
+import com.marsa.smarttrackerhub.data.entity.InvestmentTransaction
 import com.marsa.smarttrackerhub.data.repository.InvestmentTransactionRepository
 import com.marsa.smarttrackerhub.data.repository.ShopInvestorRepository
 import com.marsa.smarttrackerhub.data.repository.ShopRepository
@@ -36,7 +37,18 @@ data class ShopInvestmentDashboardUiState(
     val editingInvestor: ShopInvestorSummary? = null,   // non-null = dialog open
     val editShareInput: String = "",                     // text field value
     val editShareError: String? = null,                  // validation error
-    val isSavingShare: Boolean = false
+    val isSavingShare: Boolean = false,
+    // Withdraw investor dialog
+    val withdrawingInvestor: ShopInvestorSummary? = null,  // non-null = confirm dialog open
+    val isWithdrawing: Boolean = false,
+    // Edit/Delete transaction dialog
+    val editingTransaction: PhaseTransactionDetail? = null, // non-null = dialog open
+    val editTxAmount: String = "",
+    val editTxPhase: String = "",
+    val editTxNote: String = "",
+    val editTxAmountError: String? = null,
+    val editTxPhaseError: String? = null,
+    val isSavingTransaction: Boolean = false
 )
 
 class ShopInvestmentDashboardViewModel(
@@ -47,6 +59,7 @@ class ShopInvestmentDashboardViewModel(
     val uiState: StateFlow<ShopInvestmentDashboardUiState> = _uiState.asStateFlow()
 
     private var shopInvestorRepo: ShopInvestorRepository? = null
+    private var txRepo: InvestmentTransactionRepository? = null
     private var currentShopId: Int = 0
 
     fun init(context: Context, shopId: Int) {
@@ -54,7 +67,7 @@ class ShopInvestmentDashboardViewModel(
         val db = AppDatabase.getDatabase(context)
         val shopRepo = ShopRepository(db.shopDao())
         shopInvestorRepo = ShopInvestorRepository(db.shopInvestorDao())
-        val txRepo = InvestmentTransactionRepository(db.investmentTransactionDao())
+        txRepo = InvestmentTransactionRepository(db.investmentTransactionDao())
 
         viewModelScope.launch {
             try {
@@ -70,7 +83,7 @@ class ShopInvestmentDashboardViewModel(
             try {
                 combine(
                     shopInvestorRepo!!.getInvestorsForShop(shopId),
-                    txRepo.getTransactionsForShop(shopId)
+                    txRepo!!.getTransactionsForShop(shopId)
                 ) { investors, transactions ->
                     val totalCapital = transactions.sumOf { it.amount }
                     val allocatedPct = investors.sumOf { it.sharePercentage }
@@ -112,6 +125,146 @@ class ShopInvestmentDashboardViewModel(
 
     fun onEditShareInputChange(value: String) {
         _uiState.value = _uiState.value.copy(editShareInput = value, editShareError = null)
+    }
+
+    // ── Withdraw Investor Dialog ──────────────────────────────────────────
+
+    fun showWithdrawDialog(investor: ShopInvestorSummary) {
+        _uiState.value = _uiState.value.copy(withdrawingInvestor = investor)
+    }
+
+    fun dismissWithdrawDialog() {
+        _uiState.value = _uiState.value.copy(withdrawingInvestor = null)
+    }
+
+    /**
+     * Marks the investor's ShopInvestor record as "Withdrawn".
+     * Their historical transactions are preserved; they just won't appear in new calculations.
+     */
+    fun confirmWithdrawInvestor() {
+        val investor = _uiState.value.withdrawingInvestor ?: return
+        _uiState.value = _uiState.value.copy(isWithdrawing = true)
+        viewModelScope.launch {
+            try {
+                val repo = shopInvestorRepo ?: return@launch
+                val raw = repo.getShopInvestorById(investor.shopInvestorId) ?: return@launch
+                repo.updateShopInvestor(raw.copy(status = "Withdrawn"))
+                _uiState.value = _uiState.value.copy(
+                    withdrawingInvestor = null,
+                    isWithdrawing = false
+                )
+            } catch (e: Exception) {
+                _uiState.value = _uiState.value.copy(
+                    error = e.localizedMessage ?: "Failed to withdraw investor",
+                    withdrawingInvestor = null,
+                    isWithdrawing = false
+                )
+            }
+        }
+    }
+
+    // ── Edit / Delete Transaction Dialog ──────────────────────────────────
+
+    fun showEditTransactionDialog(tx: PhaseTransactionDetail) {
+        _uiState.value = _uiState.value.copy(
+            editingTransaction = tx,
+            editTxAmount = String.format("%.2f", tx.amount),
+            editTxPhase = tx.phase,
+            editTxNote = tx.note,
+            editTxAmountError = null,
+            editTxPhaseError = null
+        )
+    }
+
+    fun dismissEditTransactionDialog() {
+        _uiState.value = _uiState.value.copy(
+            editingTransaction = null,
+            editTxAmount = "",
+            editTxPhase = "",
+            editTxNote = "",
+            editTxAmountError = null,
+            editTxPhaseError = null
+        )
+    }
+
+    fun onEditTxAmountChange(value: String) {
+        _uiState.value = _uiState.value.copy(editTxAmount = value, editTxAmountError = null)
+    }
+
+    fun onEditTxPhaseChange(value: String) {
+        _uiState.value = _uiState.value.copy(editTxPhase = value, editTxPhaseError = null)
+    }
+
+    fun onEditTxNoteChange(value: String) {
+        _uiState.value = _uiState.value.copy(editTxNote = value)
+    }
+
+    fun saveEditedTransaction() {
+        val tx = _uiState.value.editingTransaction ?: return
+        val amount = _uiState.value.editTxAmount.toDoubleOrNull()
+        val phase = _uiState.value.editTxPhase.trim()
+
+        if (amount == null || amount <= 0.0) {
+            _uiState.value = _uiState.value.copy(editTxAmountError = "Enter a valid amount")
+            return
+        }
+        if (phase.isBlank()) {
+            _uiState.value = _uiState.value.copy(editTxPhaseError = "Phase cannot be empty")
+            return
+        }
+
+        _uiState.value = _uiState.value.copy(isSavingTransaction = true)
+        viewModelScope.launch {
+            try {
+                txRepo?.updateTransaction(
+                    InvestmentTransaction(
+                        id = tx.transactionId,
+                        shopInvestorId = tx.shopInvestorId,
+                        amount = amount,
+                        transactionDate = tx.transactionDate,
+                        phase = phase,
+                        note = _uiState.value.editTxNote.trim()
+                    )
+                )
+                _uiState.value = _uiState.value.copy(
+                    editingTransaction = null,
+                    editTxAmount = "",
+                    editTxPhase = "",
+                    editTxNote = "",
+                    editTxAmountError = null,
+                    editTxPhaseError = null,
+                    isSavingTransaction = false
+                )
+            } catch (e: Exception) {
+                _uiState.value = _uiState.value.copy(
+                    editTxAmountError = e.localizedMessage ?: "Failed to save",
+                    isSavingTransaction = false
+                )
+            }
+        }
+    }
+
+    fun deleteTransaction() {
+        val tx = _uiState.value.editingTransaction ?: return
+        _uiState.value = _uiState.value.copy(isSavingTransaction = true)
+        viewModelScope.launch {
+            try {
+                txRepo?.deleteTransactionById(tx.transactionId)
+                _uiState.value = _uiState.value.copy(
+                    editingTransaction = null,
+                    editTxAmount = "",
+                    editTxPhase = "",
+                    editTxNote = "",
+                    isSavingTransaction = false
+                )
+            } catch (e: Exception) {
+                _uiState.value = _uiState.value.copy(
+                    error = e.localizedMessage ?: "Failed to delete",
+                    isSavingTransaction = false,
+                    editingTransaction = null
+                )
+            }
+        }
     }
 
     /**

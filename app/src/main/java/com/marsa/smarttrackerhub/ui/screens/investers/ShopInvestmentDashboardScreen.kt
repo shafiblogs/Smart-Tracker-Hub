@@ -1,5 +1,7 @@
 package com.marsa.smarttrackerhub.ui.screens.investers
 
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -18,8 +20,10 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -89,6 +93,35 @@ fun ShopInvestmentDashboardScreen(
             onValueChange = viewModel::onEditShareInputChange,
             onConfirm = viewModel::saveEditedShare,
             onDismiss = viewModel::dismissEditShareDialog
+        )
+    }
+
+    // Withdraw investor confirmation dialog
+    uiState.withdrawingInvestor?.let { investor ->
+        WithdrawInvestorDialog(
+            investorName = investor.investorName,
+            isWithdrawing = uiState.isWithdrawing,
+            onConfirm = viewModel::confirmWithdrawInvestor,
+            onDismiss = viewModel::dismissWithdrawDialog
+        )
+    }
+
+    // Edit/Delete transaction dialog
+    uiState.editingTransaction?.let { tx ->
+        EditTransactionDialog(
+            tx = tx,
+            amountInput = uiState.editTxAmount,
+            phaseInput = uiState.editTxPhase,
+            noteInput = uiState.editTxNote,
+            amountError = uiState.editTxAmountError,
+            phaseError = uiState.editTxPhaseError,
+            isSaving = uiState.isSavingTransaction,
+            onAmountChange = viewModel::onEditTxAmountChange,
+            onPhaseChange = viewModel::onEditTxPhaseChange,
+            onNoteChange = viewModel::onEditTxNoteChange,
+            onSave = viewModel::saveEditedTransaction,
+            onDelete = viewModel::deleteTransaction,
+            onDismiss = viewModel::dismissEditTransactionDialog
         )
     }
 
@@ -223,7 +256,8 @@ fun ShopInvestmentDashboardScreen(
                             InvestorBreakdownCard(
                                 investor = investor,
                                 totalShopCapital = uiState.totalCapital,
-                                onEditShareClick = { viewModel.showEditShareDialog(investor) }
+                                onEditShareClick = { viewModel.showEditShareDialog(investor) },
+                                onWithdrawClick = { viewModel.showWithdrawDialog(investor) }
                             )
                         }
                     }
@@ -253,7 +287,11 @@ fun ShopInvestmentDashboardScreen(
                         val grouped = uiState.transactions.groupBy { it.phase }
                         grouped.forEach { (phase, txList) ->
                             item {
-                                PhaseGroup(phase = phase, transactions = txList)
+                                PhaseGroup(
+                                    phase = phase,
+                                    transactions = txList,
+                                    onEditTransaction = { viewModel.showEditTransactionDialog(it) }
+                                )
                             }
                         }
                     }
@@ -295,7 +333,8 @@ private fun CapitalMetric(
 private fun InvestorBreakdownCard(
     investor: ShopInvestorSummary,
     totalShopCapital: Double,
-    onEditShareClick: () -> Unit
+    onEditShareClick: () -> Unit,
+    onWithdrawClick: () -> Unit
 ) {
     val fairShare = if (totalShopCapital > 0)
         (investor.sharePercentage / 100.0) * totalShopCapital else 0.0
@@ -366,6 +405,20 @@ private fun InvestorBreakdownCard(
                             modifier = Modifier.size(16.dp),
                             tint = MaterialTheme.colorScheme.onSurfaceVariant
                         )
+                    }
+                    // Withdraw button — only shown for active investors
+                    if (isActive) {
+                        IconButton(
+                            onClick = onWithdrawClick,
+                            modifier = Modifier.size(28.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Warning,
+                                contentDescription = "Withdraw investor",
+                                modifier = Modifier.size(16.dp),
+                                tint = MaterialTheme.colorScheme.error
+                            )
+                        }
                     }
                 }
             }
@@ -494,10 +547,170 @@ private fun EditShareDialog(
     )
 }
 
-// ── Phase group card ──────────────────────────────────────────────────────
+// ── Edit / Delete Transaction Dialog ─────────────────────────────────────
 
 @Composable
-private fun PhaseGroup(phase: String, transactions: List<PhaseTransactionDetail>) {
+private fun EditTransactionDialog(
+    tx: PhaseTransactionDetail,
+    amountInput: String,
+    phaseInput: String,
+    noteInput: String,
+    amountError: String?,
+    phaseError: String?,
+    isSaving: Boolean,
+    onAmountChange: (String) -> Unit,
+    onPhaseChange: (String) -> Unit,
+    onNoteChange: (String) -> Unit,
+    onSave: () -> Unit,
+    onDelete: () -> Unit,
+    onDismiss: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = { if (!isSaving) onDismiss() },
+        title = {
+            Text(
+                text = "Edit Payment — ${tx.investorName}",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold
+            )
+        },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                OutlinedTextField(
+                    value = amountInput,
+                    onValueChange = onAmountChange,
+                    label = { Text("Amount (AED)") },
+                    prefix = { Text("AED ") },
+                    singleLine = true,
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                    isError = amountError != null,
+                    supportingText = amountError?.let {
+                        { Text(it, color = MaterialTheme.colorScheme.error) }
+                    },
+                    modifier = Modifier.fillMaxWidth()
+                )
+                OutlinedTextField(
+                    value = phaseInput,
+                    onValueChange = onPhaseChange,
+                    label = { Text("Phase") },
+                    singleLine = true,
+                    isError = phaseError != null,
+                    supportingText = phaseError?.let {
+                        { Text(it, color = MaterialTheme.colorScheme.error) }
+                    },
+                    modifier = Modifier.fillMaxWidth()
+                )
+                OutlinedTextField(
+                    value = noteInput,
+                    onValueChange = onNoteChange,
+                    label = { Text("Note (optional)") },
+                    maxLines = 3,
+                    modifier = Modifier.fillMaxWidth()
+                )
+                // Delete button inside dialog
+                TextButton(
+                    onClick = onDelete,
+                    enabled = !isSaving,
+                    colors = androidx.compose.material3.ButtonDefaults.textButtonColors(
+                        contentColor = MaterialTheme.colorScheme.error
+                    ),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text("Delete this payment")
+                }
+            }
+        },
+        confirmButton = {
+            Button(onClick = onSave, enabled = !isSaving) {
+                if (isSaving) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(16.dp),
+                        strokeWidth = 2.dp,
+                        color = MaterialTheme.colorScheme.onPrimary
+                    )
+                } else {
+                    Text("Save")
+                }
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss, enabled = !isSaving) {
+                Text("Cancel")
+            }
+        }
+    )
+}
+
+// ── Withdraw Investor Confirmation Dialog ─────────────────────────────────
+
+@Composable
+private fun WithdrawInvestorDialog(
+    investorName: String,
+    isWithdrawing: Boolean,
+    onConfirm: () -> Unit,
+    onDismiss: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = { if (!isWithdrawing) onDismiss() },
+        icon = {
+            Icon(
+                imageVector = Icons.Default.Warning,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.error
+            )
+        },
+        title = {
+            Text(
+                text = "Withdraw Investor",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold
+            )
+        },
+        text = {
+            Text(
+                text = "Mark $investorName as Withdrawn from this shop? " +
+                        "Their past transactions will be preserved but they won't be " +
+                        "included in future settlements or share allocations.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        },
+        confirmButton = {
+            Button(
+                onClick = onConfirm,
+                enabled = !isWithdrawing,
+                colors = androidx.compose.material3.ButtonDefaults.buttonColors(
+                    containerColor = MaterialTheme.colorScheme.error
+                )
+            ) {
+                if (isWithdrawing) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(16.dp),
+                        strokeWidth = 2.dp,
+                        color = MaterialTheme.colorScheme.onError
+                    )
+                } else {
+                    Text("Withdraw")
+                }
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss, enabled = !isWithdrawing) {
+                Text("Cancel")
+            }
+        }
+    )
+}
+
+// ── Phase group card ──────────────────────────────────────────────────────
+
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+private fun PhaseGroup(
+    phase: String,
+    transactions: List<PhaseTransactionDetail>,
+    onEditTransaction: (PhaseTransactionDetail) -> Unit
+) {
     val dateFormat = SimpleDateFormat("dd MMM yyyy", Locale.ENGLISH)
     val phaseTotal = transactions.sumOf { it.amount }
 
@@ -536,7 +749,12 @@ private fun PhaseGroup(phase: String, transactions: List<PhaseTransactionDetail>
             transactions.forEach { tx ->
                 Spacer(Modifier.height(10.dp))
                 Row(
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .combinedClickable(
+                            onClick = {},
+                            onLongClick = { onEditTransaction(tx) }
+                        ),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.Top
                 ) {
@@ -559,6 +777,11 @@ private fun PhaseGroup(phase: String, transactions: List<PhaseTransactionDetail>
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
+                        Text(
+                            text = "Hold to edit",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+                        )
                     }
                     Text(
                         text = "AED ${String.format("%,.0f", tx.amount)}",

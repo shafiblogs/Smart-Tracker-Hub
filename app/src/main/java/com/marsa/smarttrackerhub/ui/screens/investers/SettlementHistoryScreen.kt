@@ -20,13 +20,16 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.DateRange
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
+import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -87,7 +90,30 @@ fun SettlementHistoryScreen(shopId: Int) {
         )
     }
 
-    Scaffold(containerColor = MaterialTheme.colorScheme.background) { paddingValues ->
+    // "Reverse Settlement" confirmation dialog
+    uiState.deletingSettlement?.let { settlement ->
+        ReverseSettlementDialog(
+            settlementDate = settlement.settlementDate,
+            isDeleting = uiState.isDeleting,
+            onConfirm = viewModel::confirmDeleteSettlement,
+            onDismiss = viewModel::dismissDeleteSettlementDialog
+        )
+    }
+
+    Scaffold(
+        containerColor = MaterialTheme.colorScheme.background,
+        floatingActionButton = {
+            if (uiState.settlements.isNotEmpty()) {
+                ExtendedFloatingActionButton(
+                    onClick = { viewModel.exportReport(context) },
+                    icon = { Icon(Icons.Default.Share, contentDescription = null) },
+                    text = { Text("Export Report") },
+                    containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                    contentColor = MaterialTheme.colorScheme.onSecondaryContainer
+                )
+            }
+        }
+    ) { paddingValues ->
         when {
             uiState.isLoading -> {
                 Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -139,7 +165,8 @@ fun SettlementHistoryScreen(shopId: Int) {
                             entries = if (isExpanded) uiState.expandedEntries else emptyList(),
                             isLoadingEntries = isExpanded && uiState.isLoadingEntries,
                             onToggle = { viewModel.toggleSettlement(settlement.id) },
-                            onMarkPaid = { entry -> viewModel.showMarkPaidDialog(entry) }
+                            onMarkPaid = { entry -> viewModel.showMarkPaidDialog(entry) },
+                            onReverseSettlement = { viewModel.showDeleteSettlementDialog(settlement) }
                         )
                     }
 
@@ -159,7 +186,8 @@ private fun SettlementHistoryCard(
     entries: List<SettlementEntryWithName>,
     isLoadingEntries: Boolean,
     onToggle: () -> Unit,
-    onMarkPaid: (SettlementEntryWithName) -> Unit
+    onMarkPaid: (SettlementEntryWithName) -> Unit,
+    onReverseSettlement: () -> Unit
 ) {
     val dateFormat = SimpleDateFormat("dd MMM yyyy", Locale.ENGLISH)
 
@@ -208,12 +236,24 @@ private fun SettlementHistoryCard(
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
+                // Reverse / delete icon
+                IconButton(
+                    onClick = onReverseSettlement,
+                    modifier = Modifier.size(32.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Delete,
+                        contentDescription = "Reverse settlement",
+                        modifier = Modifier.size(18.dp),
+                        tint = MaterialTheme.colorScheme.error
+                    )
+                }
                 Icon(
                     imageVector = if (isExpanded) Icons.Default.KeyboardArrowUp
                     else Icons.Default.KeyboardArrowDown,
                     contentDescription = if (isExpanded) "Collapse" else "Expand",
                     modifier = Modifier
-                        .padding(start = 8.dp)
+                        .padding(start = 4.dp)
                         .size(20.dp),
                     tint = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -474,6 +514,69 @@ private fun MarkAsPaidDialog(
         },
         dismissButton = {
             TextButton(onClick = onDismiss) {
+                Text("Cancel")
+            }
+        }
+    )
+}
+
+// ── Reverse Settlement Confirmation Dialog ────────────────────────────────
+
+@Composable
+private fun ReverseSettlementDialog(
+    settlementDate: Long,
+    isDeleting: Boolean,
+    onConfirm: () -> Unit,
+    onDismiss: () -> Unit
+) {
+    val dateFormat = SimpleDateFormat("dd MMM yyyy", Locale.ENGLISH)
+
+    AlertDialog(
+        onDismissRequest = { if (!isDeleting) onDismiss() },
+        icon = {
+            Icon(
+                imageVector = Icons.Default.Delete,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.error
+            )
+        },
+        title = {
+            Text(
+                text = "Reverse Settlement",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold
+            )
+        },
+        text = {
+            Text(
+                text = "This will permanently delete the settlement from ${dateFormat.format(java.util.Date(settlementDate))} " +
+                        "and all its investor entries. The original payment transactions are NOT affected. " +
+                        "You can run a new settlement calculation after this.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        },
+        confirmButton = {
+            Button(
+                onClick = onConfirm,
+                enabled = !isDeleting,
+                colors = androidx.compose.material3.ButtonDefaults.buttonColors(
+                    containerColor = MaterialTheme.colorScheme.error
+                )
+            ) {
+                if (isDeleting) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(16.dp),
+                        strokeWidth = 2.dp,
+                        color = MaterialTheme.colorScheme.onError
+                    )
+                } else {
+                    Text("Delete & Reverse")
+                }
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss, enabled = !isDeleting) {
                 Text("Cancel")
             }
         }

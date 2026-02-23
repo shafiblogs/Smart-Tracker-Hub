@@ -7,4 +7,6 @@
 
     <!-- Add this line for chart sharing -->
     <cache-path name="images" path="images/" />
+    <!-- Investor settlement reports -->
+    <cache-path name="reports" path="reports/" />
 </paths>
