@@ -16,9 +16,13 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.platform.LocalView
+import androidx.core.view.WindowCompat
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.geometry.CornerRadius
@@ -50,6 +54,20 @@ import kotlinx.coroutines.launch
  */
 @Composable
 fun SplashScreen(onTimeout: () -> Unit) {
+
+    // ── Make status bar + nav bar transparent so the background fills edge-to-edge ──
+    val view = LocalView.current
+    if (!view.isInEditMode) {
+        SideEffect {
+            val window = (view.context as? android.app.Activity)?.window ?: return@SideEffect
+            window.statusBarColor = Color.Transparent.toArgb()
+            window.navigationBarColor = Color.Transparent.toArgb()
+            WindowCompat.getInsetsController(window, view).apply {
+                isAppearanceLightStatusBars = true   // dark icons on light bg
+                isAppearanceLightNavigationBars = true
+            }
+        }
+    }
 
     // ── Animation values ──────────────────────────────────────────────────
     val logoScale   = remember { Animatable(0.6f) }

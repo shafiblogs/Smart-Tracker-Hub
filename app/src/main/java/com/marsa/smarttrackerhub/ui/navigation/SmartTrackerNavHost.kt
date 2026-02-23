@@ -112,10 +112,15 @@ fun SmartTrackerNavHost(navController: NavHostController) {
     }
 
     val content: @Composable (PaddingValues) -> Unit = { paddingValues ->
+        val currentRoute = currentBackStackEntryAsState().value?.destination?.route
         NavHost(
             navController = navController,
             startDestination = Screen.Splash.route,
-            modifier = Modifier.padding(paddingValues)
+            // Splash must be edge-to-edge (no Scaffold padding) so the
+            // background covers the status/nav bars. All other screens
+            // keep the normal scaffold insets.
+            modifier = if (currentRoute == Screen.Splash.route) Modifier
+            else Modifier.padding(paddingValues)
         ) {
             composable(Screen.Splash.route) {
                 SplashScreen(onTimeout = {
