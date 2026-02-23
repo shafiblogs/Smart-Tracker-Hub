@@ -113,6 +113,10 @@ class AddShopInvestmentViewModel(
     private val _remainingPercentage = MutableStateFlow(100.0)
     val remainingPercentage: StateFlow<Double> = _remainingPercentage.asStateFlow()
 
+    /** Sum of all active investors' shares for the selected shop. Used by Screen to detect overflow. */
+    private val _existingTotal = MutableStateFlow(0.0)
+    val existingTotal: StateFlow<Double> = _existingTotal.asStateFlow()
+
     /**
      * Non-empty when mode == PROPORTIONAL and adding the entered share % would
      * exceed 100 %. Shows old → new for every existing investor.
@@ -214,6 +218,7 @@ class AddShopInvestmentViewModel(
         val existing = shopInvestorRepo.getActiveInvestorsRaw(shopId)
         val allocated = existing.sumOf { it.sharePercentage }
         _remainingPercentage.value = 100.0 - allocated
+        _existingTotal.value = allocated
 
         // Build name cache and donor options
         investorNameCache.clear()

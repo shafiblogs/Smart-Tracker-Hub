@@ -85,8 +85,11 @@ interface ShopInvestorDao {
     """)
     suspend fun getTotalPaidByInvestor(investorId: Int): Double
 
-    /** Check if investor is already assigned to this shop. */
-    @Query("SELECT COUNT(*) FROM shop_investor WHERE shopId = :shopId AND investorId = :investorId")
+    /**
+     * Check if investor is already ACTIVELY assigned to this shop.
+     * Withdrawn investors are excluded so they can be re-added with a new share.
+     */
+    @Query("SELECT COUNT(*) FROM shop_investor WHERE shopId = :shopId AND investorId = :investorId AND status = 'Active'")
     suspend fun isInvestorInShop(shopId: Int, investorId: Int): Int
 
     /** Get specific record by id. */

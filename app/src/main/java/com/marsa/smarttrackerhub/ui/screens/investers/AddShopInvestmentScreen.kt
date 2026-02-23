@@ -64,17 +64,18 @@ fun AddShopInvestmentScreen(
     val isSaved by viewModel.isSaved.collectAsState()
     val error by viewModel.error.collectAsState()
     val remainingPercentage by viewModel.remainingPercentage.collectAsState()
+    val existingTotal by viewModel.existingTotal.collectAsState()
     val redistributionPreview by viewModel.redistributionPreview.collectAsState()
     val context = LocalContext.current
 
     val shopLocked = prefilledShopId > 0
     val investorLocked = prefilledInvestorId > 0
 
-    // Whether redistribution UI should be shown at all
+    // Whether redistribution UI should be shown at all:
+    // only when there are existing investors AND the new share would push active total past 100%
+    val newShare = state.sharePercentage.toDoubleOrNull() ?: 0.0
     val needsRedistribution = state.donorOptions.isNotEmpty() &&
-            (state.sharePercentage.toDoubleOrNull() ?: 0.0).let { newShare ->
-                newShare > 0.0 && (100.0 - remainingPercentage + newShare) > 100.0
-            }
+            newShare > 0.0 && (existingTotal + newShare) > 100.0
 
     LaunchedEffect(Unit) {
         viewModel.initDatabase(
