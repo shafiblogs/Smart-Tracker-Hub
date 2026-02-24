@@ -71,7 +71,7 @@ fun AddTransactionScreen(
     val isSaved by viewModel.isSaved.collectAsState()
     val error by viewModel.error.collectAsState()
     val context = LocalContext.current
-    val dateFormat = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault())
+    val dateFormat = SimpleDateFormat("dd MMM yyyy", Locale.ENGLISH)
 
     val investorLocked = prefilledInvestorId > 0
     var phaseMenuExpanded by remember { mutableStateOf(false) }

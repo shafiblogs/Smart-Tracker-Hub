@@ -21,6 +21,7 @@ import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Warning
+import androidx.compose.material.icons.outlined.ExitToApp
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -410,12 +411,12 @@ private fun InvestorBreakdownCard(
                     if (isActive) {
                         IconButton(
                             onClick = onWithdrawClick,
-                            modifier = Modifier.size(28.dp)
+                            modifier = Modifier.size(36.dp)   // 36 dp = M3 minimum touch target
                         ) {
                             Icon(
-                                imageVector = Icons.Default.Warning,
+                                imageVector = Icons.Outlined.ExitToApp,
                                 contentDescription = "Withdraw investor",
-                                modifier = Modifier.size(16.dp),
+                                modifier = Modifier.size(18.dp),
                                 tint = MaterialTheme.colorScheme.error
                             )
                         }
@@ -467,10 +468,9 @@ private fun InvestorMetric(
         Spacer(Modifier.height(2.dp))
         Text(
             text = value,
-            style = MaterialTheme.typography.bodySmall,
+            style = MaterialTheme.typography.bodyMedium,
             fontWeight = FontWeight.SemiBold,
-            color = valueColor,
-            fontSize = 12.sp
+            color = valueColor
         )
     }
 }
@@ -780,7 +780,7 @@ private fun PhaseGroup(
                         Text(
                             text = "Hold to edit",
                             style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.65f)
                         )
                     }
                     Text(
