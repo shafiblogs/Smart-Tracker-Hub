@@ -34,13 +34,12 @@ import com.marsa.smarttrackerhub.data.migrations.MIGRATION_1_2
  * Moro Hub
  * muhammed.poyil@morohub.com
  *
- * v2 — Investment module redesign:
- *   - ShopInvestor: removed investmentAmount/investmentDate, added status/joinedDate
- *   - Added InvestmentTransaction (phase-based payments)
- *   - Added YearEndSettlement + SettlementEntry (annual reconciliation)
- * v3 — Settlement period-based:
- *   - YearEndSettlement: removed `year` Int, added `periodStartDate` Long
- *   - Settlement now covers a date range instead of a calendar year
+ * v2 — Investment module added:
+ *   - Dropped EntryEntity (entries table)
+ *   - Added ShopInvestor (junction: shop ↔ investor with share % and status)
+ *   - Added InvestmentTransaction (phase-based payments per shop-investor)
+ *   - Added YearEndSettlement (period-based reconciliation event per shop)
+ *   - Added SettlementEntry (per-investor line inside a settlement)
  */
 
 @Database(
