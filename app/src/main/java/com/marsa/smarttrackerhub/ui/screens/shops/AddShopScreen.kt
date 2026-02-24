@@ -544,6 +544,7 @@ private fun SectionHeader(text: String) {
 private fun ShopInvestorRow(investor: ShopInvestorSummary) {
     Card(
         modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
     ) {
         Row(
