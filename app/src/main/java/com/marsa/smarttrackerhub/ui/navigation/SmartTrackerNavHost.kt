@@ -13,6 +13,8 @@ import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.Notifications
+import androidx.compose.material3.Badge
+import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.DrawerValue
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -37,6 +39,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -66,6 +69,7 @@ import com.marsa.smarttrackerhub.ui.screens.investers.SettlementHistoryScreen
 import com.marsa.smarttrackerhub.ui.screens.investers.ShopInvestmentDashboardScreen
 import com.marsa.smarttrackerhub.ui.screens.login.LoginScreen
 import com.marsa.smarttrackerhub.ui.screens.notifications.NotificationsScreen
+import com.marsa.smarttrackerhub.ui.screens.notifications.NotificationsViewModel
 import com.marsa.smarttrackerhub.ui.screens.sale.SaleScreen
 import com.marsa.smarttrackerhub.ui.screens.shops.AddShopScreen
 import com.marsa.smarttrackerhub.ui.screens.shops.ShopsListScreen
@@ -100,6 +104,16 @@ fun SmartTrackerNavHost(navController: NavHostController) {
     val showBottomBar = currentRoute in bottomNavRoutes
     val isAccountActive by viewModel.isAccountActive.collectAsState()
     val userAccessCode by viewModel.userAccessCode.collectAsState()
+
+    // Notification badge count — shared ViewModel instance with NotificationsScreen.
+    // Initialised here so the badge is live as soon as the app launches.
+    val notificationsViewModel: NotificationsViewModel = viewModel()
+    val context = LocalContext.current
+    LaunchedEffect(Unit) {
+        notificationsViewModel.initDatabase(context)
+    }
+    val notificationUiState by notificationsViewModel.uiState.collectAsState()
+    val notificationCount = notificationUiState.notifications.size
 
     fun navigateToRoute(route: String) {
         if (currentRoute != route) {
@@ -504,10 +518,26 @@ fun SmartTrackerNavHost(navController: NavHostController) {
                             selected = currentRoute == Screen.Notifications.route,
                             onClick = { navigateToRoute(Screen.Notifications.route) },
                             icon = {
-                                Icon(
-                                    Icons.Default.Notifications,
-                                    contentDescription = "Notifications"
-                                )
+                                BadgedBox(
+                                    badge = {
+                                        if (notificationCount > 0) {
+                                            Badge {
+                                                Text(
+                                                    text = if (notificationCount > 99) "99+" else notificationCount.toString(),
+                                                    style = MaterialTheme.typography.labelSmall
+                                                )
+                                            }
+                                        }
+                                    }
+                                ) {
+                                    Icon(
+                                        Icons.Default.Notifications,
+                                        contentDescription = if (notificationCount > 0)
+                                            "$notificationCount notifications"
+                                        else
+                                            "Notifications"
+                                    )
+                                }
                             },
                             label = {
                                 SmallTextField("Notifications")
