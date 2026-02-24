@@ -36,10 +36,13 @@ fun ChartTooltip(
     touchInfo: ChartTouchInfo,
     modifier: Modifier = Modifier
 ) {
+    val primaryColor = MaterialTheme.colorScheme.primary
+    val errorColor   = MaterialTheme.colorScheme.error
+
     Card(
         modifier = modifier.padding(16.dp),
         elevation = CardDefaults.cardElevation(defaultElevation = 6.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White)
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
     ) {
         Column(
             modifier = Modifier.padding(16.dp),
@@ -66,14 +69,14 @@ fun ChartTooltip(
                             .padding(end = 8.dp)
                     ) {
                         Canvas(modifier = Modifier.fillMaxSize()) {
-                            drawCircle(color = Color(0xFF2196F3))
+                            drawCircle(color = primaryColor)   // BrandBlue
                         }
                     }
                     Spacer(modifier = Modifier.width(4.dp))
                     Text(
                         text = "Target:",
                         style = MaterialTheme.typography.bodyMedium,
-                        color = Color.Gray
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
                 Text(
@@ -99,9 +102,8 @@ fun ChartTooltip(
                     ) {
                         Canvas(modifier = Modifier.fillMaxSize()) {
                             drawCircle(
-                                color = if (touchInfo.isTargetMet) Color(0xFF4CAF50) else Color(
-                                    0xFFF44336
-                                )
+                                color = if (touchInfo.isTargetMet) Color(0xFF22C55E)   // SuccessGreen
+                                        else errorColor                                  // ErrorRed
                             )
                         }
                     }
@@ -109,14 +111,14 @@ fun ChartTooltip(
                     Text(
                         text = "Average:",
                         style = MaterialTheme.typography.bodyMedium,
-                        color = Color.Gray
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
                 Text(
                     text = String.format("%.2f", touchInfo.averageSale),
                     style = MaterialTheme.typography.bodyLarge,
                     fontWeight = FontWeight.SemiBold,
-                    color = if (touchInfo.isTargetMet) Color(0xFF4CAF50) else Color(0xFFF44336)
+                    color = if (touchInfo.isTargetMet) Color(0xFF22C55E) else errorColor
                 )
             }
 
@@ -138,7 +140,7 @@ fun ChartTooltip(
                     text = String.format("%.1f%%", touchInfo.achievementPercentage),
                     style = MaterialTheme.typography.bodyLarge,
                     fontWeight = FontWeight.Bold,
-                    color = if (touchInfo.isTargetMet) Color(0xFF4CAF50) else Color(0xFFF44336)
+                    color = if (touchInfo.isTargetMet) Color(0xFF22C55E) else errorColor
                 )
             }
 
@@ -157,7 +159,7 @@ fun ChartTooltip(
 
                 val icon = if (touchInfo.difference >= 0) "↑" else "↓"
                 val diffColor =
-                    if (touchInfo.difference >= 0) Color(0xFF4CAF50) else Color(0xFFF44336)
+                    if (touchInfo.difference >= 0) Color(0xFF22C55E) else errorColor
 
                 Text(
                     text = "$icon ${String.format("%.2f", abs(touchInfo.difference))}",

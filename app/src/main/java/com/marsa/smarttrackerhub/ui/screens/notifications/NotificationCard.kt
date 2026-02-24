@@ -59,17 +59,17 @@ fun NotificationCard(
                 NotificationType.ZAKATH_PAYMENT_PENDING -> Icons.Default.Info
                 else -> Icons.Default.Warning
             }
-            Triple(notificationIcon, Color(0xFFD32F2F), MaterialTheme.colorScheme.surface)
+            Triple(notificationIcon, MaterialTheme.colorScheme.error, MaterialTheme.colorScheme.surface)
         }
         NotificationPriority.MEDIUM -> {
-            // Near expiry/Approaching - Orange theme
+            // Near expiry/Approaching - WarningAmber (BrandOrange)
             val notificationIcon = when (notification.type) {
                 NotificationType.SHOP_LICENSE_NEAR_EXPIRY -> Icons.Default.Info
                 NotificationType.EMPLOYEE_VISA_NEAR_EXPIRY -> Icons.Default.Person
                 NotificationType.ZAKATH_STOCK_APPROACHING -> Icons.Default.CheckCircle
                 else -> Icons.Default.Warning
             }
-            Triple(notificationIcon, Color(0xFFFF9800), MaterialTheme.colorScheme.surface)
+            Triple(notificationIcon, MaterialTheme.colorScheme.secondary, MaterialTheme.colorScheme.surface)
         }
     }
 
@@ -126,7 +126,7 @@ fun NotificationCard(
                         Spacer(modifier = Modifier.width(8.dp))
                         Surface(
                             shape = RoundedCornerShape(4.dp),
-                            color = Color(0xFFD32F2F)
+                            color = MaterialTheme.colorScheme.errorContainer
                         ) {
                             Row(
                                 modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
@@ -136,7 +136,7 @@ fun NotificationCard(
                                 Icon(
                                     imageVector = Icons.Default.Warning,
                                     contentDescription = "High Priority",
-                                    tint = Color.White,
+                                    tint = MaterialTheme.colorScheme.onErrorContainer,
                                     modifier = Modifier.size(14.dp)
                                 )
                                 Text(
@@ -145,7 +145,7 @@ fun NotificationCard(
                                         fontSize = 11.sp,
                                         fontWeight = FontWeight.Bold
                                     ),
-                                    color = Color.White
+                                    color = MaterialTheme.colorScheme.onErrorContainer
                                 )
                             }
                         }
@@ -195,7 +195,7 @@ fun NotificationCard(
                 // Show additional info if available
                 notification.additionalInfo?.let { info ->
                     Spacer(modifier = Modifier.height(8.dp))
-                    HorizontalDivider(color = Color.LightGray.copy(alpha = 0.3f))
+                    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
                     Spacer(modifier = Modifier.height(8.dp))
 
                     Surface(

@@ -133,12 +133,12 @@ fun MonthlySalesChart(
                         val targetY =
                             chartHeight - bottomPadding - (monthData.targetSale * yScale).toFloat()
                         drawCircle(
-                            color = Color(0xFF2196F3),
+                            color = colors.primary,   // BrandBlue — target dot
                             radius = 7f,
                             center = Offset(x, targetY)
                         )
                         drawCircle(
-                            color = Color.White,
+                            color = colors.surface,   // surface white/dark — inner dot
                             radius = 3f,
                             center = Offset(x, targetY)
                         )
@@ -146,11 +146,11 @@ fun MonthlySalesChart(
                         // Calculate achievement percentage for this month
                         val monthAchievementPercentage = (monthData.averageSale / monthData.targetSale) * 100
 
-                        // Use achievement-based color
+                        // Achievement-based color using brand palette
                         val avgColor = when {
-                            monthAchievementPercentage >= 100 -> Color(0xFF4CAF50) // Green
-                            monthAchievementPercentage >= 90 -> Color(0xFFFF6F00)  // Brown/Orange
-                            else -> Color(0xFFF44336)                               // Red
+                            monthAchievementPercentage >= 100 -> Color(0xFF22C55E) // SuccessGreen
+                            monthAchievementPercentage >= 90  -> Color(0xFFF59E0B) // WarningAmber
+                            else                              -> colors.error       // ErrorRed
                         }
 
                         val avgY =
@@ -162,7 +162,7 @@ fun MonthlySalesChart(
                             center = Offset(x, avgY)
                         )
                         drawCircle(
-                            color = Color.White,
+                            color = colors.surface,   // surface white/dark — inner dot
                             radius = 3f,
                             center = Offset(x, avgY)
                         )

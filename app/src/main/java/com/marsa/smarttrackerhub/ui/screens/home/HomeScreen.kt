@@ -229,7 +229,7 @@ fun HomeScreen(
                     tint = if (chartData.isNotEmpty())
                         MaterialTheme.colorScheme.primary
                     else
-                        Color.Gray
+                        MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
         }

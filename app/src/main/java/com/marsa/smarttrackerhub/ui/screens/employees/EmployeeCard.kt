@@ -98,14 +98,14 @@ fun EmployeeCard(
                         if (!employee.isActive) {
                             Spacer(modifier = Modifier.width(8.dp))
                             Surface(
-                                color = Color(0xFFEF5350),
+                                color = MaterialTheme.colorScheme.errorContainer,
                                 shape = MaterialTheme.shapes.small
                             ) {
                                 Text(
                                     text = "Terminated",
                                     modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
                                     style = MaterialTheme.typography.labelSmall,
-                                    color = Color.White,
+                                    color = MaterialTheme.colorScheme.onErrorContainer,
                                     fontSize = 11.sp,
                                     fontWeight = FontWeight.Bold
                                 )
@@ -166,7 +166,7 @@ fun EmployeeCard(
                                         Icon(
                                             imageVector = Icons.Default.Person,
                                             contentDescription = null,
-                                            tint = Color(0xFFEF5350)
+                                            tint = MaterialTheme.colorScheme.error
                                         )
                                     }
                                 )
@@ -181,7 +181,7 @@ fun EmployeeCard(
                                         Icon(
                                             imageVector = Icons.Default.Add,
                                             contentDescription = null,
-                                            tint = Color(0xFF66BB6A)
+                                            tint = Color(0xFF22C55E)  // SuccessGreen
                                         )
                                     }
                                 )
@@ -211,7 +211,7 @@ fun EmployeeCard(
             }
 
             Spacer(modifier = Modifier.height(16.dp))
-            HorizontalDivider(color = Color.LightGray.copy(alpha = 0.5f))
+            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
             Spacer(modifier = Modifier.height(16.dp))
 
             // Salary Information
@@ -246,7 +246,7 @@ fun EmployeeCard(
             }
 
             Spacer(modifier = Modifier.height(16.dp))
-            HorizontalDivider(color = Color.LightGray.copy(alpha = 0.5f))
+            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
             Spacer(modifier = Modifier.height(16.dp))
 
             // Visa Expiry with Status Indicator
@@ -302,7 +302,7 @@ private fun InfoColumn(
             style = MaterialTheme.typography.labelMedium.copy(
                 fontSize = 12.sp
             ),
-            color = Color.Gray
+            color = MaterialTheme.colorScheme.onSurfaceVariant
         )
         Spacer(modifier = Modifier.height(4.dp))
         Text(

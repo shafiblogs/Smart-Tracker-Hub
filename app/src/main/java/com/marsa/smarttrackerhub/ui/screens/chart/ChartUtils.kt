@@ -245,7 +245,7 @@ fun DrawScope.drawLegend(
 
     // Draw Target legend
     drawLine(
-        color = Color(0xFF2196F3),
+        color = colors.primary,   // BrandBlue
         start = Offset(startX, legendY),
         end = Offset(startX + lineWidth, legendY),
         strokeWidth = 3f,
@@ -357,7 +357,7 @@ fun DrawScope.drawSingleMonthLegend(
 
     // Target legend (Blue)
     drawRect(
-        color = Color(0xFF2196F3),
+        color = colors.primary,   // BrandBlue
         topLeft = Offset(startX, legendY - boxSize / 2),
         size = Size(boxSize, boxSize)
     )
@@ -372,9 +372,9 @@ fun DrawScope.drawSingleMonthLegend(
     // Average legend with achievement-based color
     val avgStart = startX + boxSize + 5f + targetWidth + spacing
     val avgColor = when {
-        achievementPercentage >= 100 -> Color(0xFF4CAF50) // Green
-        achievementPercentage >= 90 -> Color(0xFFFF6F00)  // Brown/Orange
-        else -> Color(0xFFF44336)                          // Red
+        achievementPercentage >= 100 -> Color(0xFF22C55E) // SuccessGreen
+        achievementPercentage >= 90  -> Color(0xFFF59E0B) // WarningAmber
+        else                         -> colors.error       // ErrorRed — from theme
     }
 
     drawRect(

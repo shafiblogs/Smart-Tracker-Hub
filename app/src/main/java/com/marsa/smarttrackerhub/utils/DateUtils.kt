@@ -45,8 +45,8 @@ fun Long.getExpiryStatus(): ExpiryStatus {
     val daysUntilExpiry = TimeUnit.MILLISECONDS.toDays(diffInMillis)
 
     return when {
-        daysUntilExpiry < 0 -> ExpiryStatus("Expired", Color(0xFFD32F2F)) // Red
-        daysUntilExpiry <= 60 -> ExpiryStatus("Near Expiry", Color(0xFFFF9800)) // Orange
-        else -> ExpiryStatus("Active", Color(0xFF4CAF50)) // Green
+        daysUntilExpiry < 0  -> ExpiryStatus("Expired",    Color(0xFFEF4444)) // ErrorRed
+        daysUntilExpiry <= 60 -> ExpiryStatus("Near Expiry", Color(0xFFF59E0B)) // WarningAmber
+        else                  -> ExpiryStatus("Active",     Color(0xFF22C55E)) // SuccessGreen
     }
 }

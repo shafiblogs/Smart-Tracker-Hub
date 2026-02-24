@@ -25,7 +25,6 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -78,7 +77,7 @@ fun NotificationsScreen(
                         imageVector = Icons.Default.Notifications,
                         contentDescription = "No Notifications",
                         modifier = Modifier.size(40.dp),
-                        tint = Color.Gray.copy(alpha = 0.5f)
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
                     )
 
                     Spacer(modifier = Modifier.height(16.dp))
@@ -89,7 +88,7 @@ fun NotificationsScreen(
                             fontSize = 20.sp,
                             fontWeight = FontWeight.Bold
                         ),
-                        color = Color.Gray
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
 
                     Spacer(modifier = Modifier.height(8.dp))
@@ -97,7 +96,7 @@ fun NotificationsScreen(
                     Text(
                         text = "All licenses, visas, and Zakath are up to date",
                         style = MaterialTheme.typography.bodyMedium,
-                        color = Color.Gray,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                         textAlign = TextAlign.Center
                     )
                 }
