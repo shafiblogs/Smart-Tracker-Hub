@@ -155,13 +155,23 @@ fun ShopInvestmentDashboardScreen(
                         contentDescription = "Assign Investor"
                     )
                 }
-                // Add transaction (primary)
+            }
+        },
+        bottomBar = {
+            // Record Payment — pinned to the bottom edge
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 12.dp),
+                contentAlignment = Alignment.Center
+            ) {
                 ExtendedFloatingActionButton(
                     onClick = { onAddTransactionClick(shopId) },
                     icon = { Icon(Icons.Default.Add, contentDescription = null) },
                     text = { Text("Record Payment") },
                     containerColor = MaterialTheme.colorScheme.primary,
-                    contentColor = MaterialTheme.colorScheme.onPrimary
+                    contentColor = MaterialTheme.colorScheme.onPrimary,
+                    modifier = Modifier.fillMaxWidth()
                 )
             }
         }
