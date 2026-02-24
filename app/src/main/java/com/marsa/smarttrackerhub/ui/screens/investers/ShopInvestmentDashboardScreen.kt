@@ -297,7 +297,7 @@ fun ShopInvestmentDashboardScreen(
                         }
                     }
 
-                    item { Spacer(Modifier.height(120.dp)) }
+                    item { Spacer(Modifier.height(80.dp)) }
                 }
             }
         }
