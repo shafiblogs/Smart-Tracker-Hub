@@ -237,7 +237,7 @@ fun AddEmployeeScreen(
                 }
 
                 Spacer(modifier = Modifier.height(24.dp))
-                HorizontalDivider(color = Color.LightGray)
+                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
                 Spacer(modifier = Modifier.height(24.dp))
 
                 // ============ SALARY INFORMATION SECTION ============

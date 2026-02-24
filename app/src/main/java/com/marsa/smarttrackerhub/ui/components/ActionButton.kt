@@ -10,11 +10,11 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -32,7 +32,7 @@ fun ActionButton(icon: androidx.compose.ui.graphics.vector.ImageVector, text: St
         modifier = modifier
             .height(120.dp),
         onClick = onClick,
-        colors = CardDefaults.cardColors(containerColor = Color.White),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
         Column(
@@ -44,7 +44,7 @@ fun ActionButton(icon: androidx.compose.ui.graphics.vector.ImageVector, text: St
                 imageVector = icon,
                 contentDescription = text,
                 modifier = Modifier.size(48.dp),
-                tint = Color(0xFF3F51B5) // Deep Blue
+                tint = MaterialTheme.colorScheme.primary  // BrandBlue
             )
             Spacer(modifier = Modifier.height(8.dp))
             Text(text = text, fontSize = 16.sp, fontWeight = FontWeight.Medium)

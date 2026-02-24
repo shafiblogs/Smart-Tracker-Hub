@@ -231,7 +231,7 @@ fun EmployeesScreen(
                         )
                     }
                 ) {
-                    Text("Terminate", color = Color(0xFFEF5350))
+                    Text("Terminate", color = MaterialTheme.colorScheme.error)
                 }
             },
             dismissButton = {
@@ -264,7 +264,7 @@ fun EmployeesScreen(
                         )
                     }
                 ) {
-                    Text("Reactivate", color = Color(0xFF66BB6A))
+                    Text("Reactivate", color = Color(0xFF22C55E))  // SuccessGreen
                 }
             },
             dismissButton = {
