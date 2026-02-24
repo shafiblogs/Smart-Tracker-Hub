@@ -69,6 +69,7 @@ fun EmployeeCard(
             .fillMaxWidth()
             .clickable(onClick = onCardClick),
         shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
         Column(

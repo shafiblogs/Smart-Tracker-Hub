@@ -238,6 +238,7 @@ fun HomeScreen(
         // Chart Card
         Card(
             modifier = Modifier.fillMaxWidth(),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
             elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
         ) {
             AndroidView(
