@@ -175,11 +175,13 @@ fun ShopInvestmentDashboardScreen(
                 LazyColumn(
                     modifier = Modifier
                         .fillMaxSize()
-                        .padding(paddingValues)
                         .padding(horizontal = 16.dp),
+                    contentPadding = androidx.compose.foundation.layout.PaddingValues(
+                        top = paddingValues.calculateTopPadding() + 8.dp,
+                        bottom = paddingValues.calculateBottomPadding() + 200.dp
+                    ),
                     verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
-                    item { Spacer(Modifier.height(8.dp)) }
 
                     // ── Capital Summary Card ──
                     item {
@@ -305,7 +307,6 @@ fun ShopInvestmentDashboardScreen(
                         }
                     }
 
-                    item { Spacer(Modifier.height(80.dp)) }
                 }
             }
         }
