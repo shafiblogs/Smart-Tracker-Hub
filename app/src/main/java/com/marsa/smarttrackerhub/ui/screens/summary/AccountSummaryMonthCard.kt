@@ -49,6 +49,7 @@ fun AccountSummaryMonthCard(
         modifier = Modifier
             .fillMaxWidth()
             .clickable(onClick = onClick),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         shape = RoundedCornerShape(12.dp),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {

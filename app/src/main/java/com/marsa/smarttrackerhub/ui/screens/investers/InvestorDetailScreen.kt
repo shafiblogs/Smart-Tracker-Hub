@@ -77,8 +77,8 @@ fun InvestorDetailScreen(
                 // Secondary FAB: edit investor info
                 FloatingActionButton(
                     onClick = { onEditClick(investorId) },
-                    containerColor = MaterialTheme.colorScheme.secondaryContainer,
-                    contentColor = MaterialTheme.colorScheme.onSecondaryContainer
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    contentColor = MaterialTheme.colorScheme.onPrimary
                 ) {
                     Icon(
                         imageVector = Icons.Default.Edit,

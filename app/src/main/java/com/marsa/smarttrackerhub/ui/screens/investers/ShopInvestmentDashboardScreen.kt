@@ -24,7 +24,6 @@ import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material.icons.outlined.ExitToApp
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -49,7 +48,6 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.marsa.smarttrackerhub.domain.PhaseTransactionDetail
 import com.marsa.smarttrackerhub.domain.ShopInvestorSummary
@@ -147,8 +145,8 @@ fun ShopInvestmentDashboardScreen(
                 // Assign new investor
                 FloatingActionButton(
                     onClick = { onAssignInvestorClick(shopId) },
-                    containerColor = MaterialTheme.colorScheme.secondaryContainer,
-                    contentColor = MaterialTheme.colorScheme.onSecondaryContainer
+                    containerColor = MaterialTheme.colorScheme.tertiaryContainer,
+                    contentColor = MaterialTheme.colorScheme.onTertiaryContainer
                 ) {
                     Icon(
                         Icons.Default.Person,
@@ -216,11 +214,21 @@ fun ShopInvestmentDashboardScreen(
                                 ) {
                                     CapitalMetric(
                                         label = "Total Raised",
-                                        value = "AED ${String.format("%,.0f", uiState.totalCapital)}"
+                                        value = "AED ${
+                                            String.format(
+                                                "%,.0f",
+                                                uiState.totalCapital
+                                            )
+                                        }"
                                     )
                                     CapitalMetric(
                                         label = "Allocated",
-                                        value = "${String.format("%.1f", uiState.allocatedPercentage)}%",
+                                        value = "${
+                                            String.format(
+                                                "%.1f",
+                                                uiState.allocatedPercentage
+                                            )
+                                        }%",
                                         alignment = Alignment.CenterHorizontally
                                     )
                                     CapitalMetric(
