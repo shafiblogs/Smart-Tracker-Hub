@@ -59,10 +59,11 @@ fun SplashScreen(onTimeout: () -> Unit) {
     val isDark = isSystemInDarkTheme()
 
     // Dark mode colours — match DarkColorScheme in Color.kt
-    val bgCenter  = if (isDark) Color(0xFF1A1F1D) else Color(0xFFFFFFFF)
-    val bgEdge    = if (isDark) Color(0xFF101412) else Color(0xFFF0EFEB)
-    val titleColor   = if (isDark) Color(0xFFE6E1E5) else Color(0xFF1D1B20)
-    val subtitleColor = if (isDark) Color(0xFF8E918F) else Color(0xFF404946)
+    // Backgrounds aligned to new brand palette
+    val bgCenter  = if (isDark) Color(0xFF1E293B) else Color(0xFFFFFFFF)   // DarkSurface / SurfaceWhite
+    val bgEdge    = if (isDark) Color(0xFF0F172A) else Color(0xFFF5F6FA)   // DarkBackground / AppBackground
+    val titleColor   = if (isDark) Color(0xFFE5E7EB) else Color(0xFF1C1F26)  // DarkTextPrimary / TextPrimary
+    val subtitleColor = if (isDark) Color(0xFF94A3B8) else Color(0xFF6B7280) // DarkTextSecondary / TextSecondary
 
     // ── Make status bar + nav bar transparent so the background fills edge-to-edge ──
     val view = LocalView.current
@@ -188,8 +189,8 @@ private fun drawTHLogo(scope: DrawScope, isDark: Boolean = false) {
         )
 
         // ── Card background — white in light, dark surface in dark mode ───
-        val cardTop    = if (isDark) Color(0xFF232B28) else Color(0xFFFFFFFF)
-        val cardBottom = if (isDark) Color(0xFF1A211E) else Color(0xFFF4F4F6)
+        val cardTop    = if (isDark) Color(0xFF273449) else Color(0xFFFFFFFF)   // DarkCardSurface / white
+        val cardBottom = if (isDark) Color(0xFF1E293B) else Color(0xFFF0F2F7)  // DarkSurface / CardSurface
         drawRoundRect(
             brush = Brush.verticalGradient(
                 colors = listOf(cardTop, cardBottom),
