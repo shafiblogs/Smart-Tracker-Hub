@@ -19,7 +19,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.PersonAdd
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material.icons.outlined.ExitToApp
 import androidx.compose.material3.AlertDialog
@@ -147,12 +147,12 @@ fun ShopInvestmentDashboardScreen(
                 // Assign new investor
                 FloatingActionButton(
                     onClick = { onAssignInvestorClick(shopId) },
-                    containerColor = MaterialTheme.colorScheme.tertiaryContainer
+                    containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                    contentColor = MaterialTheme.colorScheme.onSecondaryContainer
                 ) {
                     Icon(
-                        Icons.Default.Person,
-                        contentDescription = "Assign Investor",
-                        tint = MaterialTheme.colorScheme.onTertiaryContainer
+                        Icons.Default.PersonAdd,
+                        contentDescription = "Assign Investor"
                     )
                 }
                 // Add transaction (primary)
