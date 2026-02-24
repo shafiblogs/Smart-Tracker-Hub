@@ -55,7 +55,7 @@ import com.marsa.smarttrackerhub.data.helper.Converters
         YearEndSettlement::class,
         SettlementEntry::class
     ],
-    version = 3
+    version = 2
 )
 @TypeConverters(Converters::class)
 abstract class AppDatabase : RoomDatabase() {
