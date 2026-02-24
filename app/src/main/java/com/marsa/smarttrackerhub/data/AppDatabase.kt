@@ -26,6 +26,8 @@ import com.marsa.smarttrackerhub.data.entity.SummaryEntity
 import com.marsa.smarttrackerhub.data.entity.UserAccount
 import com.marsa.smarttrackerhub.data.entity.YearEndSettlement
 import com.marsa.smarttrackerhub.data.helper.Converters
+import com.marsa.smarttrackerhub.data.migrations.MIGRATION_1_2
+import com.marsa.smarttrackerhub.data.migrations.MIGRATION_2_3
 
 
 /**
@@ -80,7 +82,7 @@ abstract class AppDatabase : RoomDatabase() {
                     AppDatabase::class.java,
                     "tracker_hub_db"
                 )
-                    .fallbackToDestructiveMigration() // Clean slate — dev build, no prod data yet
+                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3)
                     .addCallback(object : Callback() {
                         override fun onCreate(db: SupportSQLiteDatabase) {
                             super.onCreate(db)
