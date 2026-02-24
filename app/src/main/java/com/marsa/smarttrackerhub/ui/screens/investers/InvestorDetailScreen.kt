@@ -78,12 +78,12 @@ fun InvestorDetailScreen(
                 // Secondary FAB: edit investor info
                 SmallFloatingActionButton(
                     onClick = { onEditClick(investorId) },
-                    containerColor = MaterialTheme.colorScheme.secondaryContainer
+                    containerColor = MaterialTheme.colorScheme.primary
                 ) {
                     Icon(
                         imageVector = Icons.Default.Edit,
                         contentDescription = "Edit Investor",
-                        tint = MaterialTheme.colorScheme.onSecondaryContainer
+                        tint = MaterialTheme.colorScheme.surface
                     )
                 }
                 // Primary FAB: assign investor to a new shop

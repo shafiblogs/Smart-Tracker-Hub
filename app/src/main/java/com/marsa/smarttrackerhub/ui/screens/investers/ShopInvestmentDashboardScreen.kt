@@ -147,12 +147,12 @@ fun ShopInvestmentDashboardScreen(
                 // Assign new investor
                 FloatingActionButton(
                     onClick = { onAssignInvestorClick(shopId) },
-                    containerColor = MaterialTheme.colorScheme.secondaryContainer
+                    containerColor = MaterialTheme.colorScheme.tertiaryContainer
                 ) {
                     Icon(
                         Icons.Default.Person,
                         contentDescription = "Assign Investor",
-                        tint = MaterialTheme.colorScheme.onSecondaryContainer
+                        tint = MaterialTheme.colorScheme.onTertiaryContainer
                     )
                 }
                 // Add transaction (primary)
