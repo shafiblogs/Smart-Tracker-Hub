@@ -349,12 +349,25 @@ class AddShopInvestmentViewModel(
                 when (state.distributionMode) {
 
                     DistributionMode.PROPORTIONAL -> {
-                        // Scale every existing investor proportionally
+                        // Scale every existing investor proportionally.
+                        // To avoid floating-point drift we round the first N-1 investors and
+                        // assign the last investor 100 - newShare - sum(rounded others), so
+                        // the three-way total is guaranteed to be exactly 100 %.
                         val scale = (100.0 - share) / existingTotal
-                        existing.forEach { si ->
-                            shopInvestorRepo.updateShopInvestor(
-                                si.copy(sharePercentage = si.sharePercentage * scale)
-                            )
+                        val scaled = existing.map { si ->
+                            // Round to 4 decimal places to keep the preview tidy
+                            val rounded = Math.round(si.sharePercentage * scale * 10_000) / 10_000.0
+                            si to rounded
+                        }
+                        val allButLast = scaled.dropLast(1)
+                        val sumAllButLast = allButLast.sumOf { (_, s) -> s }
+                        val lastShare = 100.0 - share - sumAllButLast
+
+                        allButLast.forEach { (si, s) ->
+                            shopInvestorRepo.updateShopInvestor(si.copy(sharePercentage = s))
+                        }
+                        scaled.last().let { (si, _) ->
+                            shopInvestorRepo.updateShopInvestor(si.copy(sharePercentage = lastShare))
                         }
                     }
 

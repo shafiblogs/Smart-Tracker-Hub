@@ -92,7 +92,9 @@ class SettlementCalculatorViewModel : ViewModel() {
             )
             // Determine period start from the last settlement
             val lastSettlement = settlementRepo.getLatestSettlement(shopId)
-            val periodStart = if (lastSettlement != null) lastSettlement.settlementDate + 1 else 0L
+            // Add one full day (86 400 000 ms) so the next period starts at the
+            // beginning of the day after the last settlement date, not 1 ms later.
+            val periodStart = if (lastSettlement != null) lastSettlement.settlementDate + 86_400_000L else 0L
             _uiState.value = _uiState.value.copy(periodStartDate = periodStart)
             calculateSettlement()
         }
