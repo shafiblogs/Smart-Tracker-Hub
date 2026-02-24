@@ -7,13 +7,13 @@ import androidx.sqlite.db.SupportSQLiteDatabase
  * v1 → v2: Investment module added.
  *
  * New tables:
- *  - shop_investor       (junction: shop ↔ investor with share % and status)
+ *  - shop_investor          (junction: shop ↔ investor with share % and status)
  *  - investment_transaction (phase-based payments per shop-investor)
- *  - year_end_settlement (annual reconciliation event per shop, keyed by `year` INT)
- *  - settlement_entry    (per-investor line inside a settlement)
+ *  - year_end_settlement    (period-based reconciliation event per shop)
+ *  - settlement_entry       (per-investor line inside a settlement)
  *
  * Dropped tables:
- *  - entries             (EntryEntity removed from the domain)
+ *  - entries                (EntryEntity removed from the domain)
  */
 val MIGRATION_1_2 = object : Migration(1, 2) {
     override fun migrate(db: SupportSQLiteDatabase) {
@@ -55,16 +55,16 @@ val MIGRATION_1_2 = object : Migration(1, 2) {
         )
         db.execSQL("CREATE INDEX IF NOT EXISTS `index_investment_transaction_shopInvestorId` ON `investment_transaction` (`shopInvestorId`)")
 
-        // ── year_end_settlement (v2 shape: uses `year` INTEGER column) ────
+        // ── year_end_settlement ───────────────────────────────────────────
         db.execSQL(
             """
             CREATE TABLE IF NOT EXISTS `year_end_settlement` (
-                `id`              INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
-                `shopId`          INTEGER NOT NULL,
-                `settlementDate`  INTEGER NOT NULL,
-                `year`            INTEGER NOT NULL,
-                `totalInvested`   REAL    NOT NULL,
-                `note`            TEXT    NOT NULL DEFAULT '',
+                `id`               INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                `shopId`           INTEGER NOT NULL,
+                `settlementDate`   INTEGER NOT NULL,
+                `periodStartDate`  INTEGER NOT NULL DEFAULT 0,
+                `totalInvested`    REAL    NOT NULL,
+                `note`             TEXT    NOT NULL DEFAULT '',
                 `isCarriedForward` INTEGER NOT NULL DEFAULT 1,
                 FOREIGN KEY(`shopId`) REFERENCES `shop_info`(`id`) ON DELETE CASCADE
             )
