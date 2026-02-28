@@ -27,6 +27,7 @@ import com.marsa.smarttrackerhub.data.entity.UserAccount
 import com.marsa.smarttrackerhub.data.entity.YearEndSettlement
 import com.marsa.smarttrackerhub.data.helper.Converters
 import com.marsa.smarttrackerhub.data.migrations.MIGRATION_1_2
+import com.marsa.smarttrackerhub.data.migrations.MIGRATION_2_3
 
 
 /**
@@ -40,6 +41,9 @@ import com.marsa.smarttrackerhub.data.migrations.MIGRATION_1_2
  *   - Added InvestmentTransaction (phase-based payments per shop-investor)
  *   - Added YearEndSettlement (period-based reconciliation event per shop)
  *   - Added SettlementEntry (per-investor line inside a settlement)
+ *
+ * v3 — Shop status field added:
+ *   - shop_info: added `shopStatus` column (Running | Initial | Closed)
  */
 
 @Database(
@@ -55,7 +59,7 @@ import com.marsa.smarttrackerhub.data.migrations.MIGRATION_1_2
         YearEndSettlement::class,
         SettlementEntry::class
     ],
-    version = 2
+    version = 3
 )
 @TypeConverters(Converters::class)
 abstract class AppDatabase : RoomDatabase() {
@@ -80,7 +84,7 @@ abstract class AppDatabase : RoomDatabase() {
                     AppDatabase::class.java,
                     "tracker_hub_db"
                 )
-                    .addMigrations(MIGRATION_1_2)
+                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3)
                     .addCallback(object : Callback() {
                         override fun onCreate(db: SupportSQLiteDatabase) {
                             super.onCreate(db)
