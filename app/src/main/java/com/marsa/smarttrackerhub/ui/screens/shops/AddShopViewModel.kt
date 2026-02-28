@@ -9,6 +9,7 @@ import com.marsa.smarttrackerhub.data.entity.ShopInfo
 import com.marsa.smarttrackerhub.data.repository.ShopInvestorRepository
 import com.marsa.smarttrackerhub.data.repository.ShopRepository
 import com.marsa.smarttrackerhub.domain.ShopInvestorSummary
+import com.marsa.smarttrackerhub.ui.screens.enums.ShopStatus
 import com.marsa.smarttrackerhub.ui.screens.enums.ShopType
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -36,6 +37,9 @@ class AddShopViewModel(
 
     private val _shopInvestors = MutableStateFlow<List<ShopInvestorSummary>>(emptyList())
     val shopInvestors: StateFlow<List<ShopInvestorSummary>> = _shopInvestors.asStateFlow()
+
+    private val _totalInvested = MutableStateFlow(0.0)
+    val totalInvested: StateFlow<Double> = _totalInvested.asStateFlow()
 
     private var editingShopId: Int? = null
     private var shopInvestorRepo: ShopInvestorRepository? = null
@@ -79,7 +83,8 @@ class AddShopViewModel(
                     licenseExpiryDate = it.licenseExpiryDate,
                     shopOpeningDate = it.shopOpeningDate,
                     stockValue = it.stockValue.toString(),
-                    stockTakenDate = it.stockTakenDate
+                    stockTakenDate = it.stockTakenDate,
+                    shopStatus = runCatching { ShopStatus.valueOf(it.shopStatus) }.getOrDefault(ShopStatus.Initial)
                 )
                 _isLoaded.value = true
             }
@@ -88,6 +93,13 @@ class AddShopViewModel(
             launch {
                 investorRepo.getInvestorsForShop(shopId).collect { list ->
                     _shopInvestors.value = list
+                }
+            }
+
+            // Load live total invested for this shop
+            launch {
+                investorRepo.getTotalInvestedForShop(shopId).collect { total ->
+                    _totalInvested.value = total
                 }
             }
         } catch (e: Exception) {
@@ -117,6 +129,11 @@ class AddShopViewModel(
 
     fun updateZakathStatus(status: ZakathStatus) {
         _formState.update { it.copy(zakathStatus = status) }
+        _error.value = null
+    }
+
+    fun updateShopStatus(status: ShopStatus) {
+        _formState.update { it.copy(shopStatus = status) }
         _error.value = null
     }
 
@@ -164,7 +181,8 @@ class AddShopViewModel(
                 licenseExpiryDate = state.licenseExpiryDate ?: 0L,
                 shopOpeningDate = state.shopOpeningDate ?: 0L,
                 stockValue = state.stockValue.toDoubleOrNull() ?: 0.0,
-                stockTakenDate = state.stockTakenDate ?: 0L
+                stockTakenDate = state.stockTakenDate ?: 0L,
+                shopStatus = state.shopStatus?.name ?: ShopStatus.Initial.name
             )
 
             if (editingShopId != null) {

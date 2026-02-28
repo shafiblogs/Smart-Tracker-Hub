@@ -14,5 +14,6 @@ data class ShopInfo(
     val licenseExpiryDate: Long,
     val shopOpeningDate: Long, // New field - opening date
     val stockValue: Double = 0.0, // New field - current stock value
-    val stockTakenDate: Long = 0L // New field - when stock was last counted
+    val stockTakenDate: Long = 0L, // New field - when stock was last counted
+    val shopStatus: String = "Initial" // Running | Initial | Closed
 )

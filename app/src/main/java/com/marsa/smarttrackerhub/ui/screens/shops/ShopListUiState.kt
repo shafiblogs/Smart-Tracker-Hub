@@ -11,5 +11,6 @@ import com.marsa.smarttrackerhub.data.entity.ShopInfo
 
 data class ShopListUiState(
     val shops: List<ShopInfo> = emptyList(),
+    val totalInvestedByShop: Map<Int, Double> = emptyMap(),
     val isLoading: Boolean = false
 )

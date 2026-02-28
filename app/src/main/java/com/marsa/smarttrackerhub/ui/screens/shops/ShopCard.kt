@@ -29,6 +29,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.marsa.smarttrackerhub.data.entity.ShopInfo
+import com.marsa.smarttrackerhub.ui.screens.enums.ShopStatus
 import com.marsa.smarttrackerhub.utils.HijriDateUtils
 import com.marsa.smarttrackerhub.utils.getExpiryStatus
 import java.text.SimpleDateFormat
@@ -43,12 +44,19 @@ import java.util.Locale
 @Composable
 fun ShopCard(
     shop: ShopInfo,
+    totalInvested: Double = 0.0,
     onCardClick: () -> Unit,
     onShareClick: () -> Unit
 ) {
     val dateFormat = SimpleDateFormat("dd MMM yyyy", Locale.ENGLISH)
     val expiryStatus = shop.licenseExpiryDate.getExpiryStatus()
     val zakathAmount = shop.stockValue * 0.025 // 2.5% for Zakath
+    val shopStatus = runCatching { ShopStatus.valueOf(shop.shopStatus) }.getOrDefault(ShopStatus.Initial)
+    val shopStatusColor = when (shopStatus) {
+        ShopStatus.Running -> MaterialTheme.colorScheme.primary
+        ShopStatus.Closed  -> MaterialTheme.colorScheme.error
+        ShopStatus.Initial -> MaterialTheme.colorScheme.onSurfaceVariant
+    }
 
     Card(
         modifier = Modifier
@@ -86,6 +94,20 @@ fun ShopCard(
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         lineHeight = 18.sp
                     )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Surface(
+                        shape = MaterialTheme.shapes.small,
+                        color = shopStatusColor.copy(alpha = 0.12f)
+                    ) {
+                        Text(
+                            text = shopStatus.name,
+                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 3.dp),
+                            style = MaterialTheme.typography.labelSmall.copy(
+                                fontWeight = FontWeight.SemiBold
+                            ),
+                            color = shopStatusColor
+                        )
+                    }
                 }
 
                 // Share button
@@ -189,6 +211,16 @@ fun ShopCard(
                     alignment = Alignment.End
                 )
             }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // Total Invested
+            InfoColumn(
+                label = "Total Invested",
+                value = "AED ${String.format("%,.2f", totalInvested)}",
+                valueColor = MaterialTheme.colorScheme.primary,
+                valueFontWeight = FontWeight.Bold
+            )
 
             Spacer(modifier = Modifier.height(16.dp))
             HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)

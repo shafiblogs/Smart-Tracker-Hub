@@ -31,6 +31,9 @@ class ShopInvestorRepository(private val shopInvestorDao: ShopInvestorDao) {
     suspend fun getTotalPaidByInvestor(investorId: Int): Double =
         shopInvestorDao.getTotalPaidByInvestor(investorId)
 
+    fun getTotalInvestedForShop(shopId: Int): Flow<Double> =
+        shopInvestorDao.getTotalInvestedForShop(shopId)
+
     suspend fun isInvestorInShop(shopId: Int, investorId: Int): Boolean =
         shopInvestorDao.isInvestorInShop(shopId, investorId) > 0
 

@@ -79,6 +79,7 @@ fun ShopsListScreen(
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     items(uiState.shops) { shop ->
+                        val totalInvested = uiState.totalInvestedByShop[shop.id] ?: 0.0
                         // Wrap in AndroidView to get view reference
                         AndroidView(
                             factory = { context ->
@@ -86,7 +87,8 @@ fun ShopsListScreen(
                                     setContent {
                                         ShopCard(
                                             shop = shop,
-                                            onCardClick = { onEditClick(shop.id) },  // Changed parameter
+                                            totalInvested = totalInvested,
+                                            onCardClick = { onEditClick(shop.id) },
                                             onShareClick = {
                                                 cardViewRefs[shop.id]?.let { view ->
                                                     ShareUtil.shareViewAsImage(
@@ -106,6 +108,7 @@ fun ShopsListScreen(
                                 view.setContent {
                                     ShopCard(
                                         shop = shop,
+                                        totalInvested = totalInvested,
                                         onCardClick = { onEditClick(shop.id) },
                                         onShareClick = {
                                             ShareUtil.shareViewAsImage(

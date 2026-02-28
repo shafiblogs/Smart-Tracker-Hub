@@ -85,6 +85,15 @@ interface ShopInvestorDao {
     """)
     suspend fun getTotalPaidByInvestor(investorId: Int): Double
 
+    /** Total invested into a specific shop across ALL investors (for ShopCard). */
+    @Query("""
+        SELECT COALESCE(SUM(t.amount), 0)
+        FROM investment_transaction t
+        INNER JOIN shop_investor si ON t.shopInvestorId = si.id
+        WHERE si.shopId = :shopId
+    """)
+    fun getTotalInvestedForShop(shopId: Int): Flow<Double>
+
     /**
      * Check if investor is already ACTIVELY assigned to this shop.
      * Withdrawn investors are excluded so they can be re-added with a new share.

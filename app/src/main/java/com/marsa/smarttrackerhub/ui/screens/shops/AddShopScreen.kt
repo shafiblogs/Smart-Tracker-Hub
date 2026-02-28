@@ -50,6 +50,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.marsa.smarttrackerhub.domain.ShopInvestorSummary
 import com.marsa.smarttrackerhub.ui.components.DropdownField
 import com.marsa.smarttrackerhub.ui.components.LabeledInputField
+import com.marsa.smarttrackerhub.ui.screens.enums.ShopStatus
 import com.marsa.smarttrackerhub.ui.screens.enums.ShopType
 import com.marsa.smarttrackerhub.utils.HijriDateUtils
 import java.text.SimpleDateFormat
@@ -172,6 +173,23 @@ fun AddShopScreen(
                     ),
                     onOptionSelected = { selected ->
                         viewModel.updateShopType(ShopType.valueOf(selected))
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                    enabled = isEditEnabled
+                )
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                DropdownField(
+                    label = "Shop Status",
+                    selectedValue = state.shopStatus?.name ?: "Select Status",
+                    options = listOf(
+                        ShopStatus.Initial.name,
+                        ShopStatus.Running.name,
+                        ShopStatus.Closed.name
+                    ),
+                    onOptionSelected = { selected ->
+                        viewModel.updateShopStatus(ShopStatus.valueOf(selected))
                     },
                     modifier = Modifier.fillMaxWidth(),
                     enabled = isEditEnabled
