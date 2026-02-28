@@ -12,7 +12,10 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Share
+import androidx.compose.material.icons.outlined.RadioButtonChecked
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.HorizontalDivider
@@ -57,6 +60,11 @@ fun ShopCard(
         ShopStatus.Closed  -> MaterialTheme.colorScheme.error
         ShopStatus.Initial -> MaterialTheme.colorScheme.onSurfaceVariant
     }
+    val shopStatusIcon = when (shopStatus) {
+        ShopStatus.Running -> Icons.Default.PlayArrow
+        ShopStatus.Closed  -> Icons.Default.Close
+        ShopStatus.Initial -> Icons.Outlined.RadioButtonChecked
+    }
 
     Card(
         modifier = Modifier
@@ -70,7 +78,7 @@ fun ShopCard(
                 .fillMaxWidth()
                 .padding(16.dp)
         ) {
-            // Header: Shop Name with Edit and Share Buttons
+            // Header: Shop Name + Share Button
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -85,29 +93,13 @@ fun ShopCard(
                         ),
                         color = MaterialTheme.colorScheme.onSurface
                     )
-                    Spacer(modifier = Modifier.height(6.dp))
+                    Spacer(modifier = Modifier.height(4.dp))
                     Text(
                         text = shop.shopAddress,
-                        style = MaterialTheme.typography.bodyMedium.copy(
-                            fontSize = 14.sp
-                        ),
+                        style = MaterialTheme.typography.bodyMedium.copy(fontSize = 14.sp),
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         lineHeight = 18.sp
                     )
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Surface(
-                        shape = MaterialTheme.shapes.small,
-                        color = shopStatusColor.copy(alpha = 0.12f)
-                    ) {
-                        Text(
-                            text = shopStatus.name,
-                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 3.dp),
-                            style = MaterialTheme.typography.labelSmall.copy(
-                                fontWeight = FontWeight.SemiBold
-                            ),
-                            color = shopStatusColor
-                        )
-                    }
                 }
 
                 // Share button
@@ -120,6 +112,35 @@ fun ShopCard(
                         contentDescription = "Share Shop",
                         tint = MaterialTheme.colorScheme.secondary,
                         modifier = Modifier.size(20.dp)
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(10.dp))
+
+            // Shop Status Badge — full-width pill
+            Surface(
+                shape = MaterialTheme.shapes.medium,
+                color = shopStatusColor.copy(alpha = 0.10f),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Row(
+                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Icon(
+                        imageVector = shopStatusIcon,
+                        contentDescription = null,
+                        tint = shopStatusColor,
+                        modifier = Modifier.size(16.dp)
+                    )
+                    Text(
+                        text = "Shop Status: ${shopStatus.name}",
+                        style = MaterialTheme.typography.labelMedium.copy(
+                            fontWeight = FontWeight.Bold
+                        ),
+                        color = shopStatusColor
                     )
                 }
             }

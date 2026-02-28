@@ -17,6 +17,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Person
@@ -76,6 +77,7 @@ fun ShopInvestmentDashboardScreen(
     val viewModel: ShopInvestmentDashboardViewModel = viewModel()
     val uiState by viewModel.uiState.collectAsState()
     val context = LocalContext.current
+    val isClosed = uiState.shopStatus == "Closed"
 
     LaunchedEffect(shopId) {
         viewModel.init(context, shopId)
@@ -127,50 +129,54 @@ fun ShopInvestmentDashboardScreen(
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
         floatingActionButton = {
-            Column(
-                horizontalAlignment = Alignment.End,
-                verticalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                // Year-End Settlement
-                FloatingActionButton(
-                    onClick = { onSettlementClick(shopId) },
-                    containerColor = MaterialTheme.colorScheme.tertiaryContainer
+            if (!isClosed) {
+                Column(
+                    horizontalAlignment = Alignment.End,
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    Icon(
-                        Icons.Default.DateRange,
-                        contentDescription = "Year-End Settlement",
-                        tint = MaterialTheme.colorScheme.onTertiaryContainer
-                    )
-                }
-                // Assign new investor
-                FloatingActionButton(
-                    onClick = { onAssignInvestorClick(shopId) },
-                    containerColor = MaterialTheme.colorScheme.tertiaryContainer,
-                    contentColor = MaterialTheme.colorScheme.onTertiaryContainer
-                ) {
-                    Icon(
-                        Icons.Default.Person,
-                        contentDescription = "Assign Investor"
-                    )
+                    // Year-End Settlement
+                    FloatingActionButton(
+                        onClick = { onSettlementClick(shopId) },
+                        containerColor = MaterialTheme.colorScheme.tertiaryContainer
+                    ) {
+                        Icon(
+                            Icons.Default.DateRange,
+                            contentDescription = "Year-End Settlement",
+                            tint = MaterialTheme.colorScheme.onTertiaryContainer
+                        )
+                    }
+                    // Assign new investor
+                    FloatingActionButton(
+                        onClick = { onAssignInvestorClick(shopId) },
+                        containerColor = MaterialTheme.colorScheme.tertiaryContainer,
+                        contentColor = MaterialTheme.colorScheme.onTertiaryContainer
+                    ) {
+                        Icon(
+                            Icons.Default.Person,
+                            contentDescription = "Assign Investor"
+                        )
+                    }
                 }
             }
         },
         bottomBar = {
-            // Record Payment — pinned to the bottom edge
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 12.dp),
-                contentAlignment = Alignment.Center
-            ) {
-                ExtendedFloatingActionButton(
-                    onClick = { onAddTransactionClick(shopId) },
-                    icon = { Icon(Icons.Default.Add, contentDescription = null) },
-                    text = { Text("Record Payment") },
-                    containerColor = MaterialTheme.colorScheme.primary,
-                    contentColor = MaterialTheme.colorScheme.onPrimary,
-                    modifier = Modifier.fillMaxWidth()
-                )
+            if (!isClosed) {
+                // Record Payment — pinned to the bottom edge
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 12.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    ExtendedFloatingActionButton(
+                        onClick = { onAddTransactionClick(shopId) },
+                        icon = { Icon(Icons.Default.Add, contentDescription = null) },
+                        text = { Text("Record Payment") },
+                        containerColor = MaterialTheme.colorScheme.primary,
+                        contentColor = MaterialTheme.colorScheme.onPrimary,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
             }
         }
     ) { paddingValues ->
@@ -248,6 +254,43 @@ fun ShopInvestmentDashboardScreen(
                                         value = uiState.investorCount.toString(),
                                         alignment = Alignment.End
                                     )
+                                }
+                            }
+                        }
+                    }
+
+                    // ── Closed Shop Banner ──
+                    if (isClosed) {
+                        item {
+                            Surface(
+                                modifier = Modifier.fillMaxWidth(),
+                                shape = MaterialTheme.shapes.medium,
+                                color = MaterialTheme.colorScheme.errorContainer
+                            ) {
+                                Row(
+                                    modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Close,
+                                        contentDescription = null,
+                                        tint = MaterialTheme.colorScheme.error,
+                                        modifier = Modifier.size(20.dp)
+                                    )
+                                    Column {
+                                        Text(
+                                            text = "Shop is Closed",
+                                            style = MaterialTheme.typography.labelLarge,
+                                            fontWeight = FontWeight.Bold,
+                                            color = MaterialTheme.colorScheme.onErrorContainer
+                                        )
+                                        Text(
+                                            text = "New investments and payments cannot be recorded for a closed shop.",
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = MaterialTheme.colorScheme.onErrorContainer.copy(alpha = 0.8f)
+                                        )
+                                    }
                                 }
                             }
                         }

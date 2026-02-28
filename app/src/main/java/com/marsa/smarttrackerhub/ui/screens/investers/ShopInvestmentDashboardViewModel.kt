@@ -26,6 +26,7 @@ import kotlin.math.abs
 
 data class ShopInvestmentDashboardUiState(
     val shopName: String = "",
+    val shopStatus: String = "Initial",
     val totalCapital: Double = 0.0,
     val allocatedPercentage: Double = 0.0,
     val investorCount: Int = 0,
@@ -72,7 +73,10 @@ class ShopInvestmentDashboardViewModel(
         viewModelScope.launch {
             try {
                 val shop = shopRepo.getShopById(shopId)
-                _uiState.value = _uiState.value.copy(shopName = shop?.shopName ?: "")
+                _uiState.value = _uiState.value.copy(
+                    shopName = shop?.shopName ?: "",
+                    shopStatus = shop?.shopStatus ?: "Initial"
+                )
             } catch (e: Exception) {
                 _uiState.value = _uiState.value.copy(error = e.localizedMessage)
             }
@@ -92,6 +96,7 @@ class ShopInvestmentDashboardViewModel(
                         .sumOf { it.sharePercentage }
                     ShopInvestmentDashboardUiState(
                         shopName = _uiState.value.shopName,
+                        shopStatus = _uiState.value.shopStatus,
                         totalCapital = totalCapital,
                         allocatedPercentage = allocatedPct,
                         investorCount = investors.size,

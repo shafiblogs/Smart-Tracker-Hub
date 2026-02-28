@@ -72,6 +72,7 @@ fun AddShopScreen(
     val error by viewModel.error.collectAsState()
     val zakathAmount by viewModel.zakathAmount.collectAsState()
     val shopInvestors by viewModel.shopInvestors.collectAsState()
+    val totalInvested by viewModel.totalInvested.collectAsState()
     val context = LocalContext.current
     val isLoaded by viewModel.isLoaded.collectAsState()
 
@@ -477,6 +478,28 @@ fun AddShopScreen(
                             )
                             Text("Add", fontSize = 13.sp)
                         }
+                    }
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    // Total invested summary
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "Total Invested",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Text(
+                            text = "AED ${String.format("%,.2f", totalInvested)}",
+                            style = MaterialTheme.typography.bodyMedium.copy(
+                                fontWeight = androidx.compose.ui.text.font.FontWeight.Bold
+                            ),
+                            color = MaterialTheme.colorScheme.primary
+                        )
                     }
 
                     Spacer(modifier = Modifier.height(12.dp))
