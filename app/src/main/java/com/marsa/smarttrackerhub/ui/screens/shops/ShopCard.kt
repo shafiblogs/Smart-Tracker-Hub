@@ -47,7 +47,6 @@ import java.util.Locale
 @Composable
 fun ShopCard(
     shop: ShopInfo,
-    totalInvested: Double = 0.0,
     onCardClick: () -> Unit,
     onShareClick: () -> Unit
 ) {
@@ -239,7 +238,7 @@ fun ShopCard(
             // Total Invested
             InfoColumn(
                 label = "Total Invested",
-                value = "AED ${String.format("%,.2f", totalInvested)}",
+                value = "AED ${String.format("%,.2f", shop.totalInvested)}",
                 valueColor = MaterialTheme.colorScheme.primary,
                 valueFontWeight = FontWeight.Bold
             )

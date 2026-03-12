@@ -11,6 +11,7 @@ import com.marsa.smarttrackerhub.data.entity.ShopInvestor
 import com.marsa.smarttrackerhub.data.repository.InvestmentTransactionRepository
 import com.marsa.smarttrackerhub.data.repository.InvestorRepository
 import com.marsa.smarttrackerhub.data.repository.ShopInvestorRepository
+import com.marsa.smarttrackerhub.data.repository.ShopRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -77,16 +78,20 @@ class AddTransactionViewModel(
     private lateinit var txRepo: InvestmentTransactionRepository
     private lateinit var shopInvestorRepo: ShopInvestorRepository
     private lateinit var investorRepo: InvestorRepository
+    private lateinit var shopRepo: ShopRepository
+    private var currentShopId: Int = 0
 
     /**
      * @param shopId             Required — which shop this transaction is for
      * @param prefilledInvestorId > 0 → investor is pre-selected and locked
      */
     fun initDatabase(context: Context, shopId: Int, prefilledInvestorId: Int = 0) {
+        currentShopId = shopId
         val db = AppDatabase.getDatabase(context)
         txRepo = InvestmentTransactionRepository(db.investmentTransactionDao())
         shopInvestorRepo = ShopInvestorRepository(db.shopInvestorDao())
         investorRepo = InvestorRepository(db.investorDao())
+        shopRepo = ShopRepository(db.shopDao())
 
         loadShopInvestors(shopId, prefilledInvestorId)
         loadExistingPhases(shopId)
@@ -171,6 +176,9 @@ class AddTransactionViewModel(
                     note = state.note.trim()
                 )
             )
+            // Keep cached totalInvested in sync
+            val newTotal = txRepo.getTotalPaidForShop(currentShopId)
+            shopRepo.updateTotalInvested(currentShopId, newTotal)
             _isSaved.value = true
             onSuccess()
         } catch (e: Exception) {

@@ -61,18 +61,19 @@ class ShopInvestmentDashboardViewModel(
 
     private var shopInvestorRepo: ShopInvestorRepository? = null
     private var txRepo: InvestmentTransactionRepository? = null
+    private var shopRepo: ShopRepository? = null
     private var currentShopId: Int = 0
 
     fun init(context: Context, shopId: Int) {
         currentShopId = shopId
         val db = AppDatabase.getDatabase(context)
-        val shopRepo = ShopRepository(db.shopDao())
+        shopRepo = ShopRepository(db.shopDao())
         shopInvestorRepo = ShopInvestorRepository(db.shopInvestorDao())
         txRepo = InvestmentTransactionRepository(db.investmentTransactionDao())
 
         viewModelScope.launch {
             try {
-                val shop = shopRepo.getShopById(shopId)
+                val shop = shopRepo?.getShopById(shopId)
                 _uiState.value = _uiState.value.copy(
                     shopName = shop?.shopName ?: "",
                     shopStatus = shop?.shopStatus ?: "Initial"
@@ -234,6 +235,7 @@ class ShopInvestmentDashboardViewModel(
                         note = _uiState.value.editTxNote.trim()
                     )
                 )
+                refreshTotalInvested()
                 _uiState.value = _uiState.value.copy(
                     editingTransaction = null,
                     editTxAmount = "",
@@ -258,6 +260,7 @@ class ShopInvestmentDashboardViewModel(
         viewModelScope.launch {
             try {
                 txRepo?.deleteTransactionById(tx.transactionId)
+                refreshTotalInvested()
                 _uiState.value = _uiState.value.copy(
                     editingTransaction = null,
                     editTxAmount = "",
@@ -273,6 +276,14 @@ class ShopInvestmentDashboardViewModel(
                 )
             }
         }
+    }
+
+    /** Recalculates the total invested sum and persists it in shop_info. */
+    private suspend fun refreshTotalInvested() {
+        val tx = txRepo ?: return
+        val sr = shopRepo ?: return
+        val newTotal = tx.getTotalPaidForShop(currentShopId)
+        sr.updateTotalInvested(currentShopId, newTotal)
     }
 
     /**

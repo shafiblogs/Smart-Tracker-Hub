@@ -28,6 +28,7 @@ import com.marsa.smarttrackerhub.data.entity.YearEndSettlement
 import com.marsa.smarttrackerhub.data.helper.Converters
 import com.marsa.smarttrackerhub.data.migrations.MIGRATION_1_2
 import com.marsa.smarttrackerhub.data.migrations.MIGRATION_2_3
+import com.marsa.smarttrackerhub.data.migrations.MIGRATION_3_4
 
 
 /**
@@ -44,6 +45,9 @@ import com.marsa.smarttrackerhub.data.migrations.MIGRATION_2_3
  *
  * v3 — Shop status field added:
  *   - shop_info: added `shopStatus` column (Running | Initial | Closed)
+ *
+ * v4 — Total invested cached in shop:
+ *   - shop_info: added `totalInvested` column (cached sum of investment_transaction amounts)
  */
 
 @Database(
@@ -59,7 +63,7 @@ import com.marsa.smarttrackerhub.data.migrations.MIGRATION_2_3
         YearEndSettlement::class,
         SettlementEntry::class
     ],
-    version = 3
+    version = 4
 )
 @TypeConverters(Converters::class)
 abstract class AppDatabase : RoomDatabase() {
@@ -84,7 +88,7 @@ abstract class AppDatabase : RoomDatabase() {
                     AppDatabase::class.java,
                     "tracker_hub_db"
                 )
-                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3)
+                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4)
                     .addCallback(object : Callback() {
                         override fun onCreate(db: SupportSQLiteDatabase) {
                             super.onCreate(db)

@@ -15,4 +15,7 @@ class ShopRepository(private val shopDao: ShopDao) {
     suspend fun updateShop(shop: ShopInfo) = shopDao.updateShop(shop)
 
     suspend fun deleteShop(shop: ShopInfo) = shopDao.deleteShop(shop)
+
+    suspend fun updateTotalInvested(shopId: Int, totalInvested: Double) =
+        shopDao.updateTotalInvested(shopId, totalInvested)
 }

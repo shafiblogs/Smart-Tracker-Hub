@@ -25,4 +25,7 @@ interface ShopDao {
 
     @Delete
     suspend fun deleteShop(shop: ShopInfo)
+
+    @Query("UPDATE shop_info SET totalInvested = :totalInvested WHERE id = :shopId")
+    suspend fun updateTotalInvested(shopId: Int, totalInvested: Double)
 }
