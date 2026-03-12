@@ -15,7 +15,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Share
-import androidx.compose.material.icons.outlined.RadioButtonChecked
+import androidx.compose.material.icons.outlined.Warning
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.HorizontalDivider
@@ -54,16 +54,17 @@ fun ShopCard(
     val dateFormat = SimpleDateFormat("dd MMM yyyy", Locale.ENGLISH)
     val expiryStatus = shop.licenseExpiryDate.getExpiryStatus()
     val zakathAmount = shop.stockValue * 0.025 // 2.5% for Zakath
-    val shopStatus = runCatching { ShopStatus.valueOf(shop.shopStatus) }.getOrDefault(ShopStatus.Initial)
+    val shopStatus =
+        runCatching { ShopStatus.valueOf(shop.shopStatus) }.getOrDefault(ShopStatus.Initial)
     val shopStatusColor = when (shopStatus) {
         ShopStatus.Running -> MaterialTheme.colorScheme.primary
-        ShopStatus.Closed  -> MaterialTheme.colorScheme.error
+        ShopStatus.Closed -> MaterialTheme.colorScheme.error
         ShopStatus.Initial -> MaterialTheme.colorScheme.onSurfaceVariant
     }
     val shopStatusIcon = when (shopStatus) {
         ShopStatus.Running -> Icons.Default.PlayArrow
-        ShopStatus.Closed  -> Icons.Default.Close
-        ShopStatus.Initial -> Icons.Outlined.RadioButtonChecked
+        ShopStatus.Closed -> Icons.Default.Close
+        ShopStatus.Initial -> Icons.Outlined.Warning
     }
 
     Card(
@@ -190,9 +191,9 @@ fun ShopCard(
 
             // Zakath Status and Amount
             val zakathStatusColor = when (shop.zakathStatus) {
-                "Paid"    -> MaterialTheme.colorScheme.primary
+                "Paid" -> MaterialTheme.colorScheme.primary
                 "Pending" -> MaterialTheme.colorScheme.error
-                else      -> MaterialTheme.colorScheme.onSurfaceVariant
+                else -> MaterialTheme.colorScheme.onSurfaceVariant
             }
 
             Row(
