@@ -29,6 +29,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.marsa.smarttrackerhub.data.entity.ShopInfo
@@ -91,7 +92,9 @@ fun ShopCard(
                             fontSize = 20.sp,
                             fontWeight = FontWeight.Bold
                         ),
-                        color = MaterialTheme.colorScheme.onSurface
+                        color = MaterialTheme.colorScheme.onSurface,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis
                     )
                     Spacer(modifier = Modifier.height(4.dp))
                     Text(
@@ -188,26 +191,48 @@ fun ShopCard(
             HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Zakath Status and Amount
             val zakathStatusColor = when (shop.zakathStatus) {
                 "Paid" -> MaterialTheme.colorScheme.primary
                 "Pending" -> MaterialTheme.colorScheme.error
                 else -> MaterialTheme.colorScheme.onSurfaceVariant
             }
+            val stockTakenLabel = if (shop.stockTakenDate == 0L) "Not set"
+                                  else dateFormat.format(Date(shop.stockTakenDate))
 
+            // Total Invested and Stock Value
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
                 InfoColumn(
-                    label = "Zakath Status",
-                    value = shop.zakathStatus,
-                    valueColor = zakathStatusColor
+                    label = "Total Invested",
+                    value = "AED ${String.format("%,.2f", shop.totalInvested)}",
+                    valueColor = MaterialTheme.colorScheme.primary,
+                    valueFontWeight = FontWeight.Bold
+                )
+
+                InfoColumn(
+                    label = "Stock Value",
+                    value = "AED ${String.format("%,.2f", shop.stockValue)}",
+                    alignment = Alignment.End
+                )
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // Stock Taken and Zakath Amount
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                InfoColumn(
+                    label = "Stock Taken",
+                    value = stockTakenLabel
                 )
 
                 InfoColumn(
                     label = "Zakath Amount",
-                    value = "AED ${String.format("%.2f", zakathAmount)}",
+                    value = "AED ${String.format("%,.2f", zakathAmount)}",
                     valueColor = MaterialTheme.colorScheme.primary,
                     valueFontWeight = FontWeight.Bold,
                     alignment = Alignment.End
@@ -216,31 +241,11 @@ fun ShopCard(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Stock Value and Stock Taken Date
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                InfoColumn(
-                    label = "Stock Value",
-                    value = "AED ${String.format("%.2f", shop.stockValue)}"
-                )
-
-                InfoColumn(
-                    label = "Stock Taken",
-                    value = dateFormat.format(Date(shop.stockTakenDate)),
-                    alignment = Alignment.End
-                )
-            }
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            // Total Invested
+            // Zakath Status
             InfoColumn(
-                label = "Total Invested",
-                value = "AED ${String.format("%,.2f", shop.totalInvested)}",
-                valueColor = MaterialTheme.colorScheme.primary,
-                valueFontWeight = FontWeight.Bold
+                label = "Zakath Status",
+                value = shop.zakathStatus,
+                valueColor = zakathStatusColor
             )
 
             Spacer(modifier = Modifier.height(16.dp))
