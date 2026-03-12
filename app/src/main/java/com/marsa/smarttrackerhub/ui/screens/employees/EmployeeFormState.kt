@@ -6,11 +6,12 @@ package com.marsa.smarttrackerhub.ui.screens.employees
  * muhammed.poyil@morohub.com
  */
 data class EmployeeFormState(
+    val employeeId: String = "",        // Business-level identifier — used as Firebase document ID
     val employeeName: String = "",
     val employeePhone: String = "",
-    val employeeRole: EmployeeRole? = null, // Changed to enum
-    val salary: String = "", // Use String for user input
-    val allowance: String = "", // New field
+    val employeeRole: EmployeeRole? = null,
+    val salary: String = "",
+    val allowance: String = "",
     val associatedShopId: Int? = null,
-    val visaExpiryDate: Long? = null // New field
+    val visaExpiryDate: Long? = null
 )

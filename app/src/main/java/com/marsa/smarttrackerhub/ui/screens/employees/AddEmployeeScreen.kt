@@ -129,6 +129,17 @@ fun AddEmployeeScreen(
                 Spacer(modifier = Modifier.height(16.dp))
 
                 LabeledInputField(
+                    label = "Employee ID",
+                    value = state.employeeId,
+                    maxLength = 20,
+                    onValueChange = viewModel::updateEmployeeId,
+                    modifier = Modifier.fillMaxWidth(),
+                    enabled = isEditEnabled
+                )
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                LabeledInputField(
                     label = "Employee Name",
                     value = state.employeeName,
                     maxLength = 30,

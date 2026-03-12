@@ -96,7 +96,8 @@ class EmployeeViewModel : ViewModel() {
 
     val isFormValid: StateFlow<Boolean> = formState
         .map {
-            it.employeeName.isNotBlank() &&
+            it.employeeId.isNotBlank() &&
+                    it.employeeName.isNotBlank() &&
                     it.employeePhone.isNotBlank() &&
                     it.employeeRole != null &&
                     it.salary.toDoubleOrNull() != null &&
@@ -112,6 +113,7 @@ class EmployeeViewModel : ViewModel() {
             employee?.let {
                 editingEmployeeId = it.id
                 _formState.value = EmployeeFormState(
+                    employeeId = it.employeeId,
                     employeeName = it.employeeName,
                     employeePhone = it.employeePhone,
                     employeeRole = EmployeeRole.valueOf(it.employeeRole),
@@ -125,6 +127,11 @@ class EmployeeViewModel : ViewModel() {
         } catch (e: Exception) {
             _error.value = "Failed to load employee: ${e.localizedMessage}"
         }
+    }
+
+    fun updateEmployeeId(id: String) {
+        _formState.update { it.copy(employeeId = id) }
+        _error.value = null
     }
 
     fun updateEmployeeName(name: String) {
@@ -184,6 +191,7 @@ class EmployeeViewModel : ViewModel() {
 
                 val employee = EmployeeInfo(
                     id = editingEmployeeId ?: 0,
+                    employeeId = state.employeeId.trim(),
                     employeeName = state.employeeName,
                     employeePhone = state.employeePhone,
                     employeeRole = state.employeeRole!!.name,

@@ -11,6 +11,7 @@ import androidx.room.PrimaryKey
 @Entity(tableName = "employee_info")
 data class EmployeeInfo(
     @PrimaryKey(autoGenerate = true) val id: Int = 0,
+    val employeeId: String = "",   // Business-level identifier — used as Firebase document ID
     val employeeName: String,
     val employeePhone: String,
     val employeeRole: String,
@@ -18,6 +19,6 @@ data class EmployeeInfo(
     val allowance: Double = 0.0,
     val associatedShopId: Int,
     val visaExpiryDate: Long,
-    val isActive: Boolean = true, // New field - true = active, false = terminated
+    val isActive: Boolean = true, // true = active, false = terminated
     val terminationDate: Long? = null // Optional: track when they left
 )
