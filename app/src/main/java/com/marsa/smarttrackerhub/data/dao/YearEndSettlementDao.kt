@@ -46,6 +46,24 @@ interface YearEndSettlementDao {
 
     @Query("DELETE FROM year_end_settlement WHERE id = :id")
     suspend fun deleteSettlement(id: Int)
+
+    // ── Firebase sync ──────────────────────────────────────────────────────────
+
+    /** All settlements not yet pushed to Firestore. */
+    @Query("SELECT * FROM year_end_settlement WHERE isSynced = 0")
+    suspend fun getUnsyncedSettlements(): List<YearEndSettlement>
+
+    /** Marks the settlement with the given [settlementFirebaseId] (UUID) as synced. */
+    @Query("UPDATE year_end_settlement SET isSynced = 1 WHERE settlementFirebaseId = :settlementFirebaseId")
+    suspend fun markSettlementSynced(settlementFirebaseId: String)
+
+    /** All settlement entries not yet pushed to Firestore. */
+    @Query("SELECT * FROM settlement_entry WHERE isSynced = 0")
+    suspend fun getUnsyncedSettlementEntries(): List<SettlementEntry>
+
+    /** Marks the settlement entry with the given [entryFirebaseId] (UUID) as synced. */
+    @Query("UPDATE settlement_entry SET isSynced = 1 WHERE entryFirebaseId = :entryFirebaseId")
+    suspend fun markSettlementEntrySynced(entryFirebaseId: String)
 }
 
 /** Projection joining settlement_entry with investor name — used for history display. */

@@ -128,4 +128,14 @@ interface ShopInvestorDao {
 
     @Query("DELETE FROM shop_investor WHERE id = :id")
     suspend fun deleteShopInvestorById(id: Int)
+
+    // ── Firebase sync ──────────────────────────────────────────────────────────
+
+    /** All shop-investor assignments not yet pushed to Firestore. */
+    @Query("SELECT * FROM shop_investor WHERE isSynced = 0")
+    suspend fun getUnsyncedShopInvestors(): List<ShopInvestor>
+
+    /** Marks the record with the given [shopInvestorFirebaseId] as synced. */
+    @Query("UPDATE shop_investor SET isSynced = 1 WHERE shopInvestorFirebaseId = :shopInvestorFirebaseId")
+    suspend fun markShopInvestorSynced(shopInvestorFirebaseId: String)
 }

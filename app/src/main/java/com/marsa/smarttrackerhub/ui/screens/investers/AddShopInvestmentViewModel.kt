@@ -8,9 +8,11 @@ import com.marsa.smarttrackerhub.data.AppDatabase
 import com.marsa.smarttrackerhub.data.entity.InvestorInfo
 import com.marsa.smarttrackerhub.data.entity.ShopInfo
 import com.marsa.smarttrackerhub.data.entity.ShopInvestor
+import com.marsa.smarttrackerhub.data.repository.FirebaseSyncRepository
 import com.marsa.smarttrackerhub.data.repository.InvestorRepository
 import com.marsa.smarttrackerhub.data.repository.ShopInvestorRepository
 import com.marsa.smarttrackerhub.data.repository.ShopRepository
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -139,6 +141,7 @@ class AddShopInvestmentViewModel(
         }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(), false)
 
+    private lateinit var db: AppDatabase
     private lateinit var shopInvestorRepo: ShopInvestorRepository
     private lateinit var shopRepo: ShopRepository
     private lateinit var investorRepo: InvestorRepository
@@ -151,7 +154,7 @@ class AddShopInvestmentViewModel(
      * @param prefilledShopId     > 0 → coming from ShopInvestmentDashboard (shop locked)
      */
     fun initDatabase(context: Context, prefilledInvestorId: Int = 0, prefilledShopId: Int = 0) {
-        val db = AppDatabase.getDatabase(context)
+        db = AppDatabase.getDatabase(context)
         shopInvestorRepo = ShopInvestorRepository(db.shopInvestorDao())
         shopRepo = ShopRepository(db.shopDao())
         investorRepo = InvestorRepository(db.investorDao())
@@ -404,16 +407,20 @@ class AddShopInvestmentViewModel(
             val investorFirebaseId = investorRepo.getInvestorById(investorId)?.investorId ?: ""
             val shopInvestorFirebaseId = "${shopFirebaseId}_${investorFirebaseId}"
 
-            shopInvestorRepo.insertShopInvestor(
-                ShopInvestor(
-                    shopId = shopId,
-                    investorId = investorId,
-                    sharePercentage = share,
-                    shopInvestorFirebaseId = shopInvestorFirebaseId
-                )
+            val shopInvestor = ShopInvestor(
+                shopId = shopId,
+                investorId = investorId,
+                sharePercentage = share,
+                shopInvestorFirebaseId = shopInvestorFirebaseId
             )
+            shopInvestorRepo.insertShopInvestor(shopInvestor)
             _isSaved.value = true
             onSuccess()
+
+            // Best-effort inline sync — WorkManager will retry if this fails
+            launch(Dispatchers.IO) {
+                try { FirebaseSyncRepository(db).syncShopInvestor(shopInvestor) } catch (_: Exception) {}
+            }
         } catch (e: Exception) {
             onFail("Failed to save: ${e.localizedMessage}")
         }

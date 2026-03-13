@@ -130,4 +130,14 @@ interface InvestmentTransactionDao {
 
     @Query("DELETE FROM investment_transaction WHERE id = :id")
     suspend fun deleteTransactionById(id: Int)
+
+    // ── Firebase sync ──────────────────────────────────────────────────────────
+
+    /** All transactions not yet pushed to Firestore. */
+    @Query("SELECT * FROM investment_transaction WHERE isSynced = 0")
+    suspend fun getUnsyncedTransactions(): List<InvestmentTransaction>
+
+    /** Marks the transaction with the given [transactionFirebaseId] (UUID) as synced. */
+    @Query("UPDATE investment_transaction SET isSynced = 1 WHERE transactionFirebaseId = :transactionFirebaseId")
+    suspend fun markTransactionSynced(transactionFirebaseId: String)
 }

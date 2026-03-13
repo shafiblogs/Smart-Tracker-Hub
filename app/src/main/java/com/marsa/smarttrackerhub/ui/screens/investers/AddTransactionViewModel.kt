@@ -8,11 +8,13 @@ import com.marsa.smarttrackerhub.data.AppDatabase
 import com.marsa.smarttrackerhub.data.entity.InvestmentTransaction
 import com.marsa.smarttrackerhub.data.entity.InvestorInfo
 import com.marsa.smarttrackerhub.data.entity.ShopInvestor
+import com.marsa.smarttrackerhub.data.repository.FirebaseSyncRepository
 import com.marsa.smarttrackerhub.data.repository.InvestmentTransactionRepository
 import com.marsa.smarttrackerhub.data.repository.InvestorRepository
 import com.marsa.smarttrackerhub.data.repository.ShopInvestorRepository
 import com.marsa.smarttrackerhub.data.repository.ShopRepository
 import java.util.UUID
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -173,23 +175,28 @@ class AddTransactionViewModel(
             val shopFirebaseId = si?.let { shopRepo.getShopById(it.shopId)?.shopId } ?: ""
             val investorFirebaseId = si?.let { investorRepo.getInvestorById(it.investorId)?.investorId } ?: ""
 
-            txRepo.insertTransaction(
-                InvestmentTransaction(
-                    shopInvestorId = shopInvestorId,
-                    amount = amount,
-                    transactionDate = state.transactionDate,
-                    phase = state.phase.trim(),
-                    note = state.note.trim(),
-                    transactionFirebaseId = UUID.randomUUID().toString(),
-                    shopFirebaseId = shopFirebaseId,
-                    investorFirebaseId = investorFirebaseId
-                )
+            val transaction = InvestmentTransaction(
+                shopInvestorId = shopInvestorId,
+                amount = amount,
+                transactionDate = state.transactionDate,
+                phase = state.phase.trim(),
+                note = state.note.trim(),
+                transactionFirebaseId = UUID.randomUUID().toString(),
+                shopFirebaseId = shopFirebaseId,
+                investorFirebaseId = investorFirebaseId
             )
+            txRepo.insertTransaction(transaction)
             // Keep cached totalInvested in sync
             val newTotal = txRepo.getTotalPaidForShop(currentShopId)
             shopRepo.updateTotalInvested(currentShopId, newTotal)
             _isSaved.value = true
             onSuccess()
+
+            // Best-effort inline sync — WorkManager will retry if this fails
+            val db = AppDatabase.getDatabase(context)
+            launch(Dispatchers.IO) {
+                try { FirebaseSyncRepository(db).syncTransaction(transaction) } catch (_: Exception) {}
+            }
         } catch (e: Exception) {
             onFail("Failed to save: ${e.localizedMessage}")
         }

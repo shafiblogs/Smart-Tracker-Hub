@@ -33,4 +33,15 @@ interface ShopDao {
      *  Pass excludeId = 0 for new inserts (auto-generated IDs start at 1, so 0 never matches). */
     @Query("SELECT COUNT(*) FROM shop_info WHERE shopId = :shopId AND id != :excludeId")
     suspend fun countByShopId(shopId: String, excludeId: Int): Int
+
+    // ── Firebase sync ──────────────────────────────────────────────────────────
+
+    /** All shops not yet pushed to Firestore. */
+    @Query("SELECT * FROM shop_info WHERE isSynced = 0")
+    suspend fun getUnsyncedShops(): List<ShopInfo>
+
+    /** Marks the shop with the given [shopId] string as synced.
+     *  Using the Firebase string ID works for both new-insert (Room id=0) and update paths. */
+    @Query("UPDATE shop_info SET isSynced = 1 WHERE shopId = :shopId")
+    suspend fun markShopSynced(shopId: String)
 }

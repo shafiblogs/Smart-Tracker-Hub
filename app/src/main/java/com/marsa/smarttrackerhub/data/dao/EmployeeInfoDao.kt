@@ -47,4 +47,14 @@ interface EmployeeInfoDao {
      *  Pass excludeId = 0 for new inserts. */
     @Query("SELECT COUNT(*) FROM employee_info WHERE employeeId = :employeeId AND id != :excludeId")
     suspend fun countByEmployeeId(employeeId: String, excludeId: Int): Int
+
+    // ── Firebase sync ──────────────────────────────────────────────────────────
+
+    /** All employees not yet pushed to Firestore. */
+    @Query("SELECT * FROM employee_info WHERE isSynced = 0")
+    suspend fun getUnsyncedEmployees(): List<EmployeeInfo>
+
+    /** Marks the employee with the given [employeeId] string as synced. */
+    @Query("UPDATE employee_info SET isSynced = 1 WHERE employeeId = :employeeId")
+    suspend fun markEmployeeSynced(employeeId: String)
 }

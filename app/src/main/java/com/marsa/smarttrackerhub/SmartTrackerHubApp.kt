@@ -2,8 +2,16 @@ package com.marsa.smarttrackerhub
 
 import android.app.Application
 import android.util.Log
+import androidx.work.Constraints
+import androidx.work.ExistingPeriodicWorkPolicy
+import androidx.work.NetworkType
+import androidx.work.OneTimeWorkRequestBuilder
+import androidx.work.PeriodicWorkRequestBuilder
+import androidx.work.WorkManager
 import com.google.firebase.FirebaseApp
 import com.google.firebase.FirebaseOptions
+import com.marsa.smarttrackerhub.data.worker.SyncWorker
+import java.util.concurrent.TimeUnit
 
 
 /**
@@ -34,5 +42,32 @@ class SmartTrackerHubApp : Application() {
             .setStorageBucket(BuildConfig.storage_bucket_account)
             .build()
         FirebaseApp.initializeApp(this, accountOptions, "AccountTrackerApp")
+
+        scheduleSyncWorker()
+    }
+
+    private fun scheduleSyncWorker() {
+        val constraints = Constraints.Builder()
+            .setRequiredNetworkType(NetworkType.CONNECTED)
+            .build()
+
+        // Periodic sync — runs once daily while connected to push any isSynced=false records
+        val periodicSync = PeriodicWorkRequestBuilder<SyncWorker>(1, TimeUnit.DAYS)
+            .setConstraints(constraints)
+            .build()
+
+        WorkManager.getInstance(this).enqueueUniquePeriodicWork(
+            "firebase_sync_periodic",
+            ExistingPeriodicWorkPolicy.KEEP,
+            periodicSync
+        )
+
+        // Immediate one-time sync on app start — flushes any records that missed the last window
+        val immediateSync = OneTimeWorkRequestBuilder<SyncWorker>()
+            .setConstraints(constraints)
+            .build()
+
+        WorkManager.getInstance(this).enqueue(immediateSync)
+        Log.d("SmartTrackerHubApp", "SyncWorker scheduled")
     }
 }

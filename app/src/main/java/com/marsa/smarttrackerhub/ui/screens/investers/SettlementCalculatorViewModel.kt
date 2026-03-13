@@ -6,10 +6,12 @@ import androidx.lifecycle.viewModelScope
 import com.marsa.smarttrackerhub.data.AppDatabase
 import com.marsa.smarttrackerhub.data.entity.SettlementEntry
 import com.marsa.smarttrackerhub.data.entity.YearEndSettlement
+import com.marsa.smarttrackerhub.data.repository.FirebaseSyncRepository
 import com.marsa.smarttrackerhub.data.repository.InvestmentTransactionRepository
 import com.marsa.smarttrackerhub.data.repository.ShopInvestorRepository
 import com.marsa.smarttrackerhub.data.repository.YearEndSettlementRepository
 import com.marsa.smarttrackerhub.domain.InvestorSettlementRow
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
@@ -196,6 +198,15 @@ class SettlementCalculatorViewModel : ViewModel() {
                 }
                 settlementRepo.saveSettlement(settlement, entries)
                 _uiState.value = _uiState.value.copy(isSaving = false, saveSuccess = true)
+
+                // Best-effort inline sync — WorkManager will retry if this fails
+                launch(Dispatchers.IO) {
+                    try {
+                        val syncRepo = FirebaseSyncRepository(db)
+                        syncRepo.syncSettlement(settlement)
+                        entries.forEach { syncRepo.syncSettlementEntry(it) }
+                    } catch (_: Exception) {}
+                }
             } catch (e: Exception) {
                 _uiState.value = _uiState.value.copy(isSaving = false, error = e.message)
             }

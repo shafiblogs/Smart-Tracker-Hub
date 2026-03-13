@@ -13,6 +13,7 @@ import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.Notifications
+import androidx.compose.material.icons.filled.Sync
 import androidx.compose.material3.Badge
 import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.DrawerValue
@@ -23,6 +24,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalNavigationDrawer
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.NavigationDrawerItem
 import androidx.compose.material3.NavigationDrawerItemDefaults
 import androidx.compose.material3.Scaffold
@@ -50,7 +52,13 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.navArgument
+import androidx.work.Constraints
+import androidx.work.NetworkType
+import androidx.work.OneTimeWorkRequestBuilder
+import androidx.work.WorkManager
+import android.widget.Toast
 import com.marsa.smarttracker.ui.theme.sTypography
+import com.marsa.smarttrackerhub.data.worker.SyncWorker
 import com.marsa.smarttrackerhub.domain.AccessCode
 import com.marsa.smarttrackerhub.ui.components.CommonTextField
 import com.marsa.smarttrackerhub.ui.components.SmallTextField
@@ -600,6 +608,28 @@ fun SmartTrackerNavHost(navController: NavHostController) {
                                 onClick = {
                                     scope.launch { drawerState.close() }
                                     navigateToRoute(route)
+                                },
+                                modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding)
+                            )
+                        }
+
+                        // Sync Now — admin only
+                        if (isAdmin) {
+                            HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp))
+                            NavigationDrawerItem(
+                                label = { Text("Sync Now") },
+                                icon = { Icon(Icons.Default.Sync, contentDescription = "Sync") },
+                                selected = false,
+                                onClick = {
+                                    scope.launch { drawerState.close() }
+                                    val constraints = Constraints.Builder()
+                                        .setRequiredNetworkType(NetworkType.CONNECTED)
+                                        .build()
+                                    val syncRequest = OneTimeWorkRequestBuilder<SyncWorker>()
+                                        .setConstraints(constraints)
+                                        .build()
+                                    WorkManager.getInstance(context).enqueue(syncRequest)
+                                    Toast.makeText(context, "Sync started", Toast.LENGTH_SHORT).show()
                                 },
                                 modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding)
                             )

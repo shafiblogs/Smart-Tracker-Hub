@@ -6,7 +6,9 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.marsa.smarttrackerhub.data.AppDatabase
 import com.marsa.smarttrackerhub.data.entity.InvestorInfo
+import com.marsa.smarttrackerhub.data.repository.FirebaseSyncRepository
 import com.marsa.smarttrackerhub.data.repository.InvestorRepository
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -128,6 +130,11 @@ class InvestorAddViewModel(
 
             _isSaved.value = true
             onSuccess()
+
+            // Best-effort inline sync — WorkManager will retry if this fails
+            launch(Dispatchers.IO) {
+                try { FirebaseSyncRepository(db).syncInvestor(investor) } catch (_: Exception) {}
+            }
         } catch (e: Exception) {
             onFail("Failed to save investor: ${e.localizedMessage}")
         }

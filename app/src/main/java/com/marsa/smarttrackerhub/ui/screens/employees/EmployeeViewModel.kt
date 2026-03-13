@@ -7,7 +7,9 @@ import com.marsa.smarttrackerhub.data.AppDatabase
 import com.marsa.smarttrackerhub.data.entity.EmployeeInfo
 import com.marsa.smarttrackerhub.data.entity.ShopInfo
 import com.marsa.smarttrackerhub.data.repository.EmployeeRepository
+import com.marsa.smarttrackerhub.data.repository.FirebaseSyncRepository
 import com.marsa.smarttrackerhub.data.repository.ShopRepository
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -38,6 +40,7 @@ class EmployeeViewModel : ViewModel() {
 
     private var editingEmployeeId: Int? = null
 
+    private lateinit var db: AppDatabase
     private lateinit var employeeRepository: EmployeeRepository
     private lateinit var shopRepository: ShopRepository
 
@@ -82,7 +85,7 @@ class EmployeeViewModel : ViewModel() {
         }
 
     fun initDatabase(context: Context) {
-        val db = AppDatabase.getDatabase(context)
+        db = AppDatabase.getDatabase(context)
         employeeRepository = EmployeeRepository(db.employeeDao())
         shopRepository = ShopRepository(db.shopDao())
         loadShops()
@@ -218,6 +221,11 @@ class EmployeeViewModel : ViewModel() {
                 }
                 _isSaved.value = true
                 onSuccess()
+
+                // Best-effort inline sync — WorkManager will retry if this fails
+                launch(Dispatchers.IO) {
+                    try { FirebaseSyncRepository(db).syncEmployee(employee) } catch (_: Exception) {}
+                }
             } catch (e: Exception) {
                 onFail("Failed to save employee: ${e.localizedMessage}")
             }

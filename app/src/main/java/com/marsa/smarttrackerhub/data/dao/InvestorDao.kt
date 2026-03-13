@@ -36,4 +36,14 @@ interface InvestorDao {
      *  Pass excludeId = 0 for new inserts. */
     @Query("SELECT COUNT(*) FROM investor_info WHERE investorId = :investorId AND id != :excludeId")
     suspend fun countByInvestorId(investorId: String, excludeId: Int): Int
+
+    // ── Firebase sync ──────────────────────────────────────────────────────────
+
+    /** All investors not yet pushed to Firestore. */
+    @Query("SELECT * FROM investor_info WHERE isSynced = 0")
+    suspend fun getUnsyncedInvestors(): List<InvestorInfo>
+
+    /** Marks the investor with the given [investorId] string as synced. */
+    @Query("UPDATE investor_info SET isSynced = 1 WHERE investorId = :investorId")
+    suspend fun markInvestorSynced(investorId: String)
 }

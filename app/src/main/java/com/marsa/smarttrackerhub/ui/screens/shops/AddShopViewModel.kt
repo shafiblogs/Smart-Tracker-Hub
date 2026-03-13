@@ -6,11 +6,13 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.marsa.smarttrackerhub.data.AppDatabase
 import com.marsa.smarttrackerhub.data.entity.ShopInfo
+import com.marsa.smarttrackerhub.data.repository.FirebaseSyncRepository
 import com.marsa.smarttrackerhub.data.repository.ShopInvestorRepository
 import com.marsa.smarttrackerhub.data.repository.ShopRepository
 import com.marsa.smarttrackerhub.domain.ShopInvestorSummary
 import com.marsa.smarttrackerhub.ui.screens.enums.ShopStatus
 import com.marsa.smarttrackerhub.ui.screens.enums.ShopType
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -199,6 +201,11 @@ class AddShopViewModel(
             }
             _isSaved.value = true
             onSuccess()
+
+            // Best-effort inline sync — WorkManager will retry if this fails
+            launch(Dispatchers.IO) {
+                try { FirebaseSyncRepository(db).syncShop(shop) } catch (_: Exception) {}
+            }
         } catch (e: Exception) {
             onFail("Failed to save shop: ${e.localizedMessage}")
         }
