@@ -53,7 +53,9 @@ class YearEndSettlementRepository(private val dao: YearEndSettlementDao) {
             actualPaidAmount = entry.actualPaidAmount,
             balanceAmount = entry.balanceAmount,
             settlementPaidAmount = paidAmount,
-            settlementPaidDate = paidDate
+            settlementPaidDate = paidDate,
+            entryFirebaseId = entry.entryFirebaseId,
+            investorFirebaseId = entry.investorFirebaseId
         )
         dao.updateSettlementEntry(updated)
     }

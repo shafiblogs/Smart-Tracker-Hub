@@ -30,6 +30,7 @@ import com.marsa.smarttrackerhub.data.migrations.MIGRATION_1_2
 import com.marsa.smarttrackerhub.data.migrations.MIGRATION_2_3
 import com.marsa.smarttrackerhub.data.migrations.MIGRATION_3_4
 import com.marsa.smarttrackerhub.data.migrations.MIGRATION_4_5
+import com.marsa.smarttrackerhub.data.migrations.MIGRATION_5_6
 
 
 /**
@@ -52,6 +53,13 @@ import com.marsa.smarttrackerhub.data.migrations.MIGRATION_4_5
  *
  * v5 — Employee Firebase identifier added:
  *   - employee_info: added `employeeId` column (business-level ID, used as Firebase document ID)
+ *
+ * v6 — Firebase document IDs added to all investment tables:
+ *   - investor_info: added `investorId` column (business-level Firebase doc ID)
+ *   - shop_investor: added `shopInvestorFirebaseId` column (composite: "{shopId}_{investorId}")
+ *   - investment_transaction: added `transactionFirebaseId` (UUID), `shopFirebaseId`, `investorFirebaseId`
+ *   - year_end_settlement: added `settlementFirebaseId` column (UUID)
+ *   - settlement_entry: added `entryFirebaseId` (UUID), `investorFirebaseId`
  */
 
 @Database(
@@ -67,7 +75,7 @@ import com.marsa.smarttrackerhub.data.migrations.MIGRATION_4_5
         YearEndSettlement::class,
         SettlementEntry::class
     ],
-    version = 5
+    version = 6
 )
 @TypeConverters(Converters::class)
 abstract class AppDatabase : RoomDatabase() {
@@ -92,7 +100,7 @@ abstract class AppDatabase : RoomDatabase() {
                     AppDatabase::class.java,
                     "tracker_hub_db"
                 )
-                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5)
+                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6)
                     .addCallback(object : Callback() {
                         override fun onCreate(db: SupportSQLiteDatabase) {
                             super.onCreate(db)

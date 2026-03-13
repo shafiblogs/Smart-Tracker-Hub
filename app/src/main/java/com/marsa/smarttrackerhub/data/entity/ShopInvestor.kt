@@ -38,5 +38,6 @@ data class ShopInvestor(
     val investorId: Int,
     val sharePercentage: Double,                        // Fixed share e.g. 45.0
     val status: String = "Active",                      // Active | Withdrawn
-    val joinedDate: Long = System.currentTimeMillis()
+    val joinedDate: Long = System.currentTimeMillis(),
+    val shopInvestorFirebaseId: String = ""             // Firebase doc ID: "{shop.shopId}_{investor.investorId}"
 )

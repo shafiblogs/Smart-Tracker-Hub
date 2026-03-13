@@ -27,9 +27,12 @@ import androidx.room.PrimaryKey
 )
 data class InvestmentTransaction(
     @PrimaryKey(autoGenerate = true) val id: Int = 0,
-    val shopInvestorId: Int,            // FK → ShopInvestor.id
+    val shopInvestorId: Int,            // FK → ShopInvestor.id (Room local reference)
     val amount: Double,                  // AED paid in this transaction
     val transactionDate: Long,
     val phase: String,                   // "Phase 1", "Phase 2", "Initial Setup", etc.
-    val note: String = ""
+    val note: String = "",
+    val transactionFirebaseId: String = "",  // Firebase doc ID — UUID auto-generated on insert
+    val shopFirebaseId: String = "",         // Denormalized — Firestore path: /shops/{shopFirebaseId}
+    val investorFirebaseId: String = ""      // Denormalized — Firestore path: .../investors/{investorFirebaseId}
 )

@@ -58,5 +58,7 @@ data class SettlementEntryWithName(
     val actualPaidAmount: Double,
     val balanceAmount: Double,
     val settlementPaidAmount: Double,
-    val settlementPaidDate: Long?
+    val settlementPaidDate: Long?,
+    val entryFirebaseId: String = "",   // Preserved so markEntrySettled can pass it through
+    val investorFirebaseId: String = "" // Preserved so markEntrySettled can pass it through
 )

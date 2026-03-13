@@ -46,5 +46,7 @@ data class SettlementEntry(
     val actualPaidAmount: Double,           // SUM of all their transactions in the period
     val balanceAmount: Double,              // actualPaid - fairShare
     val settlementPaidAmount: Double = 0.0, // Amount actually transferred to settle
-    val settlementPaidDate: Long? = null
+    val settlementPaidDate: Long? = null,
+    val entryFirebaseId: String = "",       // Firebase doc ID — UUID auto-generated on confirm
+    val investorFirebaseId: String = ""     // Denormalized — for Firestore path resolution
 )

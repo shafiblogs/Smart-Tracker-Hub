@@ -12,6 +12,7 @@ import com.marsa.smarttrackerhub.data.repository.InvestmentTransactionRepository
 import com.marsa.smarttrackerhub.data.repository.InvestorRepository
 import com.marsa.smarttrackerhub.data.repository.ShopInvestorRepository
 import com.marsa.smarttrackerhub.data.repository.ShopRepository
+import java.util.UUID
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -167,13 +168,21 @@ class AddTransactionViewModel(
         }
 
         try {
+            // Resolve Firebase IDs for Firestore path denormalization
+            val si = shopInvestorRepo.getShopInvestorById(shopInvestorId)
+            val shopFirebaseId = si?.let { shopRepo.getShopById(it.shopId)?.shopId } ?: ""
+            val investorFirebaseId = si?.let { investorRepo.getInvestorById(it.investorId)?.investorId } ?: ""
+
             txRepo.insertTransaction(
                 InvestmentTransaction(
                     shopInvestorId = shopInvestorId,
                     amount = amount,
                     transactionDate = state.transactionDate,
                     phase = state.phase.trim(),
-                    note = state.note.trim()
+                    note = state.note.trim(),
+                    transactionFirebaseId = UUID.randomUUID().toString(),
+                    shopFirebaseId = shopFirebaseId,
+                    investorFirebaseId = investorFirebaseId
                 )
             )
             // Keep cached totalInvested in sync

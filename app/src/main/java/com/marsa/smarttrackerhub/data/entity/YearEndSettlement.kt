@@ -35,5 +35,6 @@ data class YearEndSettlement(
     val periodStartDate: Long,              // Start of the period (0 = all time for first settlement)
     val totalInvested: Double,              // Sum of all transactions in this period only
     val note: String = "",
-    val isCarriedForward: Boolean = true    // Balances roll into next period
+    val isCarriedForward: Boolean = true,   // Balances roll into next period
+    val settlementFirebaseId: String = ""   // Firebase doc ID — UUID auto-generated on confirm
 )

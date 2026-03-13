@@ -14,6 +14,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import java.util.Calendar
+import java.util.UUID
 
 /**
  * Computes a settlement for a shop covering the period from the last settlement
@@ -172,15 +173,20 @@ class SettlementCalculatorViewModel : ViewModel() {
                     periodStartDate = state.periodStartDate,
                     totalInvested = state.totalInvested,
                     note = state.note,
-                    isCarriedForward = true
+                    isCarriedForward = true,
+                    settlementFirebaseId = UUID.randomUUID().toString()
                 )
                 val entries = state.rows.map { row ->
+                    val investorFirebaseId =
+                        db.investorDao().getInvestorById(row.investorId)?.investorId ?: ""
                     SettlementEntry(
                         settlementId = 0, // replaced inside saveSettlement()
                         investorId = row.investorId,
                         fairShareAmount = row.fairShareAmount,
                         actualPaidAmount = row.actualPaidAmount,
-                        balanceAmount = row.balanceAmount
+                        balanceAmount = row.balanceAmount,
+                        entryFirebaseId = UUID.randomUUID().toString(),
+                        investorFirebaseId = investorFirebaseId
                     )
                 }
                 settlementRepo.saveSettlement(settlement, entries)

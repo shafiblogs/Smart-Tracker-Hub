@@ -399,11 +399,17 @@ class AddShopInvestmentViewModel(
                 }
             }
 
+            // Build composite Firebase doc ID from the string Firebase IDs of shop and investor
+            val shopFirebaseId = shopRepo.getShopById(shopId)?.shopId ?: ""
+            val investorFirebaseId = investorRepo.getInvestorById(investorId)?.investorId ?: ""
+            val shopInvestorFirebaseId = "${shopFirebaseId}_${investorFirebaseId}"
+
             shopInvestorRepo.insertShopInvestor(
                 ShopInvestor(
                     shopId = shopId,
                     investorId = investorId,
-                    sharePercentage = share
+                    sharePercentage = share,
+                    shopInvestorFirebaseId = shopInvestorFirebaseId
                 )
             )
             _isSaved.value = true
