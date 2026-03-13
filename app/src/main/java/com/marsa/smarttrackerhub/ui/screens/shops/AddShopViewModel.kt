@@ -10,6 +10,7 @@ import com.marsa.smarttrackerhub.data.repository.FirebaseSyncRepository
 import com.marsa.smarttrackerhub.data.repository.ShopInvestorRepository
 import com.marsa.smarttrackerhub.data.repository.ShopRepository
 import com.marsa.smarttrackerhub.domain.ShopInvestorSummary
+import com.marsa.smarttrackerhub.domain.ShopRegion
 import com.marsa.smarttrackerhub.ui.screens.enums.ShopStatus
 import com.marsa.smarttrackerhub.ui.screens.enums.ShopType
 import kotlinx.coroutines.Dispatchers
@@ -51,6 +52,8 @@ class AddShopViewModel(
             it.shopName.isNotBlank() &&
                     it.shopId.isNotBlank() &&
                     it.shopAddress.isNotBlank() &&
+                    it.shopType != null &&
+                    it.shopRegion != null &&
                     it.licenseExpiryDate != null &&
                     it.shopOpeningDate != null &&
                     it.stockValue.isNotBlank() &&
@@ -82,6 +85,7 @@ class AddShopViewModel(
                     shopId = it.shopId,
                     zakathStatus = ZakathStatus.valueOf(it.zakathStatus),
                     shopType = ShopType.valueOf(it.shopType),
+                    shopRegion = runCatching { ShopRegion.valueOf(it.shopRegion) }.getOrDefault(ShopRegion.UAE),
                     licenseExpiryDate = it.licenseExpiryDate,
                     shopOpeningDate = it.shopOpeningDate,
                     stockValue = it.stockValue.toString(),
@@ -139,6 +143,11 @@ class AddShopViewModel(
         _error.value = null
     }
 
+    fun updateShopRegion(region: ShopRegion) {
+        _formState.update { it.copy(shopRegion = region) }
+        _error.value = null
+    }
+
     fun updateLicenseExpiryDate(dateInMillis: Long) {
         _formState.update { it.copy(licenseExpiryDate = dateInMillis) }
         _error.value = null
@@ -186,6 +195,7 @@ class AddShopViewModel(
                 shopAddress = state.shopAddress,
                 shopId = state.shopId.trim(),
                 shopType = state.shopType?.name ?: "",
+                shopRegion = state.shopRegion?.name ?: ShopRegion.UAE.name,
                 zakathStatus = state.zakathStatus?.name ?: "",
                 licenseExpiryDate = state.licenseExpiryDate ?: 0L,
                 shopOpeningDate = state.shopOpeningDate ?: 0L,

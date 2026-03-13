@@ -1,24 +1,30 @@
 package com.marsa.smarttrackerhub.ui.screens.statement
 
+import android.app.Application
 import android.util.Log
-import androidx.lifecycle.ViewModel
+import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.google.android.gms.tasks.Tasks
 import com.google.firebase.FirebaseApp
 import com.google.firebase.storage.FirebaseStorage
+import com.marsa.smarttrackerhub.data.AppDatabase
 import com.marsa.smarttrackerhub.domain.AccessCode
 import com.marsa.smarttrackerhub.domain.getStatementShopList
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.text.SimpleDateFormat
 import java.util.Locale
 
 class StatementViewModel(
+    application: Application,
     firebaseSmartTracker: FirebaseApp,
     firebaseAccountTracker: FirebaseApp
-) : ViewModel() {
+) : AndroidViewModel(application) {
+
+    private val database = AppDatabase.getDatabase(application)
 
     private val _shops = MutableStateFlow<List<ShopListDto>>(emptyList())
     val shops: StateFlow<List<ShopListDto>> = _shops
@@ -57,8 +63,12 @@ class StatementViewModel(
     }
 
     fun loadScreenData(userAccessCode: AccessCode) {
-        _shops.value = getStatementShopList(userAccessCode)
-        // Don't load statements here - wait for shop selection
+        viewModelScope.launch {
+            _shops.value = withContext(Dispatchers.IO) {
+                getStatementShopList(userAccessCode, database)
+            }
+            // Don't load statements here - wait for shop selection
+        }
     }
 
     private fun loadStatementsForShop(shopId: String, folderPath: String) {

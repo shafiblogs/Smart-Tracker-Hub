@@ -57,6 +57,7 @@ import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkManager
 import android.widget.Toast
 import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.ShoppingCart
 import com.marsa.smarttracker.ui.theme.sTypography
 import com.marsa.smarttrackerhub.data.worker.SyncWorker
 import com.marsa.smarttrackerhub.domain.AccessCode
@@ -79,6 +80,7 @@ import com.marsa.smarttrackerhub.ui.screens.login.LoginScreen
 import com.marsa.smarttrackerhub.ui.screens.notifications.NotificationsScreen
 import com.marsa.smarttrackerhub.ui.screens.notifications.NotificationsViewModel
 import com.marsa.smarttrackerhub.ui.screens.sale.SaleScreen
+import com.marsa.smarttrackerhub.ui.screens.purchase.PurchaseScreen
 import com.marsa.smarttrackerhub.ui.screens.shops.AddShopScreen
 import com.marsa.smarttrackerhub.ui.screens.shops.ShopsListScreen
 import com.marsa.smarttrackerhub.ui.screens.statement.StatementScreen
@@ -106,7 +108,8 @@ fun SmartTrackerNavHost(navController: NavHostController) {
     }
 
     val bottomNavRoutes = mutableListOf(
-        Screen.Home.route, Screen.Sale.route, Screen.Summary.route, Screen.Notifications.route
+        Screen.Home.route, Screen.Sale.route, Screen.Purchase.route,
+        Screen.Summary.route, Screen.Notifications.route
     )
 
     val showBottomBar = currentRoute in bottomNavRoutes
@@ -174,6 +177,9 @@ fun SmartTrackerNavHost(navController: NavHostController) {
             }
             composable(Screen.Sale.route) {
                 SaleScreen(userAccessCode = userAccessCode)
+            }
+            composable(Screen.Purchase.route) {
+                PurchaseScreen(userAccessCode = userAccessCode)
             }
             composable(Screen.Home.route) {
                 HomeScreen(userAccessCode = userAccessCode)
@@ -438,7 +444,7 @@ fun SmartTrackerNavHost(navController: NavHostController) {
                     }
 
                     Screen.Statement.route, Screen.ShopList.route, Screen.AddShop.route,
-                    Screen.Sale.route, Screen.Notifications.route,
+                    Screen.Sale.route, Screen.Purchase.route, Screen.Notifications.route,
                     Screen.Investors.route, Screen.AddInvestor.route,
                     Screen.InvestorDetail.route, Screen.AddShopInvestment.route,
                     Screen.ShopInvestmentDashboard.route, Screen.AddTransaction.route,
@@ -447,7 +453,7 @@ fun SmartTrackerNavHost(navController: NavHostController) {
                     Screen.AccountSetup.route, Screen.Summary.route -> {
                         val titleText = when (currentRoute) {
                             Screen.AccountSetup.route -> "My Account"
-                            Screen.Notifications.route -> "Notifications"
+                            Screen.Notifications.route -> "Notification"
                             Screen.AddShop.route -> "Shop"
                             Screen.AddEmployee.route -> "Employee"
                             Screen.AddInvestor.route -> "Investor"
@@ -459,9 +465,10 @@ fun SmartTrackerNavHost(navController: NavHostController) {
                             Screen.SettlementCalculator.route -> "Year-End Settlement"
                             Screen.SettlementHistory.route -> "Settlement History"
                             Screen.Sale.route -> "Sales"
+                            Screen.Purchase.route -> "Purchases"
                             Screen.Statement.route -> "Statements"
                             Screen.ShopList.route -> "Shops"
-                            Screen.Summary.route -> "Summary"
+                            Screen.Summary.route -> "Accounts"
                             Screen.Employees.route -> "Employees"
                             else -> "$currentRoute Records"
                         }
@@ -514,20 +521,30 @@ fun SmartTrackerNavHost(navController: NavHostController) {
                             selected = currentRoute == Screen.Sale.route,
                             onClick = { navigateToRoute(Screen.Sale.route) },
                             icon = {
-                                Icon(Icons.Default.DateRange, contentDescription = "Sales")
+                                Icon(Icons.Default.DateRange, contentDescription = "Sale")
                             },
                             label = {
-                                SmallTextField("Sales")
+                                SmallTextField("Sale")
+                            })
+
+                        NavigationBarItem(
+                            selected = currentRoute == Screen.Purchase.route,
+                            onClick = { navigateToRoute(Screen.Purchase.route) },
+                            icon = {
+                                Icon(Icons.Default.ShoppingCart, contentDescription = "Purchase")
+                            },
+                            label = {
+                                SmallTextField("Purchase")
                             })
 
                         NavigationBarItem(
                             selected = currentRoute == Screen.Summary.route,
                             onClick = { navigateToRoute(Screen.Summary.route) },
                             icon = {
-                                Icon(Icons.Default.Menu, contentDescription = "Summary")
+                                Icon(Icons.Default.Menu, contentDescription = "Account")
                             },
                             label = {
-                                SmallTextField("Summary")
+                                SmallTextField("Account")
                             })
 
                         if (userAccessCode.level >= 2) {
@@ -552,12 +569,12 @@ fun SmartTrackerNavHost(navController: NavHostController) {
                                             contentDescription = if (notificationCount > 0)
                                                 "$notificationCount notifications"
                                             else
-                                                "Notifications"
+                                                "Notification"
                                         )
                                     }
                                 },
                                 label = {
-                                    SmallTextField("Notifications")
+                                    SmallTextField("Notification")
                                 })
                         }
                     }

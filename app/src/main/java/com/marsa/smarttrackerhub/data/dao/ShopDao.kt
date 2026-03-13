@@ -14,6 +14,10 @@ interface ShopDao {
     @Query("SELECT * FROM shop_info")
     fun getAllShops(): Flow<List<ShopInfo>>
 
+    /** One-shot list for use in coroutines (e.g. mapping to ShopListDto). */
+    @Query("SELECT * FROM shop_info")
+    suspend fun getAllShopsAsList(): List<ShopInfo>
+
     @Query("SELECT * FROM shop_info WHERE id = :id")
     suspend fun getShopById(id: Int): ShopInfo?
 

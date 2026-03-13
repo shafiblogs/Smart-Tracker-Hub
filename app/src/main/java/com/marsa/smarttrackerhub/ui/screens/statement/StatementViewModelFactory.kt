@@ -1,5 +1,6 @@
 package com.marsa.smarttrackerhub.ui.screens.statement
 
+import android.app.Application
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import com.google.firebase.FirebaseApp
@@ -11,13 +12,14 @@ import com.google.firebase.FirebaseApp
  * muhammed.poyil@morohub.com
  */
 class StatementViewModelFactory(
+    private val application: Application,
     private val firebaseSmartTracker: FirebaseApp,
     private val firebaseAccountTracker: FirebaseApp
 ) : ViewModelProvider.Factory {
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
         if (modelClass.isAssignableFrom(StatementViewModel::class.java)) {
             @Suppress("UNCHECKED_CAST")
-            return StatementViewModel(firebaseSmartTracker, firebaseAccountTracker) as T
+            return StatementViewModel(application, firebaseSmartTracker, firebaseAccountTracker) as T
         }
         throw IllegalArgumentException("Unknown ViewModel class")
     }

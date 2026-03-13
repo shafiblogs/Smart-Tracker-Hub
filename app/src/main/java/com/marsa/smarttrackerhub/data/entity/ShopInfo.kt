@@ -17,5 +17,6 @@ data class ShopInfo(
     val stockTakenDate: Long = 0L, // New field - when stock was last counted
     val shopStatus: String = "Initial", // Running | Initial | Closed
     val totalInvested: Double = 0.0,   // Cached total from investment_transaction
-    val isSynced: Boolean = false       // False until pushed to Firestore
+    val isSynced: Boolean = false,      // False until pushed to Firestore
+    val shopRegion: String = "UAE"      // UAE | KUWAIT | KSA — used for access-code filtering
 )

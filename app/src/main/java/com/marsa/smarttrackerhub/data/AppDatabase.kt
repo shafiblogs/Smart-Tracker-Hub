@@ -32,6 +32,7 @@ import com.marsa.smarttrackerhub.data.migrations.MIGRATION_3_4
 import com.marsa.smarttrackerhub.data.migrations.MIGRATION_4_5
 import com.marsa.smarttrackerhub.data.migrations.MIGRATION_5_6
 import com.marsa.smarttrackerhub.data.migrations.MIGRATION_6_7
+import com.marsa.smarttrackerhub.data.migrations.MIGRATION_7_8
 
 
 /**
@@ -62,6 +63,9 @@ import com.marsa.smarttrackerhub.data.migrations.MIGRATION_6_7
  *   - year_end_settlement: added `settlementFirebaseId` column (UUID)
  *   - settlement_entry: added `entryFirebaseId` (UUID), `investorFirebaseId`
  *
+ * v8 — shopRegion field added to shop_info:
+ *   - shop_info: added `shopRegion` TEXT (UAE | KUWAIT | KSA), defaults to "UAE"
+ *
  * v7 — isSynced flag + missing Firebase path fields:
  *   - shop_info: added `isSynced` (push-to-Firestore flag)
  *   - investor_info: added `isSynced`
@@ -85,7 +89,7 @@ import com.marsa.smarttrackerhub.data.migrations.MIGRATION_6_7
         YearEndSettlement::class,
         SettlementEntry::class
     ],
-    version = 7
+    version = 8
 )
 @TypeConverters(Converters::class)
 abstract class AppDatabase : RoomDatabase() {
@@ -110,7 +114,7 @@ abstract class AppDatabase : RoomDatabase() {
                     AppDatabase::class.java,
                     "tracker_hub_db"
                 )
-                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7)
+                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8)
                     .addCallback(object : Callback() {
                         override fun onCreate(db: SupportSQLiteDatabase) {
                             super.onCreate(db)

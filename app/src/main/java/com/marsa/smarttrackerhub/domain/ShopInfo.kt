@@ -1,47 +1,41 @@
 package com.marsa.smarttrackerhub.domain
 
+import com.marsa.smarttrackerhub.data.AppDatabase
+import com.marsa.smarttrackerhub.data.entity.ShopInfo
 import com.marsa.smarttrackerhub.ui.screens.statement.ShopListDto
 
 
 /**
- * Created by Muhammed Shafi on 13/11/2025.
+ * Maps a Room [ShopInfo] entity → [ShopListDto] for use in ViewModels.
+ *
+ * shopType stored as String (e.g. "Grocery", "Cafeteria") → [ShopCategory]
+ * shopRegion stored as String (e.g. "UAE", "KUWAIT") → [ShopRegion]
+ * folderPath constructed from shopId using the standard SmartTracker Storage path.
+ *
+ * Created by Muhammed Shafi on 13/03/2026.
  * Moro Hub
- * muhammed.poyil@morohub.com
  */
+fun ShopInfo.toShopListDto(): ShopListDto {
+    val category = when (shopType) {
+        "Cafeteria" -> ShopCategory.CAFE
+        "Super", "Hyper" -> ShopCategory.SUPERMARKET
+        else -> ShopCategory.GROCERY  // Grocery + any unknown
+    }
+    val region = runCatching { ShopRegion.valueOf(shopRegion) }.getOrDefault(ShopRegion.UAE)
+    return ShopListDto(
+        name = shopName,
+        address = shopAddress,
+        shopId = shopId,
+        category = category,
+        region = region,
+        // SmartTracker uploads to gs://smart-tracker-8012f.firebasestorage.app/shops/{shopId}/
+        folderPath = "gs://smart-tracker-8012f.firebasestorage.app/shops/$shopId"
+    )
+}
 
-private val shopList = listOf(
-    ShopListDto(
-        name = "AL Marsa Grocery",
-        address = "Masfout",
-        shopId = "MARSA_102",
-        category = ShopCategory.GROCERY,
-        region = ShopRegion.UAE,
-        folderPath = "gs://smart-tracker-8012f.firebasestorage.app/marsa/masfout"
-    ),
-    ShopListDto(
-        name = "AL Marsa Grocery",
-        address = "Muzeira",
-        shopId = "MARSA_101",
-        category = ShopCategory.GROCERY,
-        region = ShopRegion.UAE,
-        folderPath = "gs://smart-tracker-8012f.firebasestorage.app/marsa/muzeira"
-    ),
-    /*ShopListDto(
-        name = "AL Masa Super Market",
-        address = "Ajman",
-        shopId = "MASA_103",
-        category = ShopCategory.SUPERMARKET,
-        region = ShopRegion.UAE,
-        folderPath = "gs://smart-tracker-8012f.firebasestorage.app/masa/ajman"
-    ),*/
-    ShopListDto(
-        name = "AL Wadi Cafe",
-        address = "Muzeira",
-        shopId = "WADI_101",
-        category = ShopCategory.CAFE,
-        region = ShopRegion.UAE,
-        folderPath = "gs://smart-tracker-8012f.firebasestorage.app/wadi/muzeira"
-    ),
+// ── OPS virtual shops (AccountTracker aggregated views — kept hardcoded) ─────────
+
+private val opsShops = listOf(
     ShopListDto(
         name = "Shops In UAE",
         address = "Region - UAE",
@@ -60,44 +54,53 @@ private val shopList = listOf(
     )
 )
 
-fun getHomeShopUser(userAccessCode: AccessCode): List<ShopListDto> {
+// ── Dynamic filter functions (read from Room DB) ──────────────────────────────
+
+/**
+ * Returns the shop list visible to [userAccessCode], loaded from Room DB.
+ * Replaces the old hardcoded shopList approach.
+ */
+suspend fun getHomeShopUser(userAccessCode: AccessCode, db: AppDatabase): List<ShopListDto> {
+    val shops = db.shopDao().getAllShopsAsList().map { it.toShopListDto() }
     return when (userAccessCode) {
-        // Category-specific users see only their category (all regions)
-        AccessCode.GROCERY -> shopList.filter { it.category == ShopCategory.GROCERY }
-        AccessCode.CAFE -> shopList.filter { it.category == ShopCategory.CAFE }
-        AccessCode.SUPERMARKET -> shopList.filter { it.category == ShopCategory.SUPERMARKET }
-
-        // Operations users see all categories but only their region
-        AccessCode.OPS_UAE -> shopList.filter { it.region == ShopRegion.UAE && it.category != ShopCategory.OPS }
-        AccessCode.OPS_KUWAIT -> shopList.filter { it.region == ShopRegion.KUWAIT && it.category != ShopCategory.OPS }
-
-        // Admin sees everything
-        AccessCode.ADMIN -> shopList.filter { it.category != ShopCategory.OPS }
-
-
-        // Guest sees nothing
-        AccessCode.GUEST -> emptyList()
+        AccessCode.GROCERY      -> shops.filter { it.category == ShopCategory.GROCERY }
+        AccessCode.CAFE         -> shops.filter { it.category == ShopCategory.CAFE }
+        AccessCode.SUPERMARKET  -> shops.filter { it.category == ShopCategory.SUPERMARKET }
+        AccessCode.OPS_UAE      -> shops.filter { it.region == ShopRegion.UAE }
+        AccessCode.OPS_KUWAIT   -> shops.filter { it.region == ShopRegion.KUWAIT }
+        AccessCode.ADMIN        -> shops   // all real shops
+        AccessCode.GUEST        -> emptyList()
     }
 }
 
+/**
+ * Returns the OPS-aggregated shops for the Account (Summary) tab.
+ * These are virtual AccountTracker entries — always hardcoded.
+ */
 fun getSummaryShopList(userAccessCode: AccessCode): List<ShopListDto> {
     return when (userAccessCode) {
-        AccessCode.ADMIN -> shopList.filter { it.category == ShopCategory.OPS }
-        AccessCode.OPS_UAE -> shopList.filter { it.region == ShopRegion.UAE && it.category == ShopCategory.OPS }
-        AccessCode.OPS_KUWAIT -> shopList.filter { it.region == ShopRegion.KUWAIT && it.category == ShopCategory.OPS }
-        else -> emptyList()
+        AccessCode.ADMIN      -> opsShops
+        AccessCode.OPS_UAE    -> opsShops.filter { it.region == ShopRegion.UAE }
+        AccessCode.OPS_KUWAIT -> opsShops.filter { it.region == ShopRegion.KUWAIT }
+        else                  -> emptyList()
     }
 }
 
-fun getStatementShopList(userAccessCode: AccessCode): List<ShopListDto> {
+/**
+ * Returns the full shop list for Statement screen, loaded from Room DB.
+ * Admin and OPS users see all / region-filtered shops including OPS virtual entries.
+ */
+suspend fun getStatementShopList(userAccessCode: AccessCode, db: AppDatabase): List<ShopListDto> {
+    val shops = db.shopDao().getAllShopsAsList().map { it.toShopListDto() }
     return when (userAccessCode) {
-        AccessCode.ADMIN -> shopList
-        AccessCode.OPS_UAE -> shopList.filter { it.region == ShopRegion.UAE && it.category != ShopCategory.OPS }
-        AccessCode.OPS_KUWAIT -> shopList.filter { it.region == ShopRegion.KUWAIT && it.category != ShopCategory.OPS }
-        // Category-specific users see only their category (all regions)
-        AccessCode.GROCERY -> shopList.filter { it.category == ShopCategory.GROCERY }
-        AccessCode.CAFE -> shopList.filter { it.category == ShopCategory.CAFE }
-        AccessCode.SUPERMARKET -> shopList.filter { it.category == ShopCategory.SUPERMARKET }
-        else -> emptyList()
+        AccessCode.ADMIN       -> shops + opsShops
+        AccessCode.OPS_UAE     -> shops.filter { it.region == ShopRegion.UAE } +
+                                   opsShops.filter { it.region == ShopRegion.UAE }
+        AccessCode.OPS_KUWAIT  -> shops.filter { it.region == ShopRegion.KUWAIT } +
+                                   opsShops.filter { it.region == ShopRegion.KUWAIT }
+        AccessCode.GROCERY     -> shops.filter { it.category == ShopCategory.GROCERY }
+        AccessCode.CAFE        -> shops.filter { it.category == ShopCategory.CAFE }
+        AccessCode.SUPERMARKET -> shops.filter { it.category == ShopCategory.SUPERMARKET }
+        else                   -> emptyList()
     }
 }

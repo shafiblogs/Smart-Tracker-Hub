@@ -48,6 +48,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.marsa.smarttrackerhub.domain.ShopInvestorSummary
+import com.marsa.smarttrackerhub.domain.ShopRegion
 import com.marsa.smarttrackerhub.ui.components.DropdownField
 import com.marsa.smarttrackerhub.ui.components.LabeledInputField
 import com.marsa.smarttrackerhub.ui.screens.enums.ShopStatus
@@ -175,6 +176,23 @@ fun AddShopScreen(
                     ),
                     onOptionSelected = { selected ->
                         viewModel.updateShopType(ShopType.valueOf(selected))
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                    enabled = isEditEnabled
+                )
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                DropdownField(
+                    label = "Region",
+                    selectedValue = state.shopRegion?.name ?: "Select Region",
+                    options = listOf(
+                        ShopRegion.UAE.name,
+                        ShopRegion.KUWAIT.name,
+                        ShopRegion.KSA.name
+                    ),
+                    onOptionSelected = { selected ->
+                        viewModel.updateShopRegion(ShopRegion.valueOf(selected))
                     },
                     modifier = Modifier.fillMaxWidth(),
                     enabled = isEditEnabled

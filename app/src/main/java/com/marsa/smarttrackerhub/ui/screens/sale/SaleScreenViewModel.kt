@@ -14,6 +14,7 @@ import com.marsa.smarttrackerhub.domain.AccessCode
 import com.marsa.smarttrackerhub.domain.MonthlySummary
 import com.marsa.smarttrackerhub.domain.getHomeShopUser
 import com.marsa.smarttrackerhub.ui.screens.statement.ShopListDto
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -83,7 +84,11 @@ class SaleScreenViewModel(
     }
 
     fun loadScreenData(userAccessCode: AccessCode) {
-        _shops.value = getHomeShopUser(userAccessCode)
+        viewModelScope.launch {
+            _shops.value = withContext(Dispatchers.IO) {
+                getHomeShopUser(userAccessCode, database)
+            }
+        }
     }
 
     /**

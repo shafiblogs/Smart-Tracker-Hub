@@ -1,5 +1,6 @@
 package com.marsa.smarttrackerhub.ui.screens.statement
 
+import android.app.Application
 import android.content.ActivityNotFoundException
 import android.content.Context
 import android.content.Intent
@@ -50,12 +51,13 @@ import com.marsa.smarttrackerhub.domain.AccessCode
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun StatementScreen(userAccessCode: AccessCode) {
+    val context = LocalContext.current
+    val application = context.applicationContext as Application
     val firebaseSmartTracker = FirebaseApp.getInstance("SmartTrackerApp")
     val firebaseAccountTracker = FirebaseApp.getInstance("AccountTrackerApp")
     val viewModel: StatementViewModel = viewModel(
-        factory = StatementViewModelFactory(firebaseSmartTracker, firebaseAccountTracker)
+        factory = StatementViewModelFactory(application, firebaseSmartTracker, firebaseAccountTracker)
     )
-    val context = LocalContext.current
 
     val shops by viewModel.shops.collectAsState()
     val selectedShop by viewModel.selectedShop.collectAsState()
