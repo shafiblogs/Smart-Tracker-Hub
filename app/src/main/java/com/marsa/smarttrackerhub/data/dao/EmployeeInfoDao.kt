@@ -42,4 +42,9 @@ interface EmployeeInfoDao {
 
     @Delete
     suspend fun deleteEmployee(employee: EmployeeInfo)
+
+    /** Returns the count of employees that already use [employeeId], excluding [excludeId].
+     *  Pass excludeId = 0 for new inserts. */
+    @Query("SELECT COUNT(*) FROM employee_info WHERE employeeId = :employeeId AND id != :excludeId")
+    suspend fun countByEmployeeId(employeeId: String, excludeId: Int): Int
 }

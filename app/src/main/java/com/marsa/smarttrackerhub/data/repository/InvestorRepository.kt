@@ -20,4 +20,8 @@ class InvestorRepository(private val investorDao: InvestorDao) {
     suspend fun updateInvestor(investor: InvestorInfo) = investorDao.updateInvestor(investor)
 
     suspend fun deleteInvestor(investor: InvestorInfo) = investorDao.deleteInvestor(investor)
+
+    /** Returns true if [investorId] is already used by another investor (excludes current record on edits). */
+    suspend fun isInvestorIdTaken(investorId: String, excludeId: Int = 0): Boolean =
+        investorDao.countByInvestorId(investorId, excludeId) > 0
 }

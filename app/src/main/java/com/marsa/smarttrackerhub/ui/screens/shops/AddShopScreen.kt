@@ -62,6 +62,7 @@ import java.util.Locale
 @Composable
 fun AddShopScreen(
     shopId: Int? = null,
+    isAdmin: Boolean = false,
     onShopCreated: () -> Unit,
     onAddInvestorClick: (Int) -> Unit = {}
 ) {
@@ -97,8 +98,8 @@ fun AddShopScreen(
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
         floatingActionButton = {
-            // Show edit button only when in view mode (existing shop)
-            if (isLoaded && !isEditEnabled) {
+            // Show edit button only when in view mode (existing shop) and user is admin
+            if (isLoaded && !isEditEnabled && isAdmin) {
                 FloatingActionButton(
                     onClick = { isEditEnabled = true },
                     containerColor = MaterialTheme.colorScheme.primary
@@ -468,15 +469,17 @@ fun AddShopScreen(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         SectionHeader(text = "Investors")
-                        OutlinedButton(
-                            onClick = { onAddInvestorClick(shopId) }
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Add,
-                                contentDescription = null,
-                                modifier = Modifier.padding(end = 4.dp)
-                            )
-                            Text("Add", fontSize = 13.sp)
+                        if (isAdmin) {
+                            OutlinedButton(
+                                onClick = { onAddInvestorClick(shopId) }
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Add,
+                                    contentDescription = null,
+                                    modifier = Modifier.padding(end = 4.dp)
+                                )
+                                Text("Add", fontSize = 13.sp)
+                            }
                         }
                     }
 

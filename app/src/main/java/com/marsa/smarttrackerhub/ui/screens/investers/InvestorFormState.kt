@@ -7,7 +7,7 @@ package com.marsa.smarttrackerhub.ui.screens.investers
  * muhammed.poyil@morohub.com
  */
 data class InvestorFormState(
-    val investorId: Int? = null,
+    val investorId: String = "",        // Business-level identifier — used as Firebase document ID
     val investorName: String = "",
     val investorEmail: String = "",
     val investorPhone: String = "",

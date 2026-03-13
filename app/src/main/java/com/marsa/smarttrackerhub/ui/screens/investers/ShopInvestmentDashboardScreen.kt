@@ -70,6 +70,7 @@ import java.util.Locale
 @Composable
 fun ShopInvestmentDashboardScreen(
     shopId: Int,
+    isAdmin: Boolean = false,
     onAddTransactionClick: (shopId: Int) -> Unit,
     onAssignInvestorClick: (shopId: Int) -> Unit,
     onSettlementClick: (shopId: Int) -> Unit
@@ -129,7 +130,7 @@ fun ShopInvestmentDashboardScreen(
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
         floatingActionButton = {
-            if (!isClosed) {
+            if (!isClosed && isAdmin) {
                 Column(
                     horizontalAlignment = Alignment.End,
                     verticalArrangement = Arrangement.spacedBy(12.dp)
@@ -160,7 +161,7 @@ fun ShopInvestmentDashboardScreen(
             }
         },
         bottomBar = {
-            if (!isClosed) {
+            if (!isClosed && isAdmin) {
                 // Record Payment — pinned to the bottom edge
                 Box(
                     modifier = Modifier
@@ -320,6 +321,7 @@ fun ShopInvestmentDashboardScreen(
                             InvestorBreakdownCard(
                                 investor = investor,
                                 totalShopCapital = uiState.totalCapital,
+                                isAdmin = isAdmin,
                                 onEditShareClick = { viewModel.showEditShareDialog(investor) },
                                 onWithdrawClick = { viewModel.showWithdrawDialog(investor) }
                             )
@@ -354,6 +356,7 @@ fun ShopInvestmentDashboardScreen(
                                 PhaseGroup(
                                     phase = phase,
                                     transactions = txList,
+                                    isAdmin = isAdmin,
                                     onEditTransaction = { viewModel.showEditTransactionDialog(it) }
                                 )
                             }
@@ -396,6 +399,7 @@ private fun CapitalMetric(
 private fun InvestorBreakdownCard(
     investor: ShopInvestorSummary,
     totalShopCapital: Double,
+    isAdmin: Boolean = false,
     onEditShareClick: () -> Unit,
     onWithdrawClick: () -> Unit
 ) {
@@ -457,30 +461,32 @@ private fun InvestorBreakdownCard(
                             else MaterialTheme.colorScheme.onErrorContainer
                         )
                     }
-                    // Edit share % button
-                    IconButton(
-                        onClick = onEditShareClick,
-                        modifier = Modifier.size(28.dp)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Edit,
-                            contentDescription = "Edit share %",
-                            modifier = Modifier.size(16.dp),
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                    // Withdraw button — only shown for active investors
-                    if (isActive) {
+                    // Edit share % button — admin only
+                    if (isAdmin) {
                         IconButton(
-                            onClick = onWithdrawClick,
-                            modifier = Modifier.size(36.dp)   // 36 dp = M3 minimum touch target
+                            onClick = onEditShareClick,
+                            modifier = Modifier.size(28.dp)
                         ) {
                             Icon(
-                                imageVector = Icons.Outlined.ExitToApp,
-                                contentDescription = "Withdraw investor",
-                                modifier = Modifier.size(18.dp),
-                                tint = MaterialTheme.colorScheme.error
+                                imageVector = Icons.Default.Edit,
+                                contentDescription = "Edit share %",
+                                modifier = Modifier.size(16.dp),
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant
                             )
+                        }
+                        // Withdraw button — only shown for active investors (admin only)
+                        if (isActive) {
+                            IconButton(
+                                onClick = onWithdrawClick,
+                                modifier = Modifier.size(36.dp)   // 36 dp = M3 minimum touch target
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Outlined.ExitToApp,
+                                    contentDescription = "Withdraw investor",
+                                    modifier = Modifier.size(18.dp),
+                                    tint = MaterialTheme.colorScheme.error
+                                )
+                            }
                         }
                     }
                 }
@@ -771,6 +777,7 @@ private fun WithdrawInvestorDialog(
 private fun PhaseGroup(
     phase: String,
     transactions: List<PhaseTransactionDetail>,
+    isAdmin: Boolean = false,
     onEditTransaction: (PhaseTransactionDetail) -> Unit
 ) {
     val dateFormat = SimpleDateFormat("dd MMM yyyy", Locale.ENGLISH)
@@ -815,7 +822,7 @@ private fun PhaseGroup(
                         .fillMaxWidth()
                         .combinedClickable(
                             onClick = {},
-                            onLongClick = { onEditTransaction(tx) }
+                            onLongClick = { if (isAdmin) onEditTransaction(tx) }
                         ),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.Top
@@ -839,11 +846,13 @@ private fun PhaseGroup(
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
-                        Text(
-                            text = "Hold to edit",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.65f)
-                        )
+                        if (isAdmin) {
+                            Text(
+                                text = "Hold to edit",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.65f)
+                            )
+                        }
                     }
                     Text(
                         text = "AED ${String.format("%,.0f", tx.amount)}",

@@ -38,8 +38,15 @@ class InvestorAddViewModel(
     private val _error = MutableStateFlow<String?>(null)
     val error: StateFlow<String?> = _error
 
+    // Tracks the Room primary key while editing an existing investor
+    private var editingInvestorId: Int? = null
+
     val isFormValid: StateFlow<Boolean> = formState
-        .map { it.investorName.isNotBlank() && it.investorPhone.isNotBlank() }
+        .map {
+            it.investorId.isNotBlank() &&
+                    it.investorName.isNotBlank() &&
+                    it.investorPhone.isNotBlank()
+        }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(), false)
 
     fun loadInvestor(context: Context, investorId: Int) = viewModelScope.launch {
@@ -49,8 +56,9 @@ class InvestorAddViewModel(
             val investor = repo.getInvestorById(investorId)
 
             investor?.let {
+                editingInvestorId = it.id
                 _formState.value = InvestorFormState(
-                    investorId = it.id,
+                    investorId = it.investorId,
                     investorName = it.investorName,
                     investorEmail = it.investorEmail,
                     investorPhone = it.investorPhone
@@ -60,6 +68,11 @@ class InvestorAddViewModel(
         } catch (e: Exception) {
             _error.value = "Failed to load investor: ${e.localizedMessage}"
         }
+    }
+
+    fun updateInvestorId(value: String) {
+        _formState.update { it.copy(investorId = value) }
+        _error.value = null
     }
 
     fun updateName(value: String) {
@@ -92,14 +105,22 @@ class InvestorAddViewModel(
             val db = AppDatabase.getDatabase(context)
             val repo = InvestorRepository(db.investorDao())
 
+            // Uniqueness check — exclude current record when editing
+            val excludeId = editingInvestorId ?: 0
+            if (repo.isInvestorIdTaken(state.investorId.trim(), excludeId)) {
+                onFail("Investor ID \"${state.investorId.trim()}\" is already used by another investor")
+                return@launch
+            }
+
             val investor = InvestorInfo(
-                id = state.investorId ?: 0,
+                id = editingInvestorId ?: 0,
+                investorId = state.investorId.trim(),
                 investorName = state.investorName.trim(),
                 investorEmail = state.investorEmail.trim(),
                 investorPhone = state.investorPhone.trim()
             )
 
-            if (state.investorId != null) {
+            if (editingInvestorId != null) {
                 repo.updateInvestor(investor)
             } else {
                 repo.insertInvestor(investor)

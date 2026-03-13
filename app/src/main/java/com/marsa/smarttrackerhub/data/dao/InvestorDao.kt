@@ -31,4 +31,9 @@ interface InvestorDao {
 
     @Delete
     suspend fun deleteInvestor(investor: InvestorInfo)
+
+    /** Returns the count of investors that already use [investorId], excluding [excludeId].
+     *  Pass excludeId = 0 for new inserts. */
+    @Query("SELECT COUNT(*) FROM investor_info WHERE investorId = :investorId AND id != :excludeId")
+    suspend fun countByInvestorId(investorId: String, excludeId: Int): Int
 }

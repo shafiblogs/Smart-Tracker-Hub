@@ -171,11 +171,18 @@ class AddShopViewModel(
             val db = AppDatabase.getDatabase(context)
             val repo = ShopRepository(db.shopDao())
 
+            // Uniqueness check — exclude current record when editing
+            val excludeId = editingShopId ?: 0
+            if (repo.isShopIdTaken(state.shopId.trim(), excludeId)) {
+                onFail("Shop ID \"${state.shopId.trim()}\" is already used by another shop")
+                return@launch
+            }
+
             val shop = ShopInfo(
                 id = editingShopId ?: 0,
                 shopName = state.shopName,
                 shopAddress = state.shopAddress,
-                shopId = state.shopId,
+                shopId = state.shopId.trim(),
                 shopType = state.shopType?.name ?: "",
                 zakathStatus = state.zakathStatus?.name ?: "",
                 licenseExpiryDate = state.licenseExpiryDate ?: 0L,

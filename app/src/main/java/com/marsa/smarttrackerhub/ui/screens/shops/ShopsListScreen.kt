@@ -30,6 +30,7 @@ import com.marsa.smarttrackerhub.utils.ShareUtil
 
 @Composable
 fun ShopsListScreen(
+    isAdmin: Boolean = false,
     onAddClick: () -> Unit,
     onEditClick: (Int) -> Unit
 ) {
@@ -125,14 +126,16 @@ fun ShopsListScreen(
             }
         }
 
-        FloatingActionButton(
-            onClick = onAddClick,
-            modifier = Modifier
-                .align(Alignment.BottomEnd)
-                .padding(16.dp),
-            containerColor = MaterialTheme.colorScheme.primary
-        ) {
-            Icon(Icons.Default.Add, contentDescription = "Add Shop")
+        if (isAdmin) {
+            FloatingActionButton(
+                onClick = onAddClick,
+                modifier = Modifier
+                    .align(Alignment.BottomEnd)
+                    .padding(16.dp),
+                containerColor = MaterialTheme.colorScheme.primary
+            ) {
+                Icon(Icons.Default.Add, contentDescription = "Add Shop")
+            }
         }
     }
 }

@@ -55,6 +55,7 @@ import com.marsa.smarttrackerhub.domain.InvestorShopSummary
 @Composable
 fun InvestorDetailScreen(
     investorId: Int,
+    isAdmin: Boolean = false,
     onEditClick: (Int) -> Unit,
     onAddShopInvestmentClick: (Int) -> Unit,
     onShopDashboardClick: (shopId: Int) -> Unit = {}
@@ -70,28 +71,30 @@ fun InvestorDetailScreen(
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
         floatingActionButton = {
-            Column(
-                horizontalAlignment = Alignment.End,
-                verticalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                // Secondary FAB: edit investor info
-                FloatingActionButton(
-                    onClick = { onEditClick(investorId) },
-                    containerColor = MaterialTheme.colorScheme.primary,
-                    contentColor = MaterialTheme.colorScheme.onPrimary
+            if (isAdmin) {
+                Column(
+                    horizontalAlignment = Alignment.End,
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    Icon(
-                        imageVector = Icons.Default.Edit,
-                        contentDescription = "Edit Investor"
-                    )
-                }
-                // Primary FAB: assign investor to a new shop
-                FloatingActionButton(
-                    onClick = { onAddShopInvestmentClick(investorId) },
-                    containerColor = MaterialTheme.colorScheme.primary,
-                    contentColor = MaterialTheme.colorScheme.onPrimary
-                ) {
-                    Icon(Icons.Default.Add, contentDescription = "Assign to Shop")
+                    // Secondary FAB: edit investor info
+                    FloatingActionButton(
+                        onClick = { onEditClick(investorId) },
+                        containerColor = MaterialTheme.colorScheme.primary,
+                        contentColor = MaterialTheme.colorScheme.onPrimary
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Edit,
+                            contentDescription = "Edit Investor"
+                        )
+                    }
+                    // Primary FAB: assign investor to a new shop
+                    FloatingActionButton(
+                        onClick = { onAddShopInvestmentClick(investorId) },
+                        containerColor = MaterialTheme.colorScheme.primary,
+                        contentColor = MaterialTheme.colorScheme.onPrimary
+                    ) {
+                        Icon(Icons.Default.Add, contentDescription = "Assign to Shop")
+                    }
                 }
             }
         }

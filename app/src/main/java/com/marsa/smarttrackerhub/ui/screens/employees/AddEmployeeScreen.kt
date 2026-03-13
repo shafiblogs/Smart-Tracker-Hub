@@ -58,6 +58,7 @@ import java.util.Locale
 @Composable
 fun AddEmployeeScreen(
     employeeId: Int? = null,
+    isAdmin: Boolean = false,
     onEmployeeCreated: () -> Unit
 ) {
     val viewModel: EmployeeViewModel = viewModel()
@@ -95,8 +96,8 @@ fun AddEmployeeScreen(
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
         floatingActionButton = {
-            // Show edit button only when in view mode (existing employee)
-            if (isLoaded && !isEditEnabled) {
+            // Show edit button only when in view mode (existing employee) and user is admin
+            if (isLoaded && !isEditEnabled && isAdmin) {
                 FloatingActionButton(
                     onClick = { isEditEnabled = true },
                     containerColor = MaterialTheme.colorScheme.primary

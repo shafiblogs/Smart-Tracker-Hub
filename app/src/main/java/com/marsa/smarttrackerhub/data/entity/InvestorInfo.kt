@@ -12,6 +12,7 @@ import androidx.room.PrimaryKey
 @Entity(tableName = "investor_info")
 data class InvestorInfo(
     @PrimaryKey(autoGenerate = true) val id: Int = 0,
+    val investorId: String = "",   // Business-level identifier — used as Firebase document ID
     val investorName: String,
     val investorEmail: String,
     val investorPhone: String

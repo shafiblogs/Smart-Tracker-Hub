@@ -54,6 +54,7 @@ import java.util.Locale
 fun EmployeeCard(
     employee: EmployeeInfo,
     shopName: String,
+    isAdmin: Boolean = false,
     onCardClick: () -> Unit,
     onTerminateClick: () -> Unit,
     onReactivateClick: () -> Unit,
@@ -139,53 +140,55 @@ fun EmployeeCard(
                         )
                     }
 
-                    // More options menu
-                    Box {
-                        IconButton(
-                            onClick = { showMenu = true },
-                            modifier = Modifier.size(40.dp)
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.MoreVert,
-                                contentDescription = "More Options",
-                                modifier = Modifier.size(20.dp)
-                            )
-                        }
+                    // More options menu — admin only
+                    if (isAdmin) {
+                        Box {
+                            IconButton(
+                                onClick = { showMenu = true },
+                                modifier = Modifier.size(40.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.MoreVert,
+                                    contentDescription = "More Options",
+                                    modifier = Modifier.size(20.dp)
+                                )
+                            }
 
-                        DropdownMenu(
-                            expanded = showMenu,
-                            onDismissRequest = { showMenu = false }
-                        ) {
-                            if (employee.isActive) {
-                                DropdownMenuItem(
-                                    text = { Text("Terminate Employee") },
-                                    onClick = {
-                                        showMenu = false
-                                        onTerminateClick()
-                                    },
-                                    leadingIcon = {
-                                        Icon(
-                                            imageVector = Icons.Default.Person,
-                                            contentDescription = null,
-                                            tint = MaterialTheme.colorScheme.error
-                                        )
-                                    }
-                                )
-                            } else {
-                                DropdownMenuItem(
-                                    text = { Text("Reactivate Employee") },
-                                    onClick = {
-                                        showMenu = false
-                                        onReactivateClick()
-                                    },
-                                    leadingIcon = {
-                                        Icon(
-                                            imageVector = Icons.Default.Add,
-                                            contentDescription = null,
-                                            tint = Color(0xFF22C55E)  // SuccessGreen
-                                        )
-                                    }
-                                )
+                            DropdownMenu(
+                                expanded = showMenu,
+                                onDismissRequest = { showMenu = false }
+                            ) {
+                                if (employee.isActive) {
+                                    DropdownMenuItem(
+                                        text = { Text("Terminate Employee") },
+                                        onClick = {
+                                            showMenu = false
+                                            onTerminateClick()
+                                        },
+                                        leadingIcon = {
+                                            Icon(
+                                                imageVector = Icons.Default.Person,
+                                                contentDescription = null,
+                                                tint = MaterialTheme.colorScheme.error
+                                            )
+                                        }
+                                    )
+                                } else {
+                                    DropdownMenuItem(
+                                        text = { Text("Reactivate Employee") },
+                                        onClick = {
+                                            showMenu = false
+                                            onReactivateClick()
+                                        },
+                                        leadingIcon = {
+                                            Icon(
+                                                imageVector = Icons.Default.Add,
+                                                contentDescription = null,
+                                                tint = Color(0xFF22C55E)  // SuccessGreen
+                                            )
+                                        }
+                                    )
+                                }
                             }
                         }
                     }

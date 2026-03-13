@@ -32,4 +32,8 @@ class EmployeeRepository(private val employeeDao: EmployeeInfoDao) {
     suspend fun updateEmployee(employee: EmployeeInfo) = employeeDao.updateEmployee(employee)
 
     suspend fun deleteEmployee(employee: EmployeeInfo) = employeeDao.deleteEmployee(employee)
+
+    /** Returns true if [employeeId] is already used by another employee (excludes current record on edits). */
+    suspend fun isEmployeeIdTaken(employeeId: String, excludeId: Int = 0): Boolean =
+        employeeDao.countByEmployeeId(employeeId, excludeId) > 0
 }

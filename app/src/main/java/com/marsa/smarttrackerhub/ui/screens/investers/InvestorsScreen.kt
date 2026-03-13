@@ -37,7 +37,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
  * muhammed.poyil@morohub.com
  */
 @Composable
-fun InvestorsScreen(onAddClick: () -> Unit, onItemClick: (Int) -> Unit) {
+fun InvestorsScreen(isAdmin: Boolean = false, onAddClick: () -> Unit, onItemClick: (Int) -> Unit) {
     val viewModel: InvestorListViewModel = viewModel()
     val uiState by viewModel.uiState.collectAsState()
     val context = LocalContext.current
@@ -110,15 +110,17 @@ fun InvestorsScreen(onAddClick: () -> Unit, onItemClick: (Int) -> Unit) {
             }
         }
 
-        FloatingActionButton(
-            onClick = onAddClick,
-            modifier = Modifier
-                .align(Alignment.BottomEnd)
-                .padding(16.dp),
-            containerColor = MaterialTheme.colorScheme.primary,
-            contentColor = MaterialTheme.colorScheme.onPrimary
-        ) {
-            Icon(Icons.Default.Add, contentDescription = "Add Investor")
+        if (isAdmin) {
+            FloatingActionButton(
+                onClick = onAddClick,
+                modifier = Modifier
+                    .align(Alignment.BottomEnd)
+                    .padding(16.dp),
+                containerColor = MaterialTheme.colorScheme.primary,
+                contentColor = MaterialTheme.colorScheme.onPrimary
+            ) {
+                Icon(Icons.Default.Add, contentDescription = "Add Investor")
+            }
         }
     }
 }

@@ -18,4 +18,8 @@ class ShopRepository(private val shopDao: ShopDao) {
 
     suspend fun updateTotalInvested(shopId: Int, totalInvested: Double) =
         shopDao.updateTotalInvested(shopId, totalInvested)
+
+    /** Returns true if [shopId] is already used by another shop (excludes current record on edits). */
+    suspend fun isShopIdTaken(shopId: String, excludeId: Int = 0): Boolean =
+        shopDao.countByShopId(shopId, excludeId) > 0
 }

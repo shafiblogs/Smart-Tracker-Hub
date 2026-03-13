@@ -106,6 +106,17 @@ fun AddInvestorScreen(
                 Spacer(modifier = Modifier.height(16.dp))
 
                 LabeledInputField(
+                    label = "Investor ID",
+                    value = state.investorId,
+                    maxLength = 20,
+                    onValueChange = viewModel::updateInvestorId,
+                    modifier = Modifier.fillMaxWidth(),
+                    enabled = isEditEnabled
+                )
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                LabeledInputField(
                     label = "Full Name *",
                     value = state.investorName,
                     maxLength = 50,

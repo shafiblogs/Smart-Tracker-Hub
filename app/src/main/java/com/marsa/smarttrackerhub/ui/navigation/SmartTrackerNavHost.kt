@@ -104,6 +104,7 @@ fun SmartTrackerNavHost(navController: NavHostController) {
     val showBottomBar = currentRoute in bottomNavRoutes
     val isAccountActive by viewModel.isAccountActive.collectAsState()
     val userAccessCode by viewModel.userAccessCode.collectAsState()
+    val isAdmin = userAccessCode == AccessCode.ADMIN
 
     // Notification badge count — shared ViewModel instance with NotificationsScreen.
     // Initialised here so the badge is live as soon as the app launches.
@@ -184,6 +185,7 @@ fun SmartTrackerNavHost(navController: NavHostController) {
                 val resolvedShopId = if (shopId == 0) null else shopId
                 AddShopScreen(
                     shopId = resolvedShopId,
+                    isAdmin = isAdmin,
                     onShopCreated = {
                         navController.popBackStack()
                     },
@@ -220,6 +222,7 @@ fun SmartTrackerNavHost(navController: NavHostController) {
                 val employeeId = backStackEntry.arguments?.getInt("employeeId")
                 AddEmployeeScreen(
                     employeeId = if (employeeId == 0) null else employeeId,
+                    isAdmin = isAdmin,
                     onEmployeeCreated = {
                         navController.popBackStack()
                     }
@@ -227,6 +230,7 @@ fun SmartTrackerNavHost(navController: NavHostController) {
             }
             composable(Screen.ShopList.route) {
                 ShopsListScreen(
+                    isAdmin = isAdmin,
                     onEditClick = { shopId ->
                         navController.navigate(Screen.AddShop.createRoute(shopId))
                     },
@@ -248,6 +252,7 @@ fun SmartTrackerNavHost(navController: NavHostController) {
             }
             composable(Screen.Investors.route) {
                 InvestorsScreen(
+                    isAdmin = isAdmin,
                     onItemClick = { investorId ->
                         navController.navigate(Screen.InvestorDetail.createRoute(investorId))
                     },
@@ -266,6 +271,7 @@ fun SmartTrackerNavHost(navController: NavHostController) {
                 val investorId = backStackEntry.arguments!!.getInt("investorId")
                 InvestorDetailScreen(
                     investorId = investorId,
+                    isAdmin = isAdmin,
                     onEditClick = { id ->
                         navController.navigate(Screen.AddInvestor.createRoute(id))
                     },
@@ -309,6 +315,7 @@ fun SmartTrackerNavHost(navController: NavHostController) {
                 val shopId = backStackEntry.arguments!!.getInt("shopId")
                 ShopInvestmentDashboardScreen(
                     shopId = shopId,
+                    isAdmin = isAdmin,
                     onAssignInvestorClick = { id ->
                         navController.navigate(Screen.AddShopInvestment.createRoute(shopId = id))
                     },
@@ -368,6 +375,7 @@ fun SmartTrackerNavHost(navController: NavHostController) {
 
             composable(Screen.Employees.route) {
                 EmployeesScreen(
+                    isAdmin = isAdmin,
                     onEditClick = { employeeId ->
                         navController.navigate(Screen.AddEmployee.createRoute(employeeId))
                     },
@@ -514,34 +522,36 @@ fun SmartTrackerNavHost(navController: NavHostController) {
                                 SmallTextField("Summary")
                             })
 
-                        NavigationBarItem(
-                            selected = currentRoute == Screen.Notifications.route,
-                            onClick = { navigateToRoute(Screen.Notifications.route) },
-                            icon = {
-                                BadgedBox(
-                                    badge = {
-                                        if (notificationCount > 0) {
-                                            Badge {
-                                                Text(
-                                                    text = if (notificationCount > 99) "99+" else notificationCount.toString(),
-                                                    style = MaterialTheme.typography.labelSmall
-                                                )
+                        if (userAccessCode.level >= 2) {
+                            NavigationBarItem(
+                                selected = currentRoute == Screen.Notifications.route,
+                                onClick = { navigateToRoute(Screen.Notifications.route) },
+                                icon = {
+                                    BadgedBox(
+                                        badge = {
+                                            if (notificationCount > 0) {
+                                                Badge {
+                                                    Text(
+                                                        text = if (notificationCount > 99) "99+" else notificationCount.toString(),
+                                                        style = MaterialTheme.typography.labelSmall
+                                                    )
+                                                }
                                             }
                                         }
+                                    ) {
+                                        Icon(
+                                            Icons.Default.Notifications,
+                                            contentDescription = if (notificationCount > 0)
+                                                "$notificationCount notifications"
+                                            else
+                                                "Notifications"
+                                        )
                                     }
-                                ) {
-                                    Icon(
-                                        Icons.Default.Notifications,
-                                        contentDescription = if (notificationCount > 0)
-                                            "$notificationCount notifications"
-                                        else
-                                            "Notifications"
-                                    )
-                                }
-                            },
-                            label = {
-                                SmallTextField("Notifications")
-                            })
+                                },
+                                label = {
+                                    SmallTextField("Notifications")
+                                })
+                        }
                     }
                 }
             },
@@ -569,7 +579,10 @@ fun SmartTrackerNavHost(navController: NavHostController) {
                             style = MaterialTheme.typography.titleMedium
                         )
 
-                        val drawerItems = if (userAccessCode == AccessCode.ADMIN) listOf(
+                        // OPS_UAE / OPS_KUWAIT (level 2) and ADMIN (level 3) can view Shops, Employees, Investors.
+                        // GUEST (level 0) and level-1 users (GROCERY, CAFE, SUPERMARKET) see only Statement + My Account.
+                        // Add/edit actions inside each screen are separately gated by isAdmin.
+                        val drawerItems = if (userAccessCode.level >= 2) listOf(
                             Screen.Statement.route to "Statement",
                             Screen.ShopList.route to "Shops",
                             Screen.Employees.route to "Employees",

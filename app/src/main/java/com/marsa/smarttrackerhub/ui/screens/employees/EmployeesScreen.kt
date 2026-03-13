@@ -46,6 +46,7 @@ import com.marsa.smarttrackerhub.utils.ShareUtil
 
 @Composable
 fun EmployeesScreen(
+    isAdmin: Boolean = false,
     onAddClick: () -> Unit,
     onEditClick: (Int) -> Unit
 ) {
@@ -133,6 +134,7 @@ fun EmployeesScreen(
                                             EmployeeCard(
                                                 employee = employee,
                                                 shopName = shopName,
+                                                isAdmin = isAdmin,
                                                 onCardClick = { onEditClick(employee.id) },
                                                 onTerminateClick = {
                                                     showTerminateDialog = employee.id
@@ -167,6 +169,7 @@ fun EmployeesScreen(
                                         EmployeeCard(
                                             employee = employee,
                                             shopName = shopName,
+                                            isAdmin = isAdmin,
                                             onCardClick = { onEditClick(employee.id) },
                                             onTerminateClick = {
                                                 showTerminateDialog = employee.id
@@ -198,14 +201,16 @@ fun EmployeesScreen(
             }
         }
 
-        FloatingActionButton(
-            onClick = onAddClick,
-            modifier = Modifier
-                .align(Alignment.BottomEnd)
-                .padding(16.dp),
-            containerColor = MaterialTheme.colorScheme.primary
-        ) {
-            Icon(Icons.Default.Add, contentDescription = "Add Employee")
+        if (isAdmin) {
+            FloatingActionButton(
+                onClick = onAddClick,
+                modifier = Modifier
+                    .align(Alignment.BottomEnd)
+                    .padding(16.dp),
+                containerColor = MaterialTheme.colorScheme.primary
+            ) {
+                Icon(Icons.Default.Add, contentDescription = "Add Employee")
+            }
         }
     }
 

@@ -189,6 +189,13 @@ class EmployeeViewModel : ViewModel() {
                     return@launch
                 }
 
+                // Uniqueness check — exclude current record when editing
+                val excludeId = editingEmployeeId ?: 0
+                if (employeeRepository.isEmployeeIdTaken(state.employeeId.trim(), excludeId)) {
+                    onFail("Employee ID \"${state.employeeId.trim()}\" is already used by another employee")
+                    return@launch
+                }
+
                 val employee = EmployeeInfo(
                     id = editingEmployeeId ?: 0,
                     employeeId = state.employeeId.trim(),

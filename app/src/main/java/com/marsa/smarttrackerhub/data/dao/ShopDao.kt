@@ -28,4 +28,9 @@ interface ShopDao {
 
     @Query("UPDATE shop_info SET totalInvested = :totalInvested WHERE id = :shopId")
     suspend fun updateTotalInvested(shopId: Int, totalInvested: Double)
+
+    /** Returns the count of shops that already use [shopId], excluding the record with [excludeId].
+     *  Pass excludeId = 0 for new inserts (auto-generated IDs start at 1, so 0 never matches). */
+    @Query("SELECT COUNT(*) FROM shop_info WHERE shopId = :shopId AND id != :excludeId")
+    suspend fun countByShopId(shopId: String, excludeId: Int): Int
 }
