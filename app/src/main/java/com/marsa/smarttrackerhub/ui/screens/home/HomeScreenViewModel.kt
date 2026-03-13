@@ -66,8 +66,8 @@ class HomeScreenViewModel(
     private val database = AppDatabase.getDatabase(application)
     private val summaryDao = database.summaryDao()
 
-    fun loadScreenData(userAccessCode: AccessCode) {
-        _shops.value = getHomeShopUser(userAccessCode)
+    fun loadScreenData(userAccessCode: AccessCode)=viewModelScope.launch {
+        _shops.value = getHomeShopUser(userAccessCode,database)
     }
 
     fun setSelectedShop(shop: ShopListDto?) {
