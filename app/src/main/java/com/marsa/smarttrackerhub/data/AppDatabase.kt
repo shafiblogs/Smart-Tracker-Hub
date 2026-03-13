@@ -31,6 +31,7 @@ import com.marsa.smarttrackerhub.data.migrations.MIGRATION_2_3
 import com.marsa.smarttrackerhub.data.migrations.MIGRATION_3_4
 import com.marsa.smarttrackerhub.data.migrations.MIGRATION_4_5
 import com.marsa.smarttrackerhub.data.migrations.MIGRATION_5_6
+import com.marsa.smarttrackerhub.data.migrations.MIGRATION_6_7
 
 
 /**
@@ -60,6 +61,15 @@ import com.marsa.smarttrackerhub.data.migrations.MIGRATION_5_6
  *   - investment_transaction: added `transactionFirebaseId` (UUID), `shopFirebaseId`, `investorFirebaseId`
  *   - year_end_settlement: added `settlementFirebaseId` column (UUID)
  *   - settlement_entry: added `entryFirebaseId` (UUID), `investorFirebaseId`
+ *
+ * v7 — isSynced flag + missing Firebase path fields:
+ *   - shop_info: added `isSynced` (push-to-Firestore flag)
+ *   - investor_info: added `isSynced`
+ *   - employee_info: added `associatedShopFirebaseId` (denormalized), `isSynced`
+ *   - shop_investor: added `isSynced`
+ *   - investment_transaction: added `isSynced`
+ *   - year_end_settlement: added `shopFirebaseId` (denormalized), `isSynced`
+ *   - settlement_entry: added `settlementFirebaseId` (parent doc ID), `shopFirebaseId` (denormalized), `isSynced`
  */
 
 @Database(
@@ -75,7 +85,7 @@ import com.marsa.smarttrackerhub.data.migrations.MIGRATION_5_6
         YearEndSettlement::class,
         SettlementEntry::class
     ],
-    version = 6
+    version = 7
 )
 @TypeConverters(Converters::class)
 abstract class AppDatabase : RoomDatabase() {
@@ -100,7 +110,7 @@ abstract class AppDatabase : RoomDatabase() {
                     AppDatabase::class.java,
                     "tracker_hub_db"
                 )
-                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6)
+                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7)
                     .addCallback(object : Callback() {
                         override fun onCreate(db: SupportSQLiteDatabase) {
                             super.onCreate(db)

@@ -18,7 +18,9 @@ data class EmployeeInfo(
     val salary: Double,
     val allowance: Double = 0.0,
     val associatedShopId: Int,
+    val associatedShopFirebaseId: String = "", // Denormalized — Firestore path: /shops/{associatedShopFirebaseId}
     val visaExpiryDate: Long,
     val isActive: Boolean = true, // true = active, false = terminated
-    val terminationDate: Long? = null // Optional: track when they left
+    val terminationDate: Long? = null, // Optional: track when they left
+    val isSynced: Boolean = false  // False until pushed to Firestore
 )

@@ -196,6 +196,8 @@ class EmployeeViewModel : ViewModel() {
                     return@launch
                 }
 
+                val associatedShopFirebaseId =
+                    shopRepository.getShopById(state.associatedShopId!!)?.shopId ?: ""
                 val employee = EmployeeInfo(
                     id = editingEmployeeId ?: 0,
                     employeeId = state.employeeId.trim(),
@@ -204,7 +206,8 @@ class EmployeeViewModel : ViewModel() {
                     employeeRole = state.employeeRole!!.name,
                     salary = salaryDouble,
                     allowance = allowanceDouble,
-                    associatedShopId = state.associatedShopId!!,
+                    associatedShopId = state.associatedShopId,
+                    associatedShopFirebaseId = associatedShopFirebaseId,
                     visaExpiryDate = state.visaExpiryDate ?: 0L
                 )
 

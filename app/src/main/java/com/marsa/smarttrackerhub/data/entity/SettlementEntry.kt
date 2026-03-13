@@ -47,6 +47,9 @@ data class SettlementEntry(
     val balanceAmount: Double,              // actualPaid - fairShare
     val settlementPaidAmount: Double = 0.0, // Amount actually transferred to settle
     val settlementPaidDate: Long? = null,
-    val entryFirebaseId: String = "",       // Firebase doc ID — UUID auto-generated on confirm
-    val investorFirebaseId: String = ""     // Denormalized — for Firestore path resolution
+    val entryFirebaseId: String = "",           // Firebase doc ID — UUID auto-generated on confirm
+    val investorFirebaseId: String = "",        // Denormalized — Firestore path: .../investors/{investorFirebaseId}
+    val settlementFirebaseId: String = "",      // Denormalized — parent settlement doc ID
+    val shopFirebaseId: String = "",            // Denormalized — Firestore path: /shops/{shopFirebaseId}
+    val isSynced: Boolean = false               // False until pushed to Firestore
 )

@@ -167,6 +167,8 @@ class SettlementCalculatorViewModel : ViewModel() {
 
         viewModelScope.launch {
             try {
+                val shopFirebaseId = db.shopDao().getShopById(shopId)?.shopId ?: ""
+                val settlementFirebaseId = UUID.randomUUID().toString()
                 val settlement = YearEndSettlement(
                     shopId = shopId,
                     settlementDate = state.settlementDate,
@@ -174,7 +176,8 @@ class SettlementCalculatorViewModel : ViewModel() {
                     totalInvested = state.totalInvested,
                     note = state.note,
                     isCarriedForward = true,
-                    settlementFirebaseId = UUID.randomUUID().toString()
+                    settlementFirebaseId = settlementFirebaseId,
+                    shopFirebaseId = shopFirebaseId
                 )
                 val entries = state.rows.map { row ->
                     val investorFirebaseId =
@@ -186,7 +189,9 @@ class SettlementCalculatorViewModel : ViewModel() {
                         actualPaidAmount = row.actualPaidAmount,
                         balanceAmount = row.balanceAmount,
                         entryFirebaseId = UUID.randomUUID().toString(),
-                        investorFirebaseId = investorFirebaseId
+                        investorFirebaseId = investorFirebaseId,
+                        settlementFirebaseId = settlementFirebaseId,
+                        shopFirebaseId = shopFirebaseId
                     )
                 }
                 settlementRepo.saveSettlement(settlement, entries)

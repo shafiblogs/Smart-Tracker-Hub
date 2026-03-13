@@ -16,5 +16,6 @@ data class ShopInfo(
     val stockValue: Double = 0.0, // New field - current stock value
     val stockTakenDate: Long = 0L, // New field - when stock was last counted
     val shopStatus: String = "Initial", // Running | Initial | Closed
-    val totalInvested: Double = 0.0    // Cached total from investment_transaction
+    val totalInvested: Double = 0.0,   // Cached total from investment_transaction
+    val isSynced: Boolean = false       // False until pushed to Firestore
 )

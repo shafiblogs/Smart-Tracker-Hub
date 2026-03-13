@@ -15,5 +15,6 @@ data class InvestorInfo(
     val investorId: String = "",   // Business-level identifier — used as Firebase document ID
     val investorName: String,
     val investorEmail: String,
-    val investorPhone: String
+    val investorPhone: String,
+    val isSynced: Boolean = false  // False until pushed to Firestore
 )

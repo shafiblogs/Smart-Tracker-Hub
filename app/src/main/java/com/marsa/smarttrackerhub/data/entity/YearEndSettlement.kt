@@ -36,5 +36,7 @@ data class YearEndSettlement(
     val totalInvested: Double,              // Sum of all transactions in this period only
     val note: String = "",
     val isCarriedForward: Boolean = true,   // Balances roll into next period
-    val settlementFirebaseId: String = ""   // Firebase doc ID — UUID auto-generated on confirm
+    val settlementFirebaseId: String = "",  // Firebase doc ID — UUID auto-generated on confirm
+    val shopFirebaseId: String = "",        // Denormalized — Firestore path: /shops/{shopFirebaseId}
+    val isSynced: Boolean = false           // False until pushed to Firestore
 )
