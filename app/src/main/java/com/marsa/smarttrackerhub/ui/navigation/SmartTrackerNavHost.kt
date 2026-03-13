@@ -13,7 +13,6 @@ import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.Notifications
-import androidx.compose.material.icons.filled.Sync
 import androidx.compose.material3.Badge
 import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.DrawerValue
@@ -57,6 +56,7 @@ import androidx.work.NetworkType
 import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkManager
 import android.widget.Toast
+import androidx.compose.material.icons.filled.Refresh
 import com.marsa.smarttracker.ui.theme.sTypography
 import com.marsa.smarttrackerhub.data.worker.SyncWorker
 import com.marsa.smarttrackerhub.domain.AccessCode
@@ -618,7 +618,7 @@ fun SmartTrackerNavHost(navController: NavHostController) {
                             HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp))
                             NavigationDrawerItem(
                                 label = { Text("Sync Now") },
-                                icon = { Icon(Icons.Default.Sync, contentDescription = "Sync") },
+                                icon = { Icon(Icons.Default.Refresh, contentDescription = "Sync") },
                                 selected = false,
                                 onClick = {
                                     scope.launch { drawerState.close() }
