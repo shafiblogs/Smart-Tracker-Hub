@@ -25,18 +25,20 @@ class SmartTrackerHubApp : Application() {
         // Default app (Hub project)
         FirebaseApp.initializeApp(this)
 
-        // Initialize Firebase App (Smart Tracker)
+        // SmartTracker Firebase — Firestore summaries (Sale/Purchase) + PDF Storage (Statement)
+        // project: smart-tracker-8012f
         val trackerOptions = FirebaseOptions.Builder()
-            .setApplicationId("com.marsa.smarttracker")
+            .setApplicationId("1:979114972932:android:86e1d8fefb4d376a71a251")
             .setApiKey(BuildConfig.api_key)
             .setProjectId(BuildConfig.project_id)
             .setStorageBucket(BuildConfig.storage_bucket)
             .build()
         FirebaseApp.initializeApp(this, trackerOptions, "SmartTrackerApp")
 
-        // Initialize Firebase App (Smart Tracker)
+        // AccountTracker Firebase — OPS PDF Storage (ops_uae / ops_kuwait)
+        // project: accounts-tracker-16f93
         val accountOptions = FirebaseOptions.Builder()
-            .setApplicationId("com.marsa.accountstracker")
+            .setApplicationId("1:1061133708867:android:4213179a6575e6dc15aef6")
             .setApiKey(BuildConfig.api_key_account)
             .setProjectId(BuildConfig.project_id_account)
             .setStorageBucket(BuildConfig.storage_bucket_account)
