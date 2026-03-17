@@ -10,10 +10,13 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -22,6 +25,8 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
@@ -35,13 +40,16 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.marsa.smarttracker.ui.theme.sTypography
 import com.marsa.smarttrackerhub.ui.components.CommonTextField
+import com.marsa.smarttrackerhub.utils.ShareUtil
 import java.text.SimpleDateFormat
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
@@ -56,6 +64,7 @@ import java.util.Locale
  *
  * Logs screen — shows current-month shop-activity events (employee login/logout,
  * shop open/close) from SmartTracker Firebase, grouped as day-summary cards.
+ * Each card has its own Share button that captures only that card as an image.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -74,6 +83,9 @@ fun LogsScreen(viewModel: LogsViewModel = viewModel()) {
     var dropdownExpanded by remember { mutableStateOf(false) }
     val selectedShopName = selectedShop?.shopName ?: "Select a shop"
 
+    // View reference map keyed by date string — used for per-card sharing
+    val cardViewRefs = remember { mutableMapOf<String, android.view.View>() }
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -83,7 +95,7 @@ fun LogsScreen(viewModel: LogsViewModel = viewModel()) {
 
         // ── Shop dropdown ──────────────────────────────────────────────────
         ExposedDropdownMenuBox(
-            expanded  = dropdownExpanded,
+            expanded         = dropdownExpanded,
             onExpandedChange = { dropdownExpanded = it }
         ) {
             OutlinedTextField(
@@ -150,7 +162,47 @@ fun LogsScreen(viewModel: LogsViewModel = viewModel()) {
                     verticalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
                     items(daySummaries, key = { it.date }) { summary ->
-                        DayLogCard(summary = summary)
+                        // Wrap in AndroidView / ComposeView so we can capture a View reference
+                        // for per-card image sharing — same pattern as SaleScreen.
+                        AndroidView(
+                            factory = { ctx ->
+                                ComposeView(ctx).apply {
+                                    setContent {
+                                        DayLogCard(
+                                            summary = summary,
+                                            onShare = {
+                                                cardViewRefs[summary.date]?.let { view ->
+                                                    ShareUtil.shareViewAsImage(
+                                                        view       = view,
+                                                        context    = ctx,
+                                                        fileName   = "log_${summary.date}_${selectedShop?.shopName?.replace(" ", "_")}.png",
+                                                        shareTitle = "Share Log — ${formatLogDate(summary.date)}"
+                                                    )
+                                                }
+                                            }
+                                        )
+                                    }
+                                }
+                            },
+                            update = { view ->
+                                // Always store the latest view ref for this date
+                                cardViewRefs[summary.date] = view
+                                (view as? ComposeView)?.setContent {
+                                    DayLogCard(
+                                        summary = summary,
+                                        onShare = {
+                                            ShareUtil.shareViewAsImage(
+                                                view       = view,
+                                                context    = context,
+                                                fileName   = "log_${summary.date}_${selectedShop?.shopName?.replace(" ", "_")}.png",
+                                                shareTitle = "Share Log — ${formatLogDate(summary.date)}"
+                                            )
+                                        }
+                                    )
+                                }
+                            },
+                            modifier = Modifier.fillMaxWidth()
+                        )
                     }
                     item { Spacer(modifier = Modifier.height(80.dp)) }
                 }
@@ -162,7 +214,10 @@ fun LogsScreen(viewModel: LogsViewModel = viewModel()) {
 // ── Day Log Card ──────────────────────────────────────────────────────────────
 
 @Composable
-private fun DayLogCard(summary: DayLogSummary) {
+private fun DayLogCard(
+    summary: DayLogSummary,
+    onShare: () -> Unit
+) {
     Card(
         modifier  = Modifier.fillMaxWidth(),
         shape     = RoundedCornerShape(12.dp),
@@ -171,12 +226,29 @@ private fun DayLogCard(summary: DayLogSummary) {
     ) {
         Column(modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp)) {
 
-            // ── Date header ────────────────────────────────────────────────
-            Text(
-                text  = formatLogDate(summary.date),
-                style = sTypography.bodySmall.copy(fontWeight = FontWeight.Bold, fontSize = 13.sp),
-                color = MaterialTheme.colorScheme.onSurface
-            )
+            // ── Date header row with share button ──────────────────────────
+            Row(
+                modifier          = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text     = formatLogDate(summary.date),
+                    style    = sTypography.bodySmall.copy(fontWeight = FontWeight.Bold, fontSize = 13.sp),
+                    color    = MaterialTheme.colorScheme.onSurface,
+                    modifier = Modifier.weight(1f)
+                )
+                IconButton(
+                    onClick  = onShare,
+                    modifier = Modifier.size(28.dp)
+                ) {
+                    Icon(
+                        imageVector        = Icons.Default.Share,
+                        contentDescription = "Share this day's log",
+                        tint               = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier           = Modifier.size(16.dp)
+                    )
+                }
+            }
 
             Spacer(modifier = Modifier.height(10.dp))
 
@@ -323,7 +395,11 @@ private fun EmployeeSessionRow(emp: EmployeeLogSummary) {
                 }
             }
             if (emp.sessions.size > 1 && emp.totalMinutes > 0) {
-                Row(modifier = Modifier.fillMaxWidth().padding(top = 3.dp)) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 3.dp)
+                ) {
                     Spacer(modifier = Modifier.weight(1f))
                     Text(
                         text  = "Total: ${emp.totalMinutes.toHoursLabel()}",
@@ -354,7 +430,7 @@ private fun TimeChip(label: String, time: Long, color: Color) {
 
 // ── Utilities ─────────────────────────────────────────────────────────────────
 
-private fun formatLogDate(dateStr: String): String {
+internal fun formatLogDate(dateStr: String): String {
     return try {
         val date = LocalDate.parse(dateStr, DateTimeFormatter.ofPattern("yyyy-MM-dd"))
         date.format(DateTimeFormatter.ofPattern("dd MMM yyyy, EEEE"))

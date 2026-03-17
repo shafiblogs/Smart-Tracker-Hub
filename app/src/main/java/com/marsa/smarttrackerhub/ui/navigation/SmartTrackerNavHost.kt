@@ -57,9 +57,7 @@ import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkManager
 import android.widget.Toast
 import androidx.compose.material.icons.filled.Refresh
-import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.ShoppingCart
-import androidx.compose.ui.platform.LocalView
 import com.marsa.smarttracker.ui.theme.sTypography
 import com.marsa.smarttrackerhub.data.worker.SyncWorker
 import com.marsa.smarttrackerhub.domain.AccessCode
@@ -89,7 +87,6 @@ import com.marsa.smarttrackerhub.ui.screens.logs.LogsScreen
 import com.marsa.smarttrackerhub.ui.screens.logs.LogsViewModel
 import com.marsa.smarttrackerhub.ui.screens.statement.StatementScreen
 import com.marsa.smarttrackerhub.ui.screens.summary.SummaryScreen
-import com.marsa.smarttrackerhub.utils.ShareUtil
 import kotlinx.coroutines.launch
 
 
@@ -538,8 +535,6 @@ fun SmartTrackerNavHost(navController: NavHostController) {
                     }
 
                     Screen.Logs.route -> {
-                        val rootView = LocalView.current
-                        val selectedShop by logsViewModel.selectedShop.collectAsState()
                         TopAppBar(
                             title = {
                                 CommonTextField(
@@ -560,27 +555,7 @@ fun SmartTrackerNavHost(navController: NavHostController) {
                                 }
                             },
                             actions = {
-                                // Share — only active when a shop + data are loaded
-                                if (selectedShop != null) {
-                                    IconButton(onClick = {
-                                        ShareUtil.shareViewAsImage(
-                                            view       = rootView,
-                                            context    = context,
-                                            fileName   = "logs_${selectedShop?.shopName?.replace(" ", "_")}_${System.currentTimeMillis()}.png",
-                                            shareTitle = "Share Logs"
-                                        )
-                                    }) {
-                                        Icon(
-                                            Icons.Default.Share,
-                                            contentDescription = "Share",
-                                            tint = MaterialTheme.colorScheme.onSurface
-                                        )
-                                    }
-                                }
-                                // Refresh
-                                IconButton(onClick = {
-                                    logsViewModel.refresh()
-                                }) {
+                                IconButton(onClick = { logsViewModel.refresh() }) {
                                     Icon(
                                         Icons.Default.Refresh,
                                         contentDescription = "Refresh Logs",
