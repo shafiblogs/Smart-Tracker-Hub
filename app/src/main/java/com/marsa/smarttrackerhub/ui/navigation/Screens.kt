@@ -76,6 +76,8 @@ sealed class Screen(val route: String) {
         fun createRoute(shopId: Int) = "settlement_history/$shopId"
     }
 
+    data object Logs : Screen("logs")
+
     object Employees : Screen("employees")
     object AddEmployee : Screen("add_employee/{employeeId}") {
         fun createRoute(employeeId: Int? = null) = if (employeeId != null) {

@@ -57,7 +57,9 @@ import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkManager
 import android.widget.Toast
 import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.ShoppingCart
+import androidx.compose.ui.platform.LocalView
 import com.marsa.smarttracker.ui.theme.sTypography
 import com.marsa.smarttrackerhub.data.worker.SyncWorker
 import com.marsa.smarttrackerhub.domain.AccessCode
@@ -83,8 +85,11 @@ import com.marsa.smarttrackerhub.ui.screens.sale.SaleScreen
 import com.marsa.smarttrackerhub.ui.screens.purchase.PurchaseScreen
 import com.marsa.smarttrackerhub.ui.screens.shops.AddShopScreen
 import com.marsa.smarttrackerhub.ui.screens.shops.ShopsListScreen
+import com.marsa.smarttrackerhub.ui.screens.logs.LogsScreen
+import com.marsa.smarttrackerhub.ui.screens.logs.LogsViewModel
 import com.marsa.smarttrackerhub.ui.screens.statement.StatementScreen
 import com.marsa.smarttrackerhub.ui.screens.summary.SummaryScreen
+import com.marsa.smarttrackerhub.utils.ShareUtil
 import kotlinx.coroutines.launch
 
 
@@ -120,6 +125,7 @@ fun SmartTrackerNavHost(navController: NavHostController) {
     // Notification badge count — shared ViewModel instance with NotificationsScreen.
     // Initialised here so the badge is live as soon as the app launches.
     val notificationsViewModel: NotificationsViewModel = viewModel()
+    val logsViewModel: LogsViewModel = viewModel()
     val context = LocalContext.current
     LaunchedEffect(Unit) {
         notificationsViewModel.initDatabase(context)
@@ -398,6 +404,10 @@ fun SmartTrackerNavHost(navController: NavHostController) {
                     }
                 )
             }
+
+            composable(Screen.Logs.route) {
+                LogsScreen(viewModel = logsViewModel)
+            }
         }
     }
 
@@ -519,6 +529,61 @@ fun SmartTrackerNavHost(navController: NavHostController) {
                                     Icon(
                                         Icons.Default.Refresh,
                                         contentDescription = "Sync Employees",
+                                        tint = MaterialTheme.colorScheme.onSurface
+                                    )
+                                }
+                            },
+                            colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent)
+                        )
+                    }
+
+                    Screen.Logs.route -> {
+                        val rootView = LocalView.current
+                        val selectedShop by logsViewModel.selectedShop.collectAsState()
+                        TopAppBar(
+                            title = {
+                                CommonTextField(
+                                    value = "Logs",
+                                    style = sTypography.titleLarge.copy(
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = 22.sp
+                                    )
+                                )
+                            },
+                            navigationIcon = {
+                                IconButton(onClick = { navController.popBackStack() }) {
+                                    Icon(
+                                        Icons.AutoMirrored.Filled.ArrowBack,
+                                        contentDescription = "Back",
+                                        tint = MaterialTheme.colorScheme.onSurface
+                                    )
+                                }
+                            },
+                            actions = {
+                                // Share — only active when a shop + data are loaded
+                                if (selectedShop != null) {
+                                    IconButton(onClick = {
+                                        ShareUtil.shareViewAsImage(
+                                            view       = rootView,
+                                            context    = context,
+                                            fileName   = "logs_${selectedShop?.shopName?.replace(" ", "_")}_${System.currentTimeMillis()}.png",
+                                            shareTitle = "Share Logs"
+                                        )
+                                    }) {
+                                        Icon(
+                                            Icons.Default.Share,
+                                            contentDescription = "Share",
+                                            tint = MaterialTheme.colorScheme.onSurface
+                                        )
+                                    }
+                                }
+                                // Refresh
+                                IconButton(onClick = {
+                                    logsViewModel.refresh()
+                                }) {
+                                    Icon(
+                                        Icons.Default.Refresh,
+                                        contentDescription = "Refresh Logs",
                                         tint = MaterialTheme.colorScheme.onSurface
                                     )
                                 }
@@ -690,14 +755,15 @@ fun SmartTrackerNavHost(navController: NavHostController) {
                         // GUEST (level 0) and level-1 users (GROCERY, CAFE, SUPERMARKET) see only Statement + My Account.
                         // Add/edit actions inside each screen are separately gated by isAdmin.
                         val drawerItems = if (userAccessCode.level >= 2) listOf(
-                            Screen.Statement.route to "Statement",
+                            Screen.AccountSetup.route to "My Account",
                             Screen.ShopList.route to "Shops",
                             Screen.Employees.route to "Employees",
                             Screen.Investors.route to "Investors",
-                            Screen.AccountSetup.route to "My Account"
+                            Screen.Logs.route to "Logs",
+                            Screen.Statement.route to "Statement"
                         ) else listOf(
-                            Screen.Statement.route to "Statement",
-                            Screen.AccountSetup.route to "My Account"
+                            Screen.AccountSetup.route to "My Account",
+                            Screen.Statement.route to "Statement"
                         )
 
                         drawerItems.forEach { (route, label) ->

@@ -48,7 +48,8 @@ class FirebaseSyncRepository(private val db: AppDatabase) {
 
     private suspend fun ensureSignedIn(): Boolean {
         val auth = FirebaseAuth.getInstance()
-        if (auth.currentUser != null) return true
+        // Always call signInAnonymously — Firebase returns the existing user if already signed in
+        // but also refreshes the token, preventing stale-token auth failures.
         return suspendCoroutine { cont ->
             auth.signInAnonymously()
                 .addOnSuccessListener { cont.resume(true) }
