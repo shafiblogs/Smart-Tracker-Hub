@@ -113,6 +113,15 @@ fun EmployeeCard(
                                 )
                             }
                         }
+
+                        // Firebase sync status dot
+                        Spacer(modifier = Modifier.width(8.dp))
+                        val syncDotColor = if (employee.isSynced) Color(0xFF22C55E) else Color(0xFFF97316)
+                        Surface(
+                            shape = CircleShape,
+                            color = syncDotColor,
+                            modifier = Modifier.size(8.dp)
+                        ) {}
                     }
 
                     Spacer(modifier = Modifier.height(6.dp))

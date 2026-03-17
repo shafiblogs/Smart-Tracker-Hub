@@ -86,16 +86,27 @@ fun ShopCard(
                 verticalAlignment = Alignment.Top
             ) {
                 Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = shop.shopName,
-                        style = MaterialTheme.typography.titleLarge.copy(
-                            fontSize = 20.sp,
-                            fontWeight = FontWeight.Bold
-                        ),
-                        color = MaterialTheme.colorScheme.onSurface,
-                        maxLines = 2,
-                        overflow = TextOverflow.Ellipsis
-                    )
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(
+                            text = shop.shopName,
+                            style = MaterialTheme.typography.titleLarge.copy(
+                                fontSize = 20.sp,
+                                fontWeight = FontWeight.Bold
+                            ),
+                            color = MaterialTheme.colorScheme.onSurface,
+                            maxLines = 2,
+                            overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier.weight(1f, fill = false)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        // Firebase sync status dot
+                        val syncDotColor = if (shop.isSynced) Color(0xFF22C55E) else Color(0xFFF97316)
+                        Surface(
+                            shape = CircleShape,
+                            color = syncDotColor,
+                            modifier = Modifier.size(8.dp)
+                        ) {}
+                    }
                     Spacer(modifier = Modifier.height(4.dp))
                     Text(
                         text = shop.shopAddress,

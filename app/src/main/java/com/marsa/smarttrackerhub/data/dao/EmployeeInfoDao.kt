@@ -28,10 +28,10 @@ interface EmployeeInfoDao {
     @Query("SELECT * FROM employee_info WHERE id = :id")
     suspend fun getEmployeeById(id: Int): EmployeeInfo?
 
-    @Query("UPDATE employee_info SET isActive = 0, terminationDate = :terminationDate WHERE id = :id")
+    @Query("UPDATE employee_info SET isActive = 0, terminationDate = :terminationDate, isSynced = 0 WHERE id = :id")
     suspend fun terminateEmployee(id: Int, terminationDate: Long)
 
-    @Query("UPDATE employee_info SET isActive = 1, terminationDate = NULL WHERE id = :id")
+    @Query("UPDATE employee_info SET isActive = 1, terminationDate = NULL, isSynced = 0 WHERE id = :id")
     suspend fun reactivateEmployee(id: Int)
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)

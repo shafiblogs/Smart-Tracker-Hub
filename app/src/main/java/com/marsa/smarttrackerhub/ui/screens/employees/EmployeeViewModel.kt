@@ -18,6 +18,7 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 /**
  * Created by Muhammed Shafi on 13/08/2025.
@@ -79,6 +80,13 @@ class EmployeeViewModel : ViewModel() {
             try {
                 employeeRepository.terminateEmployee(employeeId)
                 onSuccess()
+                // Push updated isActive=false status to Firebase (isSynced was reset to 0 by DAO)
+                withContext(Dispatchers.IO) {
+                    val emp = db.employeeDao().getEmployeeById(employeeId)
+                    emp?.let {
+                        try { FirebaseSyncRepository(db).syncEmployee(it) } catch (_: Exception) {}
+                    }
+                }
             } catch (e: Exception) {
                 onFail("Failed to terminate employee: ${e.localizedMessage}")
             }
@@ -219,13 +227,15 @@ class EmployeeViewModel : ViewModel() {
                 } else {
                     employeeRepository.insertEmployee(employee)
                 }
-                _isSaved.value = true
-                onSuccess()
 
-                // Best-effort inline sync — WorkManager will retry if this fails
-                launch(Dispatchers.IO) {
+                // Sync BEFORE notifying success — avoids cancellation when screen pops
+                // (popping the NavBackStackEntry destroys this ViewModel's viewModelScope)
+                withContext(Dispatchers.IO) {
                     try { FirebaseSyncRepository(db).syncEmployee(employee) } catch (_: Exception) {}
                 }
+
+                _isSaved.value = true
+                onSuccess()
             } catch (e: Exception) {
                 onFail("Failed to save employee: ${e.localizedMessage}")
             }
@@ -240,6 +250,13 @@ class EmployeeViewModel : ViewModel() {
             try {
                 employeeRepository.reactivateEmployee(employeeId)
                 onSuccess()
+                // Push updated isActive=true status to Firebase (isSynced was reset to 0 by DAO)
+                withContext(Dispatchers.IO) {
+                    val emp = db.employeeDao().getEmployeeById(employeeId)
+                    emp?.let {
+                        try { FirebaseSyncRepository(db).syncEmployee(it) } catch (_: Exception) {}
+                    }
+                }
             } catch (e: Exception) {
                 onFail("Failed to reactivate employee: ${e.localizedMessage}")
             }

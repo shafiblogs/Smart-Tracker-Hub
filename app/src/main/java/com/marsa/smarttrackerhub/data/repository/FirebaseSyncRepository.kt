@@ -12,6 +12,7 @@ import com.marsa.smarttrackerhub.data.entity.SettlementEntry
 import com.marsa.smarttrackerhub.data.entity.ShopInfo
 import com.marsa.smarttrackerhub.data.entity.ShopInvestor
 import com.marsa.smarttrackerhub.data.entity.YearEndSettlement
+import java.util.UUID
 import kotlin.coroutines.resume
 import kotlin.coroutines.suspendCoroutine
 
@@ -118,26 +119,48 @@ class FirebaseSyncRepository(private val db: AppDatabase) {
     // ─────────────────────────────────────────────────────────────────────────
 
     suspend fun syncEmployee(entity: EmployeeInfo): Boolean {
-        if (entity.employeeId.isBlank()) {
-            db.employeeDao().markEmployeeSynced("")
-            return true
+        // If employeeId is blank (pre-v5 rows migrated with DEFAULT ''), auto-assign a UUID
+        // so the employee is properly pushed to Firestore instead of silently skipped.
+        val resolvedEntity = if (entity.employeeId.isBlank()) {
+            val newId = UUID.randomUUID().toString()
+            val updated = entity.copy(employeeId = newId)
+            db.employeeDao().updateEmployee(updated)
+            updated
+        } else {
+            entity
         }
+        // If associatedShopFirebaseId is blank (pre-v7 migration default),
+        // resolve it from the local Room shop record so SmartTracker can find
+        // the employee via whereEqualTo("associatedShopFirebaseId", shopId).
+        val shopFirebaseId = if (resolvedEntity.associatedShopFirebaseId.isBlank()
+            && resolvedEntity.associatedShopId > 0
+        ) {
+            val shopId = db.shopDao().getShopById(resolvedEntity.associatedShopId)?.shopId ?: ""
+            if (shopId.isNotBlank()) {
+                val withShop = resolvedEntity.copy(associatedShopFirebaseId = shopId)
+                db.employeeDao().updateEmployee(withShop)
+            }
+            shopId
+        } else {
+            resolvedEntity.associatedShopFirebaseId
+        }
+
         if (!ensureSignedIn()) return false
 
         val map = mapOf(
-            "employeeId"             to entity.employeeId,
-            "employeeName"           to entity.employeeName,
-            "employeePhone"          to entity.employeePhone,
-            "employeeRole"           to entity.employeeRole,
-            "salary"                 to entity.salary,
-            "allowance"              to entity.allowance,
-            "associatedShopFirebaseId" to entity.associatedShopFirebaseId,
-            "visaExpiryDate"         to entity.visaExpiryDate,
-            "isActive"               to entity.isActive
+            "employeeId"               to resolvedEntity.employeeId,
+            "employeeName"             to resolvedEntity.employeeName,
+            "employeePhone"            to resolvedEntity.employeePhone,
+            "employeeRole"             to resolvedEntity.employeeRole,
+            "salary"                   to resolvedEntity.salary,
+            "allowance"                to resolvedEntity.allowance,
+            "associatedShopFirebaseId" to shopFirebaseId,
+            "visaExpiryDate"           to resolvedEntity.visaExpiryDate,
+            "isActive"                 to resolvedEntity.isActive
         )
 
-        val success = firestoreSet("employees", entity.employeeId, map)
-        if (success) db.employeeDao().markEmployeeSynced(entity.employeeId)
+        val success = firestoreSet("employees", resolvedEntity.employeeId, map)
+        if (success) db.employeeDao().markEmployeeSynced(resolvedEntity.employeeId)
         return success
     }
 

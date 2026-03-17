@@ -443,13 +443,97 @@ fun SmartTrackerNavHost(navController: NavHostController) {
                         )
                     }
 
-                    Screen.Statement.route, Screen.ShopList.route, Screen.AddShop.route,
+                    Screen.ShopList.route -> {
+                        TopAppBar(
+                            title = {
+                                CommonTextField(
+                                    value = "Shops",
+                                    style = sTypography.titleLarge.copy(
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = 22.sp
+                                    )
+                                )
+                            },
+                            navigationIcon = {
+                                IconButton(onClick = { navController.popBackStack() }) {
+                                    Icon(
+                                        Icons.AutoMirrored.Filled.ArrowBack,
+                                        contentDescription = "Back",
+                                        tint = MaterialTheme.colorScheme.onSurface
+                                    )
+                                }
+                            },
+                            actions = {
+                                IconButton(onClick = {
+                                    val constraints = Constraints.Builder()
+                                        .setRequiredNetworkType(NetworkType.CONNECTED)
+                                        .build()
+                                    val syncRequest = OneTimeWorkRequestBuilder<SyncWorker>()
+                                        .setConstraints(constraints)
+                                        .build()
+                                    WorkManager.getInstance(context).enqueue(syncRequest)
+                                    Toast.makeText(context, "Sync started", Toast.LENGTH_SHORT).show()
+                                }) {
+                                    Icon(
+                                        Icons.Default.Refresh,
+                                        contentDescription = "Sync Shops",
+                                        tint = MaterialTheme.colorScheme.onSurface
+                                    )
+                                }
+                            },
+                            colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent)
+                        )
+                    }
+
+                    Screen.Employees.route -> {
+                        TopAppBar(
+                            title = {
+                                CommonTextField(
+                                    value = "Employees",
+                                    style = sTypography.titleLarge.copy(
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = 22.sp
+                                    )
+                                )
+                            },
+                            navigationIcon = {
+                                IconButton(onClick = { navController.popBackStack() }) {
+                                    Icon(
+                                        Icons.AutoMirrored.Filled.ArrowBack,
+                                        contentDescription = "Back",
+                                        tint = MaterialTheme.colorScheme.onSurface
+                                    )
+                                }
+                            },
+                            actions = {
+                                IconButton(onClick = {
+                                    val constraints = Constraints.Builder()
+                                        .setRequiredNetworkType(NetworkType.CONNECTED)
+                                        .build()
+                                    val syncRequest = OneTimeWorkRequestBuilder<SyncWorker>()
+                                        .setConstraints(constraints)
+                                        .build()
+                                    WorkManager.getInstance(context).enqueue(syncRequest)
+                                    Toast.makeText(context, "Sync started", Toast.LENGTH_SHORT).show()
+                                }) {
+                                    Icon(
+                                        Icons.Default.Refresh,
+                                        contentDescription = "Sync Employees",
+                                        tint = MaterialTheme.colorScheme.onSurface
+                                    )
+                                }
+                            },
+                            colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent)
+                        )
+                    }
+
+                    Screen.Statement.route, Screen.AddShop.route,
                     Screen.Sale.route, Screen.Purchase.route, Screen.Notifications.route,
                     Screen.Investors.route, Screen.AddInvestor.route,
                     Screen.InvestorDetail.route, Screen.AddShopInvestment.route,
                     Screen.ShopInvestmentDashboard.route, Screen.AddTransaction.route,
                     Screen.SettlementCalculator.route, Screen.SettlementHistory.route,
-                    Screen.Employees.route, Screen.AddEmployee.route,
+                    Screen.AddEmployee.route,
                     Screen.AccountSetup.route, Screen.Summary.route -> {
                         val titleText = when (currentRoute) {
                             Screen.AccountSetup.route -> "My Account"
@@ -467,9 +551,7 @@ fun SmartTrackerNavHost(navController: NavHostController) {
                             Screen.Sale.route -> "Sales"
                             Screen.Purchase.route -> "Purchases"
                             Screen.Statement.route -> "Statements"
-                            Screen.ShopList.route -> "Shops"
                             Screen.Summary.route -> "Accounts"
-                            Screen.Employees.route -> "Employees"
                             else -> "$currentRoute Records"
                         }
                         TopAppBar(
