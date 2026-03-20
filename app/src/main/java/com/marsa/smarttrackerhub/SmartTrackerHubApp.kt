@@ -10,6 +10,7 @@ import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
 import com.google.firebase.FirebaseApp
 import com.google.firebase.FirebaseOptions
+import com.google.firebase.auth.FirebaseAuth
 import com.marsa.smarttrackerhub.data.worker.SyncWorker
 import java.util.concurrent.TimeUnit
 
@@ -34,6 +35,13 @@ class SmartTrackerHubApp : Application() {
             .setStorageBucket(BuildConfig.storage_bucket)
             .build()
         FirebaseApp.initializeApp(this, trackerOptions, "SmartTrackerApp")
+
+        // Eagerly sign in to SmartTrackerApp Firebase so Sale/Purchase/Summary screens
+        // can access Firestore immediately without waiting for their own ViewModel auth.
+        FirebaseAuth.getInstance(FirebaseApp.getInstance("SmartTrackerApp"))
+            .signInAnonymously()
+            .addOnSuccessListener { Log.d("SmartTrackerHubApp", "SmartTrackerApp signed in") }
+            .addOnFailureListener { e -> Log.e("SmartTrackerHubApp", "SmartTrackerApp sign-in failed: ${e.message}") }
 
         // AccountTracker Firebase — OPS PDF Storage (ops_uae / ops_kuwait)
         // project: accounts-tracker-16f93

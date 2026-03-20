@@ -5,8 +5,11 @@ import android.util.Log
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.google.firebase.FirebaseApp
+import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.ListenerRegistration
+import kotlin.coroutines.resume
+import kotlin.coroutines.suspendCoroutine
 import com.marsa.smarttrackerhub.data.AppDatabase
 import com.marsa.smarttrackerhub.data.entity.toDomain
 import com.marsa.smarttrackerhub.data.entity.toEntity
@@ -61,7 +64,21 @@ class SummaryViewModel(
         _summariesCache.value = emptyMap()
 
         shop?.shopId?.let { shopId ->
-            loadMonthListForShop(shopId)
+            viewModelScope.launch {
+                if (ensureAuth()) loadMonthListForShop(shopId)
+            }
+        }
+    }
+
+    private suspend fun ensureAuth(): Boolean {
+        val auth = FirebaseAuth.getInstance(firebaseApp)
+        return suspendCoroutine { cont ->
+            auth.signInAnonymously()
+                .addOnSuccessListener { cont.resume(true) }
+                .addOnFailureListener { e ->
+                    Log.e("SummaryViewModel", "SmartTrackerApp sign-in failed: ${e.message}")
+                    cont.resume(false)
+                }
         }
     }
 

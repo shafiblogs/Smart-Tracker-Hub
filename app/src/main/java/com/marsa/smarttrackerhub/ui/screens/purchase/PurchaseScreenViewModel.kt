@@ -5,8 +5,11 @@ import android.util.Log
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.google.firebase.FirebaseApp
+import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.ListenerRegistration
+import kotlin.coroutines.resume
+import kotlin.coroutines.suspendCoroutine
 import com.marsa.smarttrackerhub.data.AppDatabase
 import com.marsa.smarttrackerhub.domain.AccessCode
 import com.marsa.smarttrackerhub.domain.getHomeShopUser
@@ -75,7 +78,23 @@ class PurchaseScreenViewModel(
         _selectedMonthId.value = null
         _availableMonths.value = emptyList()
         _purchaseCache.value = emptyMap()
-        shop?.shopId?.let { loadMonthListForShop(it) }
+        shop?.shopId?.let { shopId ->
+            viewModelScope.launch {
+                if (ensureAuth()) loadMonthListForShop(shopId)
+            }
+        }
+    }
+
+    private suspend fun ensureAuth(): Boolean {
+        val auth = FirebaseAuth.getInstance(firebaseApp)
+        return suspendCoroutine { cont ->
+            auth.signInAnonymously()
+                .addOnSuccessListener { cont.resume(true) }
+                .addOnFailureListener { e ->
+                    Log.e("PurchaseViewModel", "SmartTrackerApp sign-in failed: ${e.message}")
+                    cont.resume(false)
+                }
+        }
     }
 
     fun selectMonth(monthId: String) {
