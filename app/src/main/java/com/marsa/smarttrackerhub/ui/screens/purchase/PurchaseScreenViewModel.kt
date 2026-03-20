@@ -34,7 +34,7 @@ import kotlinx.coroutines.withContext
  */
 class PurchaseScreenViewModel(
     application: Application,
-    firebaseApp: FirebaseApp
+    private val firebaseApp: FirebaseApp
 ) : AndroidViewModel(application) {
 
     private val database = AppDatabase.getDatabase(application)

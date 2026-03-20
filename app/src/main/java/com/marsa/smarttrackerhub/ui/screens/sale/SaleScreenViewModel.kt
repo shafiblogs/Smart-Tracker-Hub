@@ -28,7 +28,7 @@ import java.util.Locale
 
 class SaleScreenViewModel(
     application: Application,
-    firebaseApp: FirebaseApp
+    private val firebaseApp: FirebaseApp
 ) : AndroidViewModel(application) {
 
     private val _shops = MutableStateFlow<List<ShopListDto>>(emptyList())

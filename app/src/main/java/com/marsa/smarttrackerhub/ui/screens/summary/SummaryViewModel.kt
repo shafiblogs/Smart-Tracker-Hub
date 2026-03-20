@@ -25,7 +25,7 @@ import kotlinx.coroutines.launch
 
 class SummaryViewModel(
     application: Application,
-    firebaseApp: FirebaseApp
+    private val firebaseApp: FirebaseApp
 ) : AndroidViewModel(application) {
 
     private val _shops = MutableStateFlow<List<ShopListDto>>(emptyList())

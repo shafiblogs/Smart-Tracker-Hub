@@ -10,9 +10,9 @@ import com.marsa.smarttrackerhub.data.repository.FirebaseSyncRepository
 /**
  * WorkManager worker that retries all unsynced Room records → Firestore.
  *
- * Scheduled as a [PeriodicWorkRequest] (every 1 hour, network required) so that any
- * records that failed inline sync (e.g. device offline) are pushed as soon as
- * connectivity is restored.
+ * Scheduled as a daily [PeriodicWorkRequest] (network required).
+ * Also triggered manually via the Sync Now button.
+ * Only pushes records where isSynced = false — skips Firebase entirely if nothing is pending.
  *
  * Created by Muhammed Shafi on 13/03/2026.
  * Moro Hub
