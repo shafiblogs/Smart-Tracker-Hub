@@ -57,4 +57,10 @@ interface EmployeeInfoDao {
     /** Marks the employee with the given [employeeId] string as synced. */
     @Query("UPDATE employee_info SET isSynced = 1 WHERE employeeId = :employeeId")
     suspend fun markEmployeeSynced(employeeId: String)
+
+    // ── Pull support ───────────────────────────────────────────────────────────
+
+    /** One-shot list used by pull to build a Firebase-id → Room-id map. */
+    @Query("SELECT * FROM employee_info")
+    suspend fun getAllEmployeesAsList(): List<EmployeeInfo>
 }

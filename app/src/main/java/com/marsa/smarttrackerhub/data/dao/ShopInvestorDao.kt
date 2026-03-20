@@ -138,4 +138,14 @@ interface ShopInvestorDao {
     /** Marks the record with the given [shopInvestorFirebaseId] as synced. */
     @Query("UPDATE shop_investor SET isSynced = 1 WHERE shopInvestorFirebaseId = :shopInvestorFirebaseId")
     suspend fun markShopInvestorSynced(shopInvestorFirebaseId: String)
+
+    // ── Pull support ───────────────────────────────────────────────────────────
+
+    /** One-shot list used by pull to build a Firebase-id → Room-id map. */
+    @Query("SELECT * FROM shop_investor")
+    suspend fun getAllShopInvestorsAsList(): List<ShopInvestor>
+
+    /** Look up by Firebase string ID — used after pull-insert to get the Room int PK. */
+    @Query("SELECT * FROM shop_investor WHERE shopInvestorFirebaseId = :firebaseId LIMIT 1")
+    suspend fun getShopInvestorByFirebaseId(firebaseId: String): ShopInvestor?
 }

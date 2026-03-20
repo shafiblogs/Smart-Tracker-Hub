@@ -140,4 +140,10 @@ interface InvestmentTransactionDao {
     /** Marks the transaction with the given [transactionFirebaseId] (UUID) as synced. */
     @Query("UPDATE investment_transaction SET isSynced = 1 WHERE transactionFirebaseId = :transactionFirebaseId")
     suspend fun markTransactionSynced(transactionFirebaseId: String)
+
+    // ── Pull support ───────────────────────────────────────────────────────────
+
+    /** One-shot list used by pull to build a Firebase-id → Room-id map. */
+    @Query("SELECT * FROM investment_transaction")
+    suspend fun getAllTransactionsList(): List<InvestmentTransaction>
 }

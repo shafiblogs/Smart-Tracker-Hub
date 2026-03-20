@@ -64,6 +64,24 @@ interface YearEndSettlementDao {
     /** Marks the settlement entry with the given [entryFirebaseId] (UUID) as synced. */
     @Query("UPDATE settlement_entry SET isSynced = 1 WHERE entryFirebaseId = :entryFirebaseId")
     suspend fun markSettlementEntrySynced(entryFirebaseId: String)
+
+    // ── Pull support ───────────────────────────────────────────────────────────
+
+    /** One-shot list of all settlements — used by pull to build Firebase-id → Room-id map. */
+    @Query("SELECT * FROM year_end_settlement")
+    suspend fun getAllSettlementsList(): List<YearEndSettlement>
+
+    /** One-shot list of all settlement entries — used by pull to detect existing records. */
+    @Query("SELECT * FROM settlement_entry")
+    suspend fun getAllSettlementEntriesList(): List<SettlementEntry>
+
+    /** Look up a settlement by Firebase string ID — used after pull-insert to get Room int PK. */
+    @Query("SELECT * FROM year_end_settlement WHERE settlementFirebaseId = :firebaseId LIMIT 1")
+    suspend fun getSettlementByFirebaseId(firebaseId: String): YearEndSettlement?
+
+    /** Single-entry insert — used by pull (bulk insert with list also works). */
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertSettlementEntry(entry: SettlementEntry): Long
 }
 
 /** Projection joining settlement_entry with investor name — used for history display. */

@@ -48,4 +48,10 @@ interface ShopDao {
      *  Using the Firebase string ID works for both new-insert (Room id=0) and update paths. */
     @Query("UPDATE shop_info SET isSynced = 1 WHERE shopId = :shopId")
     suspend fun markShopSynced(shopId: String)
+
+    // ── Pull support ───────────────────────────────────────────────────────────
+
+    /** Look up a shop by its Firebase string ID — used after pull-insert to get the Room int PK. */
+    @Query("SELECT * FROM shop_info WHERE shopId = :shopId LIMIT 1")
+    suspend fun getShopByShopId(shopId: String): ShopInfo?
 }

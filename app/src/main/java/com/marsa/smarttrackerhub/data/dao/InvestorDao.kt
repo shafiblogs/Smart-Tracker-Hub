@@ -46,4 +46,14 @@ interface InvestorDao {
     /** Marks the investor with the given [investorId] string as synced. */
     @Query("UPDATE investor_info SET isSynced = 1 WHERE investorId = :investorId")
     suspend fun markInvestorSynced(investorId: String)
+
+    // ── Pull support ───────────────────────────────────────────────────────────
+
+    /** One-shot list used by pull to build a Firebase-id → Room-id map. */
+    @Query("SELECT * FROM investor_info")
+    suspend fun getAllInvestorsAsList(): List<InvestorInfo>
+
+    /** Look up an investor by Firebase string ID — used after pull-insert to get the Room int PK. */
+    @Query("SELECT * FROM investor_info WHERE investorId = :investorId LIMIT 1")
+    suspend fun getInvestorByInvestorId(investorId: String): InvestorInfo?
 }
