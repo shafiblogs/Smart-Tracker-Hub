@@ -28,12 +28,6 @@ import com.marsa.smarttrackerhub.data.entity.YearEndSettlement
 import com.marsa.smarttrackerhub.data.helper.Converters
 import com.marsa.smarttrackerhub.data.migrations.MIGRATION_1_2
 import com.marsa.smarttrackerhub.data.migrations.MIGRATION_2_3
-import com.marsa.smarttrackerhub.data.migrations.MIGRATION_3_4
-import com.marsa.smarttrackerhub.data.migrations.MIGRATION_4_5
-import com.marsa.smarttrackerhub.data.migrations.MIGRATION_5_6
-import com.marsa.smarttrackerhub.data.migrations.MIGRATION_6_7
-import com.marsa.smarttrackerhub.data.migrations.MIGRATION_7_8
-import com.marsa.smarttrackerhub.data.migrations.MIGRATION_8_9
 
 
 /**
@@ -48,33 +42,14 @@ import com.marsa.smarttrackerhub.data.migrations.MIGRATION_8_9
  *   - Added YearEndSettlement (period-based reconciliation event per shop)
  *   - Added SettlementEntry (per-investor line inside a settlement)
  *
- * v3 — Shop status field added:
- *   - shop_info: added `shopStatus` column (Running | Initial | Closed)
- *
- * v4 — Total invested cached in shop:
- *   - shop_info: added `totalInvested` column (cached sum of investment_transaction amounts)
- *
- * v5 — Employee Firebase identifier added:
- *   - employee_info: added `employeeId` column (business-level ID, used as Firebase document ID)
- *
- * v6 — Firebase document IDs added to all investment tables:
- *   - investor_info: added `investorId` column (business-level Firebase doc ID)
- *   - shop_investor: added `shopInvestorFirebaseId` column (composite: "{shopId}_{investorId}")
- *   - investment_transaction: added `transactionFirebaseId` (UUID), `shopFirebaseId`, `investorFirebaseId`
- *   - year_end_settlement: added `settlementFirebaseId` column (UUID)
- *   - settlement_entry: added `entryFirebaseId` (UUID), `investorFirebaseId`
- *
- * v8 — shopRegion field added to shop_info:
- *   - shop_info: added `shopRegion` TEXT (UAE | KUWAIT | KSA), defaults to "UAE"
- *
- * v7 — isSynced flag + missing Firebase path fields:
- *   - shop_info: added `isSynced` (push-to-Firestore flag)
- *   - investor_info: added `isSynced`
- *   - employee_info: added `associatedShopFirebaseId` (denormalized), `isSynced`
- *   - shop_investor: added `isSynced`
- *   - investment_transaction: added `isSynced`
- *   - year_end_settlement: added `shopFirebaseId` (denormalized), `isSynced`
- *   - settlement_entry: added `settlementFirebaseId` (parent doc ID), `shopFirebaseId` (denormalized), `isSynced`
+ * v3 — Consolidated production migration (shop sync, Firebase IDs, region):
+ *   - shop_info: added shopStatus, totalInvested, isSynced, shopRegion
+ *   - employee_info: added employeeId, associatedShopFirebaseId, isSynced
+ *   - investor_info: added investorId, isSynced
+ *   - shop_investor: added shopInvestorFirebaseId, isSynced
+ *   - investment_transaction: added transactionFirebaseId, shopFirebaseId, investorFirebaseId, isSynced
+ *   - year_end_settlement: added settlementFirebaseId, shopFirebaseId, isSynced
+ *   - settlement_entry: added entryFirebaseId, investorFirebaseId, settlementFirebaseId, shopFirebaseId, isSynced
  */
 
 @Database(
@@ -90,7 +65,7 @@ import com.marsa.smarttrackerhub.data.migrations.MIGRATION_8_9
         YearEndSettlement::class,
         SettlementEntry::class
     ],
-    version = 9
+    version = 3
 )
 @TypeConverters(Converters::class)
 abstract class AppDatabase : RoomDatabase() {
@@ -115,7 +90,7 @@ abstract class AppDatabase : RoomDatabase() {
                     AppDatabase::class.java,
                     "tracker_hub_db"
                 )
-                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9)
+                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3)
                     .addCallback(object : Callback() {
                         override fun onCreate(db: SupportSQLiteDatabase) {
                             super.onCreate(db)
