@@ -61,7 +61,7 @@ private val opsShops = listOf(
  * Replaces the old hardcoded shopList approach.
  */
 suspend fun getHomeShopUser(userAccessCode: AccessCode, db: AppDatabase): List<ShopListDto> {
-    val shops = db.shopDao().getAllShopsAsList().map { it.toShopListDto() }
+    val shops = db.shopDao().getActiveShopsAsList().map { it.toShopListDto() }
     return when (userAccessCode) {
         AccessCode.GROCERY      -> shops.filter { it.category == ShopCategory.GROCERY }
         AccessCode.CAFE         -> shops.filter { it.category == ShopCategory.CAFE }
@@ -91,7 +91,7 @@ fun getSummaryShopList(userAccessCode: AccessCode): List<ShopListDto> {
  * Admin and OPS users see all / region-filtered shops including OPS virtual entries.
  */
 suspend fun getStatementShopList(userAccessCode: AccessCode, db: AppDatabase): List<ShopListDto> {
-    val shops = db.shopDao().getAllShopsAsList().map { it.toShopListDto() }
+    val shops = db.shopDao().getActiveShopsAsList().map { it.toShopListDto() }
     return when (userAccessCode) {
         AccessCode.ADMIN       -> shops + opsShops
         AccessCode.OPS_UAE     -> shops.filter { it.region == ShopRegion.UAE } +

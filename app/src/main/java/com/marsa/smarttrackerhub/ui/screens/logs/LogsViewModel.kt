@@ -105,7 +105,7 @@ class LogsViewModel : ViewModel() {
     }
 
     private fun loadShops() = viewModelScope.launch {
-        _shopList.value = db?.shopDao()?.getAllShopsAsList() ?: emptyList()
+        _shopList.value = db?.shopDao()?.getActiveShopsAsList() ?: emptyList()
     }
 
     // ── Actions ───────────────────────────────────────────────────────────
