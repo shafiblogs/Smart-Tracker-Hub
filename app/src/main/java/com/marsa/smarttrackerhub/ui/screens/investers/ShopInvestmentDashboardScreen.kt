@@ -233,7 +233,7 @@ fun ShopInvestmentDashboardScreen(
                                 ) {
                                     CapitalMetric(
                                         label = "Total Raised",
-                                        value = "AED ${
+                                        value = "Đ${
                                             String.format(
                                                 "%,.0f",
                                                 uiState.totalCapital
@@ -500,16 +500,16 @@ private fun InvestorBreakdownCard(
             ) {
                 InvestorMetric(
                     "Paid",
-                    "AED ${String.format("%,.0f", investor.totalPaid)}"
+                    "Đ${String.format("%,.0f", investor.totalPaid)}"
                 )
                 InvestorMetric(
                     "Fair Share",
-                    "AED ${String.format("%,.0f", fairShare)}",
+                    "Đ${String.format("%,.0f", fairShare)}",
                     alignment = Alignment.CenterHorizontally
                 )
                 InvestorMetric(
                     label = if (balance >= 0) "Overpaid" else "Underpaid",
-                    value = "AED ${String.format("%,.0f", kotlin.math.abs(balance))}",
+                    value = "Đ${String.format("%,.0f", kotlin.math.abs(balance))}",
                     valueColor = balanceColor,
                     alignment = Alignment.End
                 )
@@ -647,8 +647,8 @@ private fun EditTransactionDialog(
                 OutlinedTextField(
                     value = amountInput,
                     onValueChange = onAmountChange,
-                    label = { Text("Amount (AED)") },
-                    prefix = { Text("AED ") },
+                    label = { Text("Amount (Đ)") },
+                    prefix = { Text("Đ") },
                     singleLine = true,
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                     isError = amountError != null,
@@ -806,7 +806,7 @@ private fun PhaseGroup(
                     color = MaterialTheme.colorScheme.primary
                 )
                 Text(
-                    text = "AED ${String.format("%,.0f", phaseTotal)}",
+                    text = "Đ${String.format("%,.0f", phaseTotal)}",
                     style = MaterialTheme.typography.titleSmall,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.primary
@@ -855,7 +855,7 @@ private fun PhaseGroup(
                         }
                     }
                     Text(
-                        text = "AED ${String.format("%,.0f", tx.amount)}",
+                        text = "Đ${String.format("%,.0f", tx.amount)}",
                         style = MaterialTheme.typography.bodyMedium,
                         fontWeight = FontWeight.SemiBold,
                         color = MaterialTheme.colorScheme.onSurface

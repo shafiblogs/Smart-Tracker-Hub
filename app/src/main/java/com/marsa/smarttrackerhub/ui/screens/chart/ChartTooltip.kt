@@ -80,7 +80,7 @@ fun ChartTooltip(
                     )
                 }
                 Text(
-                    text = String.format("%.2f", touchInfo.targetSale),
+                    text = "Đ${String.format("%.2f", touchInfo.targetSale)}",
                     style = MaterialTheme.typography.bodyLarge,
                     fontWeight = FontWeight.SemiBold
                 )
@@ -115,7 +115,7 @@ fun ChartTooltip(
                     )
                 }
                 Text(
-                    text = String.format("%.2f", touchInfo.averageSale),
+                    text = "Đ${String.format("%.2f", touchInfo.averageSale)}",
                     style = MaterialTheme.typography.bodyLarge,
                     fontWeight = FontWeight.SemiBold,
                     color = if (touchInfo.isTargetMet) Color(0xFF22C55E) else errorColor
@@ -162,7 +162,7 @@ fun ChartTooltip(
                     if (touchInfo.difference >= 0) Color(0xFF22C55E) else errorColor
 
                 Text(
-                    text = "$icon ${String.format("%.2f", abs(touchInfo.difference))}",
+                    text = "$icon Đ${String.format("%.2f", abs(touchInfo.difference))}",
                     style = MaterialTheme.typography.bodyMedium,
                     color = diffColor,
                     fontWeight = FontWeight.Bold

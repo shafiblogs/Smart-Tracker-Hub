@@ -88,7 +88,7 @@ fun InvestorCard(
             // ── Total invested ─────────────────────────────────────────────
             InfoColumn(
                 label = "Total Invested",
-                value = "AED ${String.format("%,.2f", totalInvested)}",
+                value = "Đ${String.format("%,.2f", totalInvested)}",
                 valueColor = MaterialTheme.colorScheme.primary,
                 valueFontWeight = FontWeight.Bold
             )

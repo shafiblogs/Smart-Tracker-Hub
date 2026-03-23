@@ -36,7 +36,7 @@ fun TotalRow(label: String, amount: Double, color: Color) {
                 color = color
             )
             Text(
-                text = "₹%.2f".format(amount),
+                text = "Đ%.2f".format(amount),
                 style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold),
                 fontSize = 15.sp,
                 color = color

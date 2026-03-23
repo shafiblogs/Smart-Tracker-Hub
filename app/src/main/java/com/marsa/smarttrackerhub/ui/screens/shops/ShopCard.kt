@@ -217,14 +217,14 @@ fun ShopCard(
             ) {
                 InfoColumn(
                     label = "Total Invested",
-                    value = "AED ${String.format("%,.2f", shop.totalInvested)}",
+                    value = "Đ${String.format("%,.2f", shop.totalInvested)}",
                     valueColor = MaterialTheme.colorScheme.primary,
                     valueFontWeight = FontWeight.Bold
                 )
 
                 InfoColumn(
                     label = "Stock Value",
-                    value = "AED ${String.format("%,.2f", shop.stockValue)}",
+                    value = "Đ${String.format("%,.2f", shop.stockValue)}",
                     alignment = Alignment.End
                 )
             }
@@ -243,7 +243,7 @@ fun ShopCard(
 
                 InfoColumn(
                     label = "Zakath Amount",
-                    value = "AED ${String.format("%,.2f", zakathAmount)}",
+                    value = "Đ${String.format("%,.2f", zakathAmount)}",
                     valueColor = MaterialTheme.colorScheme.primary,
                     valueFontWeight = FontWeight.Bold,
                     alignment = Alignment.End

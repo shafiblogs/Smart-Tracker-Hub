@@ -176,7 +176,7 @@ fun InvestorDetailScreen(
                             ) {
                                 InvestorSummaryMetric(
                                     label = "Total Paid",
-                                    value = "AED ${String.format("%,.2f", uiState.totalPaidAllShops)}"
+                                    value = "Đ${String.format("%,.2f", uiState.totalPaidAllShops)}"
                                 )
                                 InvestorSummaryMetric(
                                     label = "Active Shops",
@@ -299,7 +299,7 @@ private fun InvestorShopSummaryCard(
                 )
                 InvestorShopMetric(
                     label = "Total Paid",
-                    value = "AED ${String.format("%,.2f", summary.totalPaid)}",
+                    value = "Đ${String.format("%,.2f", summary.totalPaid)}",
                     valueColor = MaterialTheme.colorScheme.primary,
                     alignment = Alignment.CenterHorizontally
                 )

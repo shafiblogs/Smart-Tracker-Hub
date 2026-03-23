@@ -37,7 +37,7 @@ fun InfoRow(label: String, amount: Double, color: Color = MaterialTheme.colorSch
                 )
             } else {
                 Text(
-                    text = "₹%.2f".format(amount),
+                    text = "Đ%.2f".format(amount),
                     style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Medium),
                     color = color
                 )

@@ -197,7 +197,7 @@ fun AddTransactionScreen(
                         modifier = Modifier.fillMaxWidth(),
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                         placeholder = { Text("Enter amount") },
-                        prefix = { Text("AED ") },
+                        prefix = { Text("Đ") },
                         isError = state.amountError != null,
                         supportingText = if (state.amountError != null) {
                             { Text(state.amountError!!, color = MaterialTheme.colorScheme.error) }

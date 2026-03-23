@@ -192,7 +192,7 @@ private fun PurchaseBreakdownTable(purchases: List<PurchaseItem>) {
                     modifier = Modifier.weight(1f)
                 )
                 Text(
-                    text = "₹%.2f".format(item.totalAmount),
+                    text = "Đ%.2f".format(item.totalAmount),
                     style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Medium),
                     color = MaterialTheme.colorScheme.error,
                     textAlign = TextAlign.End,
@@ -216,7 +216,7 @@ private fun PurchaseBreakdownTable(purchases: List<PurchaseItem>) {
                 modifier = Modifier.weight(1f)
             )
             Text(
-                text = "₹%.2f".format(total),
+                text = "Đ%.2f".format(total),
                 style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
                 color = MaterialTheme.colorScheme.error,
                 textAlign = TextAlign.End,

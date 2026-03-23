@@ -172,7 +172,8 @@ fun AddShopScreen(
                         ShopType.Grocery.name,
                         ShopType.Cafeteria.name,
                         ShopType.Hyper.name,
-                        ShopType.Super.name
+                        ShopType.Super.name,
+                        ShopType.Central.name
                     ),
                     onOptionSelected = { selected ->
                         viewModel.updateShopType(ShopType.valueOf(selected))
@@ -362,7 +363,7 @@ fun AddShopScreen(
                         modifier = Modifier.fillMaxWidth(),
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                         placeholder = { Text("Enter stock value") },
-                        prefix = { Text("AED ") },
+                        prefix = { Text("Đ") },
                         enabled = isEditEnabled
                     )
                 }
@@ -449,7 +450,7 @@ fun AddShopScreen(
                             )
                             Spacer(modifier = Modifier.height(4.dp))
                             Text(
-                                text = "AED ${String.format("%.2f", zakathAmount)}",
+                                text = "Đ${String.format("%.2f", zakathAmount)}",
                                 style = MaterialTheme.typography.titleLarge,
                                 fontWeight = FontWeight.Bold,
                                 color = MaterialTheme.colorScheme.primary
@@ -515,7 +516,7 @@ fun AddShopScreen(
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                         Text(
-                            text = "AED ${String.format("%,.2f", totalInvested)}",
+                            text = "Đ${String.format("%,.2f", totalInvested)}",
                             style = MaterialTheme.typography.bodyMedium.copy(
                                 fontWeight = androidx.compose.ui.text.font.FontWeight.Bold
                             ),
@@ -623,7 +624,7 @@ private fun ShopInvestorRow(investor: ShopInvestorSummary) {
                     fontWeight = FontWeight.SemiBold
                 )
                 Text(
-                    text = "Paid: AED ${String.format("%,.2f", investor.totalPaid)}",
+                    text = "Paid: Đ${String.format("%,.2f", investor.totalPaid)}",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )

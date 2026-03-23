@@ -102,8 +102,13 @@ class SaleScreenViewModel(
 
     fun loadScreenData(userAccessCode: AccessCode) {
         viewModelScope.launch {
-            _shops.value = withContext(Dispatchers.IO) {
+            val shops = withContext(Dispatchers.IO) {
                 getHomeShopUser(userAccessCode, database)
+            }
+            _shops.value = shops
+            // Auto-select the first shop so months load immediately
+            if (_selectedShop.value == null) {
+                shops.firstOrNull()?.let { setSelectedShop(it) }
             }
         }
     }
@@ -148,6 +153,11 @@ class SaleScreenViewModel(
                     .sortedByDescending { it.timestamp }
 
                 _availableMonths.value = monthsList
+
+                // Auto-select the most recent month on first load
+                if (_selectedMonthId.value == null && monthsList.isNotEmpty()) {
+                    selectMonth(monthsList.first().id)
+                }
 
                 Log.d("SaleScreenViewModel", "Loaded ${monthsList.size} month IDs for $shopId")
             }

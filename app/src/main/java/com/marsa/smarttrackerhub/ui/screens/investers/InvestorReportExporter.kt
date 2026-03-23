@@ -86,14 +86,14 @@ object InvestorReportExporter {
                             val paidDate = entry.settlementPaidDate?.let {
                                 " on ${dateFormat.format(Date(it))}"
                             } ?: ""
-                            "Paid AED ${String.format("%,.2f", entry.settlementPaidAmount)}$paidDate"
+                            "Paid Đ${String.format("%,.2f", entry.settlementPaidAmount)}$paidDate"
                         }
                         else -> "Outstanding"
                     }
                     sb.appendLine("  ┌─ ${entry.investorName}")
-                    sb.appendLine("  │  Fair Share : AED ${String.format("%,.2f", entry.fairShareAmount)}")
-                    sb.appendLine("  │  Actual Paid: AED ${String.format("%,.2f", entry.actualPaidAmount)}")
-                    sb.appendLine("  │  Balance    : ${balanceSign}AED ${String.format("%,.2f", entry.balanceAmount)}")
+                    sb.appendLine("  │  Fair Share : Đ${String.format("%,.2f", entry.fairShareAmount)}")
+                    sb.appendLine("  │  Actual Paid: Đ${String.format("%,.2f", entry.actualPaidAmount)}")
+                    sb.appendLine("  │  Balance    : ${balanceSign}Đ${String.format("%,.2f", entry.balanceAmount)}")
                     sb.appendLine("  └─ Status     : $settledStatus")
                     sb.appendLine()
                 }

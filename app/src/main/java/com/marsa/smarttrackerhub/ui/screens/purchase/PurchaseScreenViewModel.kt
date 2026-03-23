@@ -66,8 +66,13 @@ class PurchaseScreenViewModel(
 
     fun loadScreenData(userAccessCode: AccessCode) {
         viewModelScope.launch {
-            _shops.value = withContext(Dispatchers.IO) {
+            val shops = withContext(Dispatchers.IO) {
                 getHomeShopUser(userAccessCode, database)
+            }
+            _shops.value = shops
+            // Auto-select the first shop so months load immediately
+            if (_selectedShop.value == null) {
+                shops.firstOrNull()?.let { setSelectedShop(it) }
             }
         }
     }
@@ -142,6 +147,12 @@ class PurchaseScreenViewModel(
                     .orEmpty()
                     .sortedByDescending { it.timestamp }
                 _availableMonths.value = months
+
+                // Auto-select the most recent month on first load
+                if (_selectedMonthId.value == null && months.isNotEmpty()) {
+                    selectMonth(months.first().id)
+                }
+
                 Log.d("PurchaseViewModel", "Loaded ${months.size} months for $shopId")
             }
     }

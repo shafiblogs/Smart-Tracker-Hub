@@ -30,6 +30,6 @@ fun SummaryRow(label: String, amount: Double, color: Color) {
         verticalAlignment = Alignment.CenterVertically
     ) {
         Text(text = label, fontSize = 16.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        Text(text = "₹${"%.2f".format(amount)}", fontSize = 16.sp, fontWeight = FontWeight.SemiBold, color = color)
+        Text(text = "Đ${"%.2f".format(amount)}", fontSize = 16.sp, fontWeight = FontWeight.SemiBold, color = color)
     }
 }

@@ -96,13 +96,13 @@ fun BalanceComparisonRow(label: String, opening: Double, current: Double) {
             modifier = Modifier.weight(1f)
         )
         Text(
-            text = "₹%.2f".format(opening),
+            text = "Đ%.2f".format(opening),
             style = MaterialTheme.typography.bodyMedium,
             textAlign = TextAlign.Center,
             modifier = Modifier.weight(1f)
         )
         Text(
-            text = "₹%.2f".format(current),
+            text = "Đ%.2f".format(current),
             style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Medium),
             color = if (current < 0) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface,
             textAlign = TextAlign.End,

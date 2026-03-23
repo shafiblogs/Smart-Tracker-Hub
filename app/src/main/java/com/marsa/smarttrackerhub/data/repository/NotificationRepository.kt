@@ -78,7 +78,7 @@ class NotificationRepository(
                             entityId = shop.id,
                             entityName = shop.shopName,
                             priority = NotificationPriority.HIGH,
-                            additionalInfo = "Pending Amount: AED ${String.format("%.2f", zakathAmount)}"
+                            additionalInfo = "Pending Amount: Đ${String.format("%.2f", zakathAmount)}"
                         )
                     )
                 }

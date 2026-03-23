@@ -242,7 +242,7 @@ private fun SettlementHistoryCard(
                 }
                 Column(horizontalAlignment = Alignment.End) {
                     Text(
-                        text = "AED ${String.format("%,.2f", settlement.totalInvested)}",
+                        text = "Đ${String.format("%,.2f", settlement.totalInvested)}",
                         style = MaterialTheme.typography.titleSmall,
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.primary
@@ -363,8 +363,8 @@ private fun SettlementEntryRow(
             Text(
                 text = when {
                     isBalanced -> "Settled"
-                    isOverpaid -> "+AED ${String.format("%,.2f", entry.balanceAmount)}"
-                    else       -> "−AED ${String.format("%,.2f", kotlin.math.abs(entry.balanceAmount))}"
+                    isOverpaid -> "+Đ${String.format("%,.2f", entry.balanceAmount)}"
+                    else       -> "−Đ${String.format("%,.2f", kotlin.math.abs(entry.balanceAmount))}"
                 },
                 style = MaterialTheme.typography.bodyMedium,
                 fontWeight = FontWeight.Bold,
@@ -384,7 +384,7 @@ private fun SettlementEntryRow(
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
             Text(
-                text = "Paid: AED ${String.format("%,.2f", entry.actualPaidAmount)}",
+                text = "Paid: Đ${String.format("%,.2f", entry.actualPaidAmount)}",
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -403,7 +403,7 @@ private fun SettlementEntryRow(
                     shape = MaterialTheme.shapes.small
                 ) {
                     Text(
-                        text = "Settled $paidDateStr · AED ${String.format("%,.2f", entry.settlementPaidAmount)}",
+                        text = "Settled $paidDateStr · Đ${String.format("%,.2f", entry.settlementPaidAmount)}",
                         modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onPrimaryContainer,
@@ -473,8 +473,8 @@ private fun MarkAsPaidDialog(
                             amountError = null
                         }
                     },
-                    label = { Text("Amount (AED)") },
-                    prefix = { Text("AED ") },
+                    label = { Text("Amount (Đ)") },
+                    prefix = { Text("Đ") },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                     modifier = Modifier.fillMaxWidth(),
                     isError = amountError != null,

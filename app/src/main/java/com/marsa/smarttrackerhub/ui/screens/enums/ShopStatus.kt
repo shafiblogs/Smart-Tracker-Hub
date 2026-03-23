@@ -11,5 +11,5 @@ enum class ShopStatus {
 }
 
 enum class ShopType {
-    Grocery, Cafeteria, Super, Hyper
+    Grocery, Cafeteria, Super, Hyper, Central
 }

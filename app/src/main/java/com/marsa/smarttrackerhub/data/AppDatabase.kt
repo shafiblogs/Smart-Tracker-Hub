@@ -91,6 +91,7 @@ abstract class AppDatabase : RoomDatabase() {
                     "tracker_hub_db"
                 )
                     .addMigrations(MIGRATION_1_2, MIGRATION_2_3)
+                    .fallbackToDestructiveMigrationOnDowngrade()
                     .addCallback(object : Callback() {
                         override fun onCreate(db: SupportSQLiteDatabase) {
                             super.onCreate(db)

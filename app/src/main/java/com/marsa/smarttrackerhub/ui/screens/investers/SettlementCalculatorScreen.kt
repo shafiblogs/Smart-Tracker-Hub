@@ -176,7 +176,7 @@ fun SettlementCalculatorScreen(
                                     color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f)
                                 )
                                 Text(
-                                    text = "AED ${String.format("%,.2f", uiState.totalInvested)}",
+                                    text = "Đ${String.format("%,.2f", uiState.totalInvested)}",
                                     style = MaterialTheme.typography.titleLarge,
                                     fontWeight = FontWeight.Bold,
                                     color = MaterialTheme.colorScheme.onPrimaryContainer
@@ -353,16 +353,16 @@ private fun SettlementRowCard(row: InvestorSettlementRow) {
             ) {
                 SettlementMetric(
                     label = "Fair Share",
-                    value = "AED ${String.format("%,.2f", row.fairShareAmount)}"
+                    value = "Đ${String.format("%,.2f", row.fairShareAmount)}"
                 )
                 SettlementMetric(
                     label = "Actual Paid",
-                    value = "AED ${String.format("%,.2f", row.actualPaidAmount)}",
+                    value = "Đ${String.format("%,.2f", row.actualPaidAmount)}",
                     alignment = Alignment.CenterHorizontally
                 )
                 SettlementMetric(
                     label = "Balance",
-                    value = "AED ${String.format("%,.2f", kotlin.math.abs(row.balanceAmount))}",
+                    value = "Đ${String.format("%,.2f", kotlin.math.abs(row.balanceAmount))}",
                     valueColor = balanceColor,
                     alignment = Alignment.End
                 )
@@ -423,7 +423,7 @@ private fun SettlementSummaryCard(rows: List<InvestorSettlementRow>) {
                             modifier = Modifier.weight(1f)
                         )
                         Text(
-                            text = "AED ${String.format("%,.2f", transferAmount)}",
+                            text = "Đ${String.format("%,.2f", transferAmount)}",
                             style = MaterialTheme.typography.bodySmall,
                             fontWeight = FontWeight.Bold,
                             color = MaterialTheme.colorScheme.onSecondaryContainer

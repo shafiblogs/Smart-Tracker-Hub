@@ -269,7 +269,7 @@ fun AddEmployeeScreen(
                         modifier = Modifier.fillMaxWidth(),
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                         placeholder = { Text("Enter salary") },
-                        prefix = { Text("AED ") },
+                        prefix = { Text("Đ") },
                         enabled = isEditEnabled
                     )
                 }
@@ -288,7 +288,7 @@ fun AddEmployeeScreen(
                         modifier = Modifier.fillMaxWidth(),
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                         placeholder = { Text("Enter allowance") },
-                        prefix = { Text("AED ") },
+                        prefix = { Text("Đ") },
                         enabled = isEditEnabled
                     )
                 }

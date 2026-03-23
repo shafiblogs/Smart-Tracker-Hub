@@ -234,12 +234,12 @@ fun EmployeeCard(
             ) {
                 InfoColumn(
                     label = "Basic Salary",
-                    value = "AED ${String.format("%.2f", employee.salary)}"
+                    value = "Đ${String.format("%.2f", employee.salary)}"
                 )
 
                 InfoColumn(
                     label = "Allowance",
-                    value = "AED ${String.format("%.2f", employee.allowance)}",
+                    value = "Đ${String.format("%.2f", employee.allowance)}",
                     alignment = Alignment.End
                 )
             }
@@ -252,7 +252,7 @@ fun EmployeeCard(
             ) {
                 InfoColumn(
                     label = "Total Compensation",
-                    value = "AED ${String.format("%.2f", totalCompensation)}",
+                    value = "Đ${String.format("%.2f", totalCompensation)}",
                     valueColor = MaterialTheme.colorScheme.primary,
                     valueFontWeight = FontWeight.Bold
                 )
