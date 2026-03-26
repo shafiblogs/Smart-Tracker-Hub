@@ -17,8 +17,10 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.google.firebase.FirebaseApp
 import com.marsa.smarttrackerhub.domain.AccessCode
 import com.marsa.smarttrackerhub.ui.screens.chart.MonthlySalesChart
+import com.marsa.smarttrackerhub.ui.screens.chart.PurchaseCategoryChart
 import com.marsa.smarttrackerhub.ui.screens.chart.StatisticsCard
 import com.marsa.smarttrackerhub.utils.ShareUtil
 
@@ -28,24 +30,32 @@ fun HomeScreen(
     userAccessCode: AccessCode
 ) {
     val context = LocalContext.current
+    val firebaseApp = FirebaseApp.getInstance("SmartTrackerApp")
     val viewModel: HomeScreenViewModel = viewModel(
-        factory = HomeScreenViewModelFactory(context.applicationContext as Application)
+        factory = HomeScreenViewModelFactory(
+            application = context.applicationContext as Application,
+            firebaseApp = firebaseApp
+        )
     )
-    val selectedShop by viewModel.selectedShop.collectAsState()
-    val chartData by viewModel.chartData.collectAsState()
-    val shops by viewModel.shops.collectAsState()
-    val isLoading by viewModel.isLoading.collectAsState()
-    val statistics by viewModel.statistics.collectAsState()
-    val expanded by viewModel.expanded.collectAsState()
-    val periodLabel by viewModel.periodLabel.collectAsState()
+    val selectedShop     by viewModel.selectedShop.collectAsState()
+    val chartData        by viewModel.chartData.collectAsState()
+    val shops            by viewModel.shops.collectAsState()
+    val isLoading        by viewModel.isLoading.collectAsState()
+    val statistics       by viewModel.statistics.collectAsState()
+    val expanded         by viewModel.expanded.collectAsState()
+    val periodLabel      by viewModel.periodLabel.collectAsState()
+    val availableRanges  by viewModel.availableRanges.collectAsState()
+    val selectedRange    by viewModel.selectedRange.collectAsState()
+    val periodExpanded   by viewModel.periodExpanded.collectAsState()
 
-    // Period selection states
-    val availableRanges by viewModel.availableRanges.collectAsState()
-    val selectedRange by viewModel.selectedRange.collectAsState()
-    val periodExpanded by viewModel.periodExpanded.collectAsState()
+    // Purchase chart state
+    val isPurchaseLoading    by viewModel.isPurchaseLoading.collectAsState()
+    val purchaseCategoryData by viewModel.purchaseCategoryData.collectAsState()
+    val purchaseStatistics   by viewModel.purchaseStatistics.collectAsState()
 
-    var chartView by remember { mutableStateOf<View?>(null) }
-    var statsView by remember { mutableStateOf<View?>(null) }
+    var chartView         by remember { mutableStateOf<View?>(null) }
+    var statsView         by remember { mutableStateOf<View?>(null) }
+    var purchaseChartView by remember { mutableStateOf<View?>(null) }
 
     LaunchedEffect(Unit) {
         viewModel.loadScreenData(userAccessCode)
@@ -58,7 +68,7 @@ fun HomeScreen(
             .padding(16.dp)
     ) {
 
-        // Shop Selector
+        // ── Shop Selector ────────────────────────────────────────────────────
         ExposedDropdownMenuBox(
             expanded = expanded,
             onExpandedChange = { viewModel.setExpanded(!expanded) }
@@ -75,7 +85,6 @@ fun HomeScreen(
                     .menuAnchor()
                     .fillMaxWidth()
             )
-
             ExposedDropdownMenu(
                 expanded = expanded,
                 onDismissRequest = { viewModel.setExpanded(false) },
@@ -106,7 +115,7 @@ fun HomeScreen(
 
         Spacer(modifier = Modifier.height(12.dp))
 
-        // Period Selector (NEW)
+        // ── Period Selector ──────────────────────────────────────────────────
         ExposedDropdownMenuBox(
             expanded = periodExpanded,
             onExpandedChange = { viewModel.setPeriodExpanded(!periodExpanded) }
@@ -122,7 +131,6 @@ fun HomeScreen(
                     .menuAnchor()
                     .fillMaxWidth()
             )
-
             ExposedDropdownMenu(
                 expanded = periodExpanded,
                 onDismissRequest = { viewModel.setPeriodExpanded(false) }
@@ -146,7 +154,7 @@ fun HomeScreen(
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        // Statistics Card
+        // ── Statistics Card ──────────────────────────────────────────────────
         statistics?.let { stats ->
             AndroidView(
                 factory = { ctx ->
@@ -168,9 +176,7 @@ fun HomeScreen(
                                 }
                             )
                         }
-                    }.also { composeView ->
-                        statsView = composeView
-                    }
+                    }.also { statsView = it }
                 },
                 update = { view ->
                     view.setContent {
@@ -193,11 +199,10 @@ fun HomeScreen(
                 },
                 modifier = Modifier.fillMaxWidth()
             )
-
             Spacer(modifier = Modifier.height(24.dp))
         }
 
-        // Chart Title with Share Button
+        // ── Sales Trends title + share ───────────────────────────────────────
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
@@ -208,7 +213,6 @@ fun HomeScreen(
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.SemiBold
             )
-
             IconButton(
                 onClick = {
                     chartView?.let { view ->
@@ -235,7 +239,7 @@ fun HomeScreen(
 
         Spacer(modifier = Modifier.height(12.dp))
 
-        // Chart Card
+        // ── Sales Chart Card ─────────────────────────────────────────────────
         Card(
             modifier = Modifier.fillMaxWidth(),
             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
@@ -245,81 +249,97 @@ fun HomeScreen(
                 factory = { ctx ->
                     androidx.compose.ui.platform.ComposeView(ctx).apply {
                         setContent {
-                            if (isLoading) {
-                                Box(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .height(350.dp),
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    CircularProgressIndicator()
-                                }
-                            } else if (chartData.isEmpty()) {
-                                Box(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .height(350.dp),
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    Text(
-                                        text = "No data available for selected shop",
-                                        style = MaterialTheme.typography.bodyLarge,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
-                                }
-                            } else {
-                                MonthlySalesChart(
-                                    data = chartData,
-                                    shopAddress = selectedShop?.address ?: "",
-                                    periodLabel = periodLabel,
-                                    isTargetAchieved = (statistics?.averageAchievementPercentage ?: 0.0) >= 100,
-                                    achievementPercentage = statistics?.averageAchievementPercentage ?: 0.0, // ADD this
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .height(350.dp)
-                                )
-                            }
+                            SalesChartContent(
+                                isLoading = isLoading,
+                                chartData = chartData,
+                                selectedShop = selectedShop,
+                                periodLabel = periodLabel,
+                                statistics = statistics
+                            )
                         }
-                    }.also { composeView ->
-                        chartView = composeView
-                    }
+                    }.also { chartView = it }
                 },
                 update = { view ->
                     view.setContent {
-                        if (isLoading) {
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .height(350.dp),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                CircularProgressIndicator()
-                            }
-                        } else if (chartData.isEmpty()) {
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .height(350.dp),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Text(
-                                    text = "No data available for selected shop",
-                                    style = MaterialTheme.typography.bodyLarge,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                            }
-                        } else {
-                            MonthlySalesChart(
-                                data = chartData,
-                                shopAddress = selectedShop?.address ?: "",
-                                periodLabel = periodLabel,
-                                isTargetAchieved = (statistics?.averageAchievementPercentage ?: 0.0) >= 100,
-                                achievementPercentage = statistics?.averageAchievementPercentage ?: 0.0, // ADD this
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .height(350.dp)
+                        SalesChartContent(
+                            isLoading = isLoading,
+                            chartData = chartData,
+                            selectedShop = selectedShop,
+                            periodLabel = periodLabel,
+                            statistics = statistics
+                        )
+                    }
+                },
+                modifier = Modifier.fillMaxWidth()
+            )
+        }
+
+        Spacer(modifier = Modifier.height(24.dp))
+
+        // ── Purchase Progress title + share ─────────────────────────────────
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = "Purchase Progress",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold
+            )
+            IconButton(
+                onClick = {
+                    purchaseChartView?.let { view ->
+                        ShareUtil.shareViewAsImage(
+                            view = view,
+                            context = context,
+                            fileName = "purchase_chart_${selectedShop?.name?.replace(" ", "_")}.png",
+                            shareTitle = "Share Purchase Progress"
+                        )
+                    }
+                },
+                enabled = purchaseCategoryData.isNotEmpty()
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Share,
+                    contentDescription = "Share Purchase Chart",
+                    tint = if (purchaseCategoryData.isNotEmpty())
+                        MaterialTheme.colorScheme.primary
+                    else
+                        MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.height(12.dp))
+
+        // ── Purchase Chart Card ──────────────────────────────────────────────
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+            elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+        ) {
+            AndroidView(
+                factory = { ctx ->
+                    androidx.compose.ui.platform.ComposeView(ctx).apply {
+                        setContent {
+                            PurchaseChartContent(
+                                isPurchaseLoading    = isPurchaseLoading,
+                                purchaseCategoryData = purchaseCategoryData,
+                                purchaseStatistics   = purchaseStatistics,
+                                selectedShop         = selectedShop
                             )
                         }
+                    }.also { purchaseChartView = it }
+                },
+                update = { view ->
+                    view.setContent {
+                        PurchaseChartContent(
+                            isPurchaseLoading    = isPurchaseLoading,
+                            purchaseCategoryData = purchaseCategoryData,
+                            purchaseStatistics   = purchaseStatistics,
+                            selectedShop         = selectedShop
+                        )
                     }
                 },
                 modifier = Modifier.fillMaxWidth()
@@ -327,5 +347,99 @@ fun HomeScreen(
         }
 
         Spacer(modifier = Modifier.height(16.dp))
+    }
+}
+
+// ── Private helper composables ───────────────────────────────────────────────
+
+@Composable
+private fun PurchaseChartContent(
+    isPurchaseLoading: Boolean,
+    purchaseCategoryData: List<com.marsa.smarttrackerhub.ui.screens.chart.PurchaseCategoryChartData>,
+    purchaseStatistics: com.marsa.smarttrackerhub.ui.screens.chart.PurchaseChartStatistics?,
+    selectedShop: com.marsa.smarttrackerhub.ui.screens.statement.ShopListDto?
+) {
+    when {
+        isPurchaseLoading -> {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(200.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                CircularProgressIndicator()
+            }
+        }
+        purchaseCategoryData.isEmpty() -> {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(200.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = if (selectedShop == null)
+                        "Select a shop to view purchases"
+                    else
+                        "No purchase data available",
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
+        else -> {
+            purchaseStatistics?.let { stats ->
+                com.marsa.smarttrackerhub.ui.screens.chart.PurchaseCategoryChart(
+                    categories  = purchaseCategoryData,
+                    statistics  = stats,
+                    shopAddress = selectedShop?.address ?: selectedShop?.name ?: "",
+                    modifier    = Modifier.fillMaxWidth()
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun SalesChartContent(
+    isLoading: Boolean,
+    chartData: List<com.marsa.smarttrackerhub.ui.screens.chart.MonthlyChartData>,
+    selectedShop: com.marsa.smarttrackerhub.ui.screens.statement.ShopListDto?,
+    periodLabel: String,
+    statistics: com.marsa.smarttrackerhub.domain.ChartStatistics?
+) {
+    if (isLoading) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(350.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            CircularProgressIndicator()
+        }
+    } else if (chartData.isEmpty()) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(350.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            Text(
+                text = "No data available for selected shop",
+                style = MaterialTheme.typography.bodyLarge,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+    } else {
+        MonthlySalesChart(
+            data = chartData,
+            shopAddress = selectedShop?.address ?: "",
+            periodLabel = periodLabel,
+            isTargetAchieved = (statistics?.averageAchievementPercentage ?: 0.0) >= 100,
+            achievementPercentage = statistics?.averageAchievementPercentage ?: 0.0,
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(350.dp)
+        )
     }
 }

@@ -55,6 +55,7 @@ import androidx.work.Constraints
 import androidx.work.NetworkType
 import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkManager
+import androidx.work.workDataOf
 import android.widget.Toast
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.ShoppingCart
@@ -477,6 +478,9 @@ fun SmartTrackerNavHost(navController: NavHostController) {
                                         .build()
                                     val syncRequest = OneTimeWorkRequestBuilder<SyncWorker>()
                                         .setConstraints(constraints)
+                                        .setInputData(
+                                            workDataOf(SyncWorker.KEY_FORCE_RESYNC to true)
+                                        )
                                         .build()
                                     WorkManager.getInstance(context).enqueue(syncRequest)
                                     Toast.makeText(context, "Sync started", Toast.LENGTH_SHORT).show()

@@ -5,11 +5,8 @@ import android.util.Log
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.google.firebase.FirebaseApp
-import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.ListenerRegistration
-import kotlin.coroutines.resume
-import kotlin.coroutines.suspendCoroutine
 import com.marsa.smarttrackerhub.data.AppDatabase
 import com.marsa.smarttrackerhub.data.entity.toDomain
 import com.marsa.smarttrackerhub.data.entity.toEntity
@@ -17,14 +14,11 @@ import com.marsa.smarttrackerhub.domain.AccessCode
 import com.marsa.smarttrackerhub.domain.MonthlySummary
 import com.marsa.smarttrackerhub.domain.getHomeShopUser
 import com.marsa.smarttrackerhub.ui.screens.statement.ShopListDto
-import kotlinx.coroutines.withContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
-import java.text.SimpleDateFormat
-import java.util.Calendar
-import java.util.Locale
+import kotlinx.coroutines.withContext
 
 class SaleScreenViewModel(
     application: Application,
@@ -60,39 +54,21 @@ class SaleScreenViewModel(
 
     fun setSelectedShop(shop: ShopListDto?) {
         monthsListenerRegistration?.remove()
-
         _selectedShop.value = shop
         _selectedMonthId.value = null
         _availableMonths.value = emptyList()
         _summariesCache.value = emptyMap()
 
         shop?.shopId?.let { shopId ->
-            viewModelScope.launch {
-                if (ensureAuth()) loadMonthListForShop(shopId)
-            }
-        }
-    }
-
-    private suspend fun ensureAuth(): Boolean {
-        val auth = FirebaseAuth.getInstance(firebaseApp)
-        return suspendCoroutine { cont ->
-            auth.signInAnonymously()
-                .addOnSuccessListener { cont.resume(true) }
-                .addOnFailureListener { e ->
-                    Log.e("SaleScreenViewModel", "SmartTrackerApp sign-in failed: ${e.message}")
-                    cont.resume(false)
-                }
+            loadMonthListForShop(shopId)
         }
     }
 
     fun selectMonth(monthId: String) {
         _selectedMonthId.value = monthId
-
-        val shopId = _selectedShop.value?.shopId
-        if (shopId != null) {
-            if (!_summariesCache.value.containsKey(monthId)) {
-                loadSummaryForMonth(shopId, monthId)
-            }
+        val shopId = _selectedShop.value?.shopId ?: return
+        if (!_summariesCache.value.containsKey(monthId)) {
+            loadSummaryForMonth(shopId, monthId)
         }
     }
 
@@ -106,41 +82,28 @@ class SaleScreenViewModel(
                 getHomeShopUser(userAccessCode, database)
             }
             _shops.value = shops
-            // Auto-select the first shop so months load immediately
             if (_selectedShop.value == null) {
                 shops.firstOrNull()?.let { setSelectedShop(it) }
             }
         }
     }
 
-    /**
-     * Force refresh a specific month from Firestore
-     */
     fun refreshMonth(monthId: String) {
-        val shopId = _selectedShop.value?.shopId
-        if (shopId != null) {
-            // Remove from cache to force reload
-            _summariesCache.value = _summariesCache.value.toMutableMap().apply {
-                remove(monthId)
-            }
-
-            // Load fresh data from Firestore
-            loadFromFirestore(shopId, monthId)
-
-            Log.d("SaleScreenViewModel", "Refreshing month $monthId from server")
-        }
+        val shopId = _selectedShop.value?.shopId ?: return
+        _summariesCache.value = _summariesCache.value.toMutableMap().apply { remove(monthId) }
+        _isLoadingMonth.value = true
+        loadFromFirestore(shopId, monthId)
+        Log.d("SaleScreenViewModel", "Refreshing month $monthId from server")
     }
 
     private fun loadMonthListForShop(shopId: String) {
-        monthsListenerRegistration = trackerFireStore.collection("summary")
-            .document(shopId)
-            .collection("months")
+        monthsListenerRegistration = trackerFireStore
+            .collection("summary").document(shopId).collection("months")
             .addSnapshotListener { snapshot, error ->
                 if (error != null) {
                     Log.e("SaleScreenViewModel", "Error fetching months for $shopId", error)
                     return@addSnapshotListener
                 }
-
                 val monthsList = snapshot?.documents
                     ?.map { doc ->
                         MonthItem(
@@ -153,34 +116,25 @@ class SaleScreenViewModel(
                     .sortedByDescending { it.timestamp }
 
                 _availableMonths.value = monthsList
-
-                // Auto-select the most recent month on first load
                 if (_selectedMonthId.value == null && monthsList.isNotEmpty()) {
                     selectMonth(monthsList.first().id)
                 }
-
                 Log.d("SaleScreenViewModel", "Loaded ${monthsList.size} month IDs for $shopId")
             }
     }
 
     private fun loadSummaryForMonth(shopId: String, monthId: String) {
         _isLoadingMonth.value = true
-
         viewModelScope.launch(Dispatchers.IO) {
             try {
-                // Try to load from local database first
                 val cachedEntity = summaryDao.getSummary(shopId, monthId)
-
                 if (cachedEntity != null) {
-                    // Use cached data
-                    val summary = cachedEntity.toDomain()
                     _summariesCache.value = _summariesCache.value.toMutableMap().apply {
-                        put(monthId, summary)
+                        put(monthId, cachedEntity.toDomain())
                     }
                     _isLoadingMonth.value = false
-                    Log.d("SaleScreenViewModel", "Loaded summary from cache for $shopId - $monthId")
+                    Log.d("SaleScreenViewModel", "Loaded from cache: $shopId - $monthId")
                 } else {
-                    // Load from Firestore if not in cache
                     loadFromFirestore(shopId, monthId)
                 }
             } catch (e: Exception) {
@@ -191,77 +145,55 @@ class SaleScreenViewModel(
     }
 
     private fun loadFromFirestore(shopId: String, monthId: String) {
-        trackerFireStore.collection("summary")
-            .document(shopId)
-            .collection("months")
-            .document(monthId)
+        trackerFireStore
+            .collection("summary").document(shopId)
+            .collection("months").document(monthId)
             .get()
             .addOnSuccessListener { document ->
                 val summary = document.toObject(MonthlySummary::class.java)
-
+                    ?.let { if (it.lastUpdated == 0L) it.copy(lastUpdated = System.currentTimeMillis()) else it }
                 if (summary != null) {
-                    // Add to in-memory cache
                     _summariesCache.value = _summariesCache.value.toMutableMap().apply {
                         put(monthId, summary)
                     }
-
-                    // Save to local database and recalculate target sales
                     viewModelScope.launch(Dispatchers.IO) {
                         try {
-                            val entity = summary.toEntity(shopId, monthId)
-                            summaryDao.insertSummary(entity)
-
-                            // Recalculate target sales for all months
+                            summaryDao.insertSummary(summary.toEntity(shopId, monthId))
                             recalculateTargetSales(shopId)
-
-                            // Reload to get updated target
-                            val updatedEntity = summaryDao.getSummary(shopId, monthId)
-                            if (updatedEntity != null) {
+                            val updated = summaryDao.getSummary(shopId, monthId)
+                            if (updated != null) {
                                 _summariesCache.value = _summariesCache.value.toMutableMap().apply {
-                                    put(monthId, updatedEntity.toDomain())
+                                    put(monthId, updated.toDomain())
                                 }
                             }
-
-                            Log.d("SaleScreenViewModel", "Saved and recalculated targets for $shopId - $monthId")
                         } catch (e: Exception) {
                             Log.e("SaleScreenViewModel", "Error saving to local DB", e)
                         }
                     }
-
-                    Log.d("SaleScreenViewModel", "Loaded summary from Firestore for $shopId - $monthId")
+                    Log.d("SaleScreenViewModel", "Loaded from Firestore: $shopId - $monthId")
                 }
-
                 _isLoadingMonth.value = false
             }
-            .addOnFailureListener { error ->
-                Log.e("SaleScreenViewModel", "Error fetching month $monthId", error)
+            .addOnFailureListener { e ->
+                Log.e("SaleScreenViewModel", "Error fetching month $monthId", e)
                 _isLoadingMonth.value = false
             }
     }
 
     private suspend fun recalculateTargetSales(shopId: String) {
         try {
-            // Get all summaries for this shop in chronological order
             val allSummaries = summaryDao.getAllSummariesForShopAscending(shopId)
-
             if (allSummaries.isEmpty()) return
-
-            // Calculate target sales for all months based on actual average sales
-            val updatedSummaries = TargetSaleCalculator.calculateTargetSalesForShop(allSummaries)
-
-            // Save all updated summaries back to database
-            summaryDao.insertSummaries(updatedSummaries)
-
-            Log.d("SaleScreenViewModel", "Recalculated ${updatedSummaries.size} target sales for $shopId")
-
-            // Update all affected months in the in-memory cache
-            updatedSummaries.forEach { updatedEntity ->
-                if (_summariesCache.value.containsKey(updatedEntity.monthId)) {
+            val updated = TargetSaleCalculator.calculateTargetSalesForShop(allSummaries)
+            summaryDao.insertSummaries(updated)
+            updated.forEach { entity ->
+                if (_summariesCache.value.containsKey(entity.monthId)) {
                     _summariesCache.value = _summariesCache.value.toMutableMap().apply {
-                        put(updatedEntity.monthId, updatedEntity.toDomain())
+                        put(entity.monthId, entity.toDomain())
                     }
                 }
             }
+            Log.d("SaleScreenViewModel", "Recalculated ${updated.size} target sales for $shopId")
         } catch (e: Exception) {
             Log.e("SaleScreenViewModel", "Error recalculating target sales", e)
         }

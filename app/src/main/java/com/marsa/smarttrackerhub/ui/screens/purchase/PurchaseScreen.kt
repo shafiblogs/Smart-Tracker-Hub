@@ -24,13 +24,16 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.google.firebase.FirebaseApp
 import com.marsa.smarttrackerhub.domain.AccessCode
+import com.marsa.smarttrackerhub.utils.ShareUtil
 
 /**
  * Displays category-wise purchase breakdown per month, per shop —
@@ -59,8 +62,11 @@ fun PurchaseScreen(userAccessCode: AccessCode) {
     val availableMonths by viewModel.availableMonths.collectAsState()
     val selectedMonthId by viewModel.selectedMonthId.collectAsState()
     val purchaseCache by viewModel.purchaseCache.collectAsState()
+    val lastUpdatedCache by viewModel.lastUpdatedCache.collectAsState()
     val expanded by viewModel.expanded.collectAsState()
     val isLoadingMonth by viewModel.isLoadingMonth.collectAsState()
+
+    val cardViewRefs = remember { mutableMapOf<String, android.view.View>() }
 
     Column(
         modifier = Modifier
@@ -150,14 +156,64 @@ fun PurchaseScreen(userAccessCode: AccessCode) {
                 ) {
                     items(availableMonths) { monthItem ->
                         val isSelected = selectedMonthId == monthItem.id
-                        PurchaseCard(
-                            monthItem = monthItem,
-                            isSelected = isSelected,
-                            purchases = purchaseCache[monthItem.id],
-                            isLoading = isSelected && isLoadingMonth,
-                            shopAddress = selectedShop?.address ?: "",
-                            onClick = { viewModel.selectMonth(monthItem.id) },
-                            onRefresh = { viewModel.refreshMonth(monthItem.id) }
+                        val purchases = purchaseCache[monthItem.id]
+                        val lastUpdated = lastUpdatedCache[monthItem.id] ?: 0L
+
+                        AndroidView(
+                            factory = { ctx ->
+                                androidx.compose.ui.platform.ComposeView(ctx).apply {
+                                    setContent {
+                                        PurchaseCard(
+                                            monthItem = monthItem,
+                                            isSelected = isSelected,
+                                            purchases = purchases,
+                                            isLoading = isSelected && isLoadingMonth,
+                                            shopAddress = selectedShop?.address ?: "",
+                                            lastUpdated = lastUpdated,
+                                            onClick = { viewModel.selectMonth(monthItem.id) },
+                                            onRefresh = { viewModel.refreshMonth(monthItem.id) },
+                                            onShare = if (purchases != null && isSelected) {
+                                                {
+                                                    cardViewRefs[monthItem.id]?.let { view ->
+                                                        ShareUtil.shareViewAsImage(
+                                                            view = view,
+                                                            context = ctx,
+                                                            fileName = "purchases_${selectedShop?.name?.replace(" ", "_")}_${monthItem.displayName.replace(" ", "_")}.png",
+                                                            shareTitle = "Share Purchase Summary"
+                                                        )
+                                                    }
+                                                }
+                                            } else null
+                                        )
+                                    }
+                                }
+                            },
+                            update = { view ->
+                                if (isSelected) cardViewRefs[monthItem.id] = view
+                                view.setContent {
+                                    PurchaseCard(
+                                        monthItem = monthItem,
+                                        isSelected = isSelected,
+                                        purchases = purchases,
+                                        isLoading = isSelected && isLoadingMonth,
+                                        shopAddress = selectedShop?.address ?: "",
+                                        lastUpdated = lastUpdated,
+                                        onClick = { viewModel.selectMonth(monthItem.id) },
+                                        onRefresh = { viewModel.refreshMonth(monthItem.id) },
+                                        onShare = if (purchases != null && isSelected) {
+                                            {
+                                                ShareUtil.shareViewAsImage(
+                                                    view = view,
+                                                    context = context,
+                                                    fileName = "purchases_${selectedShop?.name?.replace(" ", "_")}_${monthItem.displayName.replace(" ", "_")}.png",
+                                                    shareTitle = "Share Purchase Summary"
+                                                )
+                                            }
+                                        } else null
+                                    )
+                                }
+                            },
+                            modifier = Modifier.fillMaxWidth()
                         )
                     }
                 }

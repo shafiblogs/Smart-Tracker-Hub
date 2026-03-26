@@ -17,7 +17,9 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.Divider
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -32,6 +34,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.marsa.smarttrackerhub.ui.screens.sale.MonthItem
+import com.marsa.smarttrackerhub.utils.formatTimestamp
 
 /**
  * Card showing one month's category-wise purchase breakdown.
@@ -47,8 +50,10 @@ fun PurchaseCard(
     purchases: List<PurchaseItem>?,   // null = not yet loaded; emptyList = loaded but no data
     isLoading: Boolean,
     shopAddress: String,
+    lastUpdated: Long = 0L,
     onClick: () -> Unit,
-    onRefresh: () -> Unit
+    onRefresh: () -> Unit,
+    onShare: (() -> Unit)? = null
 ) {
     Card(
         modifier = Modifier
@@ -104,25 +109,48 @@ fun PurchaseCard(
                     }
 
                     purchases != null -> {
-                        // Refresh button
+                        // Updated timestamp + share + refresh
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .padding(bottom = 8.dp),
-                            horizontalArrangement = Arrangement.End,
+                            horizontalArrangement = Arrangement.SpaceBetween,
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            TextButton(
-                                onClick = onRefresh,
-                                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp)
+                            Text(
+                                text = "Updated: ${lastUpdated.formatTimestamp()}",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            Row(
+                                horizontalArrangement = Arrangement.spacedBy(4.dp),
+                                verticalAlignment = Alignment.CenterVertically
                             ) {
-                                Icon(
-                                    imageVector = Icons.Default.Refresh,
-                                    contentDescription = "Refresh",
-                                    modifier = Modifier.size(18.dp)
-                                )
-                                Spacer(modifier = Modifier.width(4.dp))
-                                Text("Refresh", style = MaterialTheme.typography.bodySmall)
+                                onShare?.let { shareCallback ->
+                                    IconButton(
+                                        onClick = shareCallback,
+                                        modifier = Modifier.size(36.dp)
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.Share,
+                                            contentDescription = "Share",
+                                            tint = MaterialTheme.colorScheme.primary,
+                                            modifier = Modifier.size(18.dp)
+                                        )
+                                    }
+                                }
+                                TextButton(
+                                    onClick = onRefresh,
+                                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Refresh,
+                                        contentDescription = "Refresh",
+                                        modifier = Modifier.size(18.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                    Text("Refresh", style = MaterialTheme.typography.bodySmall)
+                                }
                             }
                         }
 

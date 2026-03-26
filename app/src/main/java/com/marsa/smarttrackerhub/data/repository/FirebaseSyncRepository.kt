@@ -70,7 +70,11 @@ class FirebaseSyncRepository(private val db: AppDatabase) {
             db.shopDao().markShopSynced("")
             return true
         }
-        if (!ensureSignedIn()) return false
+        if (!ensureSignedIn()) {
+            Log.e(tag, "syncShop: auth failed for ${entity.shopId} — status '${entity.shopStatus}' NOT pushed")
+            return false
+        }
+        Log.d(tag, "syncShop: pushing ${entity.shopId} with status='${entity.shopStatus}'")
 
         val map = mapOf(
             "shopId"           to entity.shopId,

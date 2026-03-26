@@ -5,11 +5,8 @@ import android.util.Log
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.google.firebase.FirebaseApp
-import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.ListenerRegistration
-import kotlin.coroutines.resume
-import kotlin.coroutines.suspendCoroutine
 import com.marsa.smarttrackerhub.data.AppDatabase
 import com.marsa.smarttrackerhub.domain.AccessCode
 import com.marsa.smarttrackerhub.domain.getHomeShopUser
@@ -23,14 +20,8 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 /**
- * Reads the `purchaseBreakdown` array from the existing SmartTracker
- * summary/{shopId}/months/{monthYear} Firestore document.
- *
- * No Room caching — purchase breakdown is kept in an in-memory map
- * per session (simple and sufficient for this read-only screen).
- *
- * Created by Muhammed Shafi on 13/03/2026.
- * Moro Hub
+ * Reads category-wise purchase breakdown from SmartTracker's
+ * `summary/{shopId}/months/{monthId}` Firestore document (`purchaseBreakdown` field).
  */
 class PurchaseScreenViewModel(
     application: Application,
@@ -45,9 +36,11 @@ class PurchaseScreenViewModel(
     private val _availableMonths = MutableStateFlow<List<MonthItem>>(emptyList())
     val availableMonths: StateFlow<List<MonthItem>> = _availableMonths
 
-    // In-memory cache: monthId → category-wise purchase list
     private val _purchaseCache = MutableStateFlow<Map<String, List<PurchaseItem>>>(emptyMap())
     val purchaseCache: StateFlow<Map<String, List<PurchaseItem>>> = _purchaseCache
+
+    private val _lastUpdatedCache = MutableStateFlow<Map<String, Long>>(emptyMap())
+    val lastUpdatedCache: StateFlow<Map<String, Long>> = _lastUpdatedCache
 
     private val _selectedShop = MutableStateFlow<ShopListDto?>(null)
     val selectedShop: StateFlow<ShopListDto?> = _selectedShop
@@ -70,7 +63,6 @@ class PurchaseScreenViewModel(
                 getHomeShopUser(userAccessCode, database)
             }
             _shops.value = shops
-            // Auto-select the first shop so months load immediately
             if (_selectedShop.value == null) {
                 shops.firstOrNull()?.let { setSelectedShop(it) }
             }
@@ -83,22 +75,10 @@ class PurchaseScreenViewModel(
         _selectedMonthId.value = null
         _availableMonths.value = emptyList()
         _purchaseCache.value = emptyMap()
-        shop?.shopId?.let { shopId ->
-            viewModelScope.launch {
-                if (ensureAuth()) loadMonthListForShop(shopId)
-            }
-        }
-    }
+        _lastUpdatedCache.value = emptyMap()
 
-    private suspend fun ensureAuth(): Boolean {
-        val auth = FirebaseAuth.getInstance(firebaseApp)
-        return suspendCoroutine { cont ->
-            auth.signInAnonymously()
-                .addOnSuccessListener { cont.resume(true) }
-                .addOnFailureListener { e ->
-                    Log.e("PurchaseViewModel", "SmartTrackerApp sign-in failed: ${e.message}")
-                    cont.resume(false)
-                }
+        shop?.shopId?.let { shopId ->
+            loadMonthListForShop(shopId)
         }
     }
 
@@ -116,27 +96,21 @@ class PurchaseScreenViewModel(
 
     fun refreshMonth(monthId: String) {
         val shopId = _selectedShop.value?.shopId ?: return
-        // Remove from cache to force a fresh Firestore fetch
         _purchaseCache.value = _purchaseCache.value.toMutableMap().apply { remove(monthId) }
+        _lastUpdatedCache.value = _lastUpdatedCache.value.toMutableMap().apply { remove(monthId) }
+        _isLoadingMonth.value = true
         loadPurchasesForMonth(shopId, monthId)
-        Log.d("PurchaseViewModel", "Refreshing purchase data for month $monthId")
     }
-
-    // ─────────────────────────────────────────────────────────────────────
-    // Private helpers
-    // ─────────────────────────────────────────────────────────────────────
 
     private fun loadMonthListForShop(shopId: String) {
         monthsListenerRegistration = firestore
-            .collection("summary")
-            .document(shopId)
-            .collection("months")
+            .collection("summary").document(shopId).collection("months")
             .addSnapshotListener { snapshot, error ->
                 if (error != null) {
                     Log.e("PurchaseViewModel", "Error fetching months for $shopId", error)
                     return@addSnapshotListener
                 }
-                val months = snapshot?.documents
+                val monthsList = snapshot?.documents
                     ?.map { doc ->
                         MonthItem(
                             id = doc.id,
@@ -146,53 +120,56 @@ class PurchaseScreenViewModel(
                     }
                     .orEmpty()
                     .sortedByDescending { it.timestamp }
-                _availableMonths.value = months
 
-                // Auto-select the most recent month on first load
-                if (_selectedMonthId.value == null && months.isNotEmpty()) {
-                    selectMonth(months.first().id)
+                _availableMonths.value = monthsList
+                if (_selectedMonthId.value == null && monthsList.isNotEmpty()) {
+                    selectMonth(monthsList.first().id)
                 }
-
-                Log.d("PurchaseViewModel", "Loaded ${months.size} months for $shopId")
+                Log.d("PurchaseViewModel", "Loaded ${monthsList.size} months for $shopId")
             }
     }
 
+    /**
+     * Reads the `purchaseBreakdown` field from `summary/{shopId}/months/{monthId}`
+     * and converts it to a sorted [PurchaseItem] list.
+     */
+    @Suppress("UNCHECKED_CAST")
     private fun loadPurchasesForMonth(shopId: String, monthId: String) {
         _isLoadingMonth.value = true
         firestore
-            .collection("summary")
-            .document(shopId)
-            .collection("months")
-            .document(monthId)
+            .collection("summary").document(shopId)
+            .collection("months").document(monthId)
             .get()
             .addOnSuccessListener { document ->
-                @Suppress("UNCHECKED_CAST")
-                val rawBreakdown =
-                    document.get("purchaseBreakdown") as? List<Map<String, Any>> ?: emptyList()
+                val breakdown = document.get("purchaseBreakdown") as? List<Map<String, Any>>
+                val items = breakdown
+                    ?.map { map ->
+                        PurchaseItem(
+                            categoryId   = (map["categoryId"] as? Long)?.toInt() ?: 0,
+                            categoryName = (map["categoryName"] as? String) ?: "Uncategorised",
+                            totalAmount  = parseAmount(map["totalAmount"])
+                        )
+                    }
+                    ?.sortedByDescending { it.totalAmount }
+                    ?: emptyList()
 
-                val items = rawBreakdown.map { map ->
-                    PurchaseItem(
-                        // Firestore deserialises integers as Long — convert to Int
-                        categoryId = (map["categoryId"] as? Long)?.toInt() ?: 0,
-                        categoryName = map["categoryName"] as? String ?: "",
-                        totalAmount = (map["totalAmount"] as? Double)
-                            ?: (map["totalAmount"] as? Long)?.toDouble() ?: 0.0
-                    )
-                }
-
-                _purchaseCache.value = _purchaseCache.value.toMutableMap().apply {
-                    put(monthId, items)
-                }
+                val now = System.currentTimeMillis()
+                _purchaseCache.value = _purchaseCache.value.toMutableMap().apply { put(monthId, items) }
+                _lastUpdatedCache.value = _lastUpdatedCache.value.toMutableMap().apply { put(monthId, now) }
                 _isLoadingMonth.value = false
-                Log.d(
-                    "PurchaseViewModel",
-                    "Loaded ${items.size} purchase categories for $shopId - $monthId"
-                )
+                Log.d("PurchaseViewModel", "Loaded ${items.size} purchase categories for $shopId $monthId")
             }
-            .addOnFailureListener { error ->
-                Log.e("PurchaseViewModel", "Error fetching purchases for $monthId", error)
+            .addOnFailureListener { e ->
+                Log.e("PurchaseViewModel", "Error fetching purchases $shopId $monthId", e)
                 _isLoadingMonth.value = false
             }
+    }
+
+    private fun parseAmount(value: Any?): Double = when (value) {
+        is Double -> value
+        is Long   -> value.toDouble()
+        is String -> value.toDoubleOrNull() ?: 0.0
+        else      -> 0.0
     }
 
     override fun onCleared() {

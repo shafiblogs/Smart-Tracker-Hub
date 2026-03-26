@@ -25,6 +25,12 @@ class SmartTrackerHubApp : Application() {
         // Default app (Hub project)
         FirebaseApp.initializeApp(this)
 
+        // Eagerly sign in to Hub Firebase so shop/investor/employee sync can run immediately.
+        FirebaseAuth.getInstance()
+            .signInAnonymously()
+            .addOnSuccessListener { Log.d("SmartTrackerHubApp", "Hub app signed in") }
+            .addOnFailureListener { e -> Log.e("SmartTrackerHubApp", "Hub app sign-in failed: ${e.message}") }
+
         // SmartTracker Firebase — Firestore summaries (Sale/Purchase) + PDF Storage (Statement)
         // project: smart-tracker-8012f
         val trackerOptions = FirebaseOptions.Builder()

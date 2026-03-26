@@ -1,8 +1,11 @@
 package com.marsa.smarttrackerhub.ui.screens.home
 
 import android.app.Application
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.google.firebase.FirebaseApp
+import com.google.firebase.firestore.FirebaseFirestore
 import com.marsa.smarttrackerhub.data.AppDatabase
 import com.marsa.smarttrackerhub.data.entity.SummaryEntity
 import com.marsa.smarttrackerhub.domain.AccessCode
@@ -10,6 +13,9 @@ import com.marsa.smarttrackerhub.domain.ChartStatistics
 import com.marsa.smarttrackerhub.domain.MonthRange
 import com.marsa.smarttrackerhub.domain.getHomeShopUser
 import com.marsa.smarttrackerhub.ui.screens.chart.MonthlyChartData
+import com.marsa.smarttrackerhub.ui.screens.chart.PurchaseCategoryChartData
+import com.marsa.smarttrackerhub.ui.screens.chart.PurchaseChartStatistics
+import com.marsa.smarttrackerhub.ui.screens.purchase.PurchaseItem
 import com.marsa.smarttrackerhub.ui.screens.statement.ShopListDto
 import com.marsa.smarttrackerhub.utils.getShortMonthName
 import kotlinx.coroutines.Dispatchers
@@ -20,9 +26,12 @@ import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Locale
+import kotlin.coroutines.resume
+import kotlin.coroutines.suspendCoroutine
 
 class HomeScreenViewModel(
-    application: Application
+    application: Application,
+    firebaseApp: FirebaseApp
 ) : ViewModel() {
 
     private val _selectedShop = MutableStateFlow<ShopListDto?>(null)
@@ -31,7 +40,6 @@ class HomeScreenViewModel(
     private val _expanded = MutableStateFlow(false)
     val expanded: StateFlow<Boolean> = _expanded
 
-    // Period selection
     private val _availableRanges =
         MutableStateFlow<List<MonthRange>>(MonthRange.getAvailableRanges())
     val availableRanges: StateFlow<List<MonthRange>> = _availableRanges.asStateFlow()
@@ -61,13 +69,32 @@ class HomeScreenViewModel(
     private val _periodLabel = MutableStateFlow<String>("")
     val periodLabel: StateFlow<String> = _periodLabel.asStateFlow()
 
+    // ── Purchase chart state ─────────────────────────────────────────────────
+
+    private val _purchaseCategoryData =
+        MutableStateFlow<List<PurchaseCategoryChartData>>(emptyList())
+    val purchaseCategoryData: StateFlow<List<PurchaseCategoryChartData>> =
+        _purchaseCategoryData.asStateFlow()
+
+    private val _purchaseStatistics = MutableStateFlow<PurchaseChartStatistics?>(null)
+    val purchaseStatistics: StateFlow<PurchaseChartStatistics?> =
+        _purchaseStatistics.asStateFlow()
+
+    private val _isPurchaseLoading = MutableStateFlow(false)
+    val isPurchaseLoading: StateFlow<Boolean> = _isPurchaseLoading.asStateFlow()
+
+    // ── Internal state ───────────────────────────────────────────────────────
+
     private var allSummaries: List<SummaryEntity> = emptyList()
 
     private val database = AppDatabase.getDatabase(application)
     private val summaryDao = database.summaryDao()
+    private val firestore = FirebaseFirestore.getInstance(firebaseApp)
 
-    fun loadScreenData(userAccessCode: AccessCode)=viewModelScope.launch {
-        _shops.value = getHomeShopUser(userAccessCode,database)
+    // ── Public API ───────────────────────────────────────────────────────────
+
+    fun loadScreenData(userAccessCode: AccessCode) = viewModelScope.launch {
+        _shops.value = getHomeShopUser(userAccessCode, database)
     }
 
     fun setSelectedShop(shop: ShopListDto?) {
@@ -94,6 +121,8 @@ class HomeScreenViewModel(
         _periodExpanded.value = value
     }
 
+    // ── Private helpers ──────────────────────────────────────────────────────
+
     private fun loadChartData(shopId: String) {
         viewModelScope.launch(Dispatchers.IO) {
             allSummaries = summaryDao.getAllSummariesForShop(shopId = shopId)
@@ -101,26 +130,14 @@ class HomeScreenViewModel(
 
             val selectedRange = _selectedRange.value
 
-            // Determine how many months to take and whether to skip current month
             val (chartMonthCount, statsMonthCount, skipCurrentMonth) = when (selectedRange) {
-                is MonthRange.CurrentMonth -> Triple(
-                    1,
-                    1,
-                    false
-                )     // Show current, include in stats
-                is MonthRange.PreviousMonth -> Triple(1, 1, true)     // Show previous, skip current
-                is MonthRange.Last3Months -> Triple(3, 3, true)       // Show 3, skip current
-                is MonthRange.Last6Months -> Triple(6, 6, true)       // Show 6, skip current
+                is MonthRange.CurrentMonth  -> Triple(1, 1, false)
+                is MonthRange.PreviousMonth -> Triple(1, 1, true)
+                is MonthRange.Last3Months   -> Triple(3, 3, true)
+                is MonthRange.Last6Months   -> Triple(6, 6, true)
             }
 
-            // Skip current month if needed
-            val dataToUse = if (skipCurrentMonth) {
-                sortedData.drop(1) // Skip the first (current) month
-            } else {
-                sortedData
-            }
-
-            // Get chart data
+            val dataToUse = if (skipCurrentMonth) sortedData.drop(1) else sortedData
             val chartMonths = dataToUse.take(chartMonthCount).reversed()
 
             _chartData.value = chartMonths.map { summary ->
@@ -133,40 +150,114 @@ class HomeScreenViewModel(
                 )
             }
 
-            // Get statistics data (same as chart data)
             val statsMonths = dataToUse.take(statsMonthCount)
             calculateStatistics(statsMonths)
-
-            // Generate period label
             _periodLabel.value = generatePeriodLabel(statsMonths, selectedRange)
+
+            // Purchase chart always uses the most recent month regardless of period selector
+            loadPurchaseChartData(shopId, sortedData)
         }
     }
 
     /**
-     * Generates dynamic period label based on data
+     * Fetches purchase breakdowns for the two most recent months, then builds
+     * [PurchaseCategoryChartData] where target = previousMonth.totalAmount × 1.10.
      */
+    private suspend fun loadPurchaseChartData(
+        shopId: String,
+        sortedSummaries: List<SummaryEntity>
+    ) {
+        if (sortedSummaries.isEmpty()) {
+            _purchaseCategoryData.value = emptyList()
+            _purchaseStatistics.value = null
+            return
+        }
+
+        _isPurchaseLoading.value = true
+
+        val currentMonthId  = sortedSummaries[0].monthYear
+        val previousMonthId = sortedSummaries.getOrNull(1)?.monthYear
+
+        val currentBreakdown  = fetchPurchaseBreakdown(shopId, currentMonthId)
+        val previousBreakdown = if (previousMonthId != null)
+            fetchPurchaseBreakdown(shopId, previousMonthId) else emptyList()
+
+        // Map: categoryId → previous month's totalAmount
+        val prevAmountMap = previousBreakdown.associateBy({ it.categoryId }, { it.totalAmount })
+
+        val chartItems = currentBreakdown
+            .filter { it.categoryName.isNotBlank() }
+            .sortedByDescending { it.totalAmount }
+            .map { item ->
+                val prevAmount = prevAmountMap[item.categoryId]
+                PurchaseCategoryChartData(
+                    categoryId   = item.categoryId,
+                    categoryName = item.categoryName,
+                    actual       = item.totalAmount,
+                    target       = if (prevAmount != null) prevAmount * 1.10 else 0.0
+                )
+            }
+
+        val totalActual           = chartItems.sumOf { it.actual }
+        val totalTarget           = chartItems.sumOf { it.target }
+        // "on target" = actual reached or exceeded the target (more purchase = more sale = good)
+        val categoriesUnderTarget = chartItems.count { !it.hasTarget || it.actual >= it.target }
+
+        _purchaseCategoryData.value = chartItems
+        _purchaseStatistics.value = PurchaseChartStatistics(
+            totalActual           = totalActual,
+            totalTarget           = totalTarget,
+            monthLabel            = currentMonthId,
+            categoriesUnderTarget = categoriesUnderTarget,
+            totalCategories       = chartItems.size
+        )
+        _isPurchaseLoading.value = false
+    }
+
+    /**
+     * One-shot Firestore fetch for a single month's purchaseBreakdown array.
+     * Returns an empty list on any error.
+     */
+    private suspend fun fetchPurchaseBreakdown(
+        shopId: String,
+        monthId: String
+    ): List<PurchaseItem> = suspendCoroutine { cont ->
+        firestore.collection("summary")
+            .document(shopId)
+            .collection("months")
+            .document(monthId)
+            .get()
+            .addOnSuccessListener { document ->
+                @Suppress("UNCHECKED_CAST")
+                val raw = document.get("purchaseBreakdown") as? List<Map<String, Any>>
+                    ?: emptyList()
+                cont.resume(raw.map { map ->
+                    PurchaseItem(
+                        categoryId   = (map["categoryId"] as? Long)?.toInt() ?: 0,
+                        categoryName = map["categoryName"] as? String ?: "",
+                        totalAmount  = (map["totalAmount"] as? Double)
+                            ?: (map["totalAmount"] as? Long)?.toDouble() ?: 0.0
+                    )
+                })
+            }
+            .addOnFailureListener { e ->
+                Log.e(
+                    "HomeScreenViewModel",
+                    "Error fetching purchaseBreakdown for $shopId / $monthId: ${e.message}"
+                )
+                cont.resume(emptyList())
+            }
+    }
+
     private fun generatePeriodLabel(data: List<SummaryEntity>, range: MonthRange): String {
         if (data.isEmpty()) return ""
-
-        val dateFormat = SimpleDateFormat("dd MMM yyyy", Locale.getDefault())
-        val monthFormat = SimpleDateFormat("MMMM yyyy", Locale.getDefault())
-
+        val dateFormat  = SimpleDateFormat("dd MMM yyyy", Locale.getDefault())
+        val monthFormat = SimpleDateFormat("MMMM yyyy",   Locale.getDefault())
         return when (range) {
-            is MonthRange.CurrentMonth -> {
-                dateFormat.format(Calendar.getInstance().time)
-            }
-
-            is MonthRange.PreviousMonth -> {
-                monthFormat.format(data[0].monthTimestamp)
-            }
-
-            is MonthRange.Last3Months -> {
-                "Last 3 Months"
-            }
-
-            is MonthRange.Last6Months -> {
-                "Last 6 Months"
-            }
+            is MonthRange.CurrentMonth  -> dateFormat.format(Calendar.getInstance().time)
+            is MonthRange.PreviousMonth -> monthFormat.format(data[0].monthTimestamp)
+            is MonthRange.Last3Months   -> "Last 3 Months"
+            is MonthRange.Last6Months   -> "Last 6 Months"
         }
     }
 
@@ -175,16 +266,15 @@ class HomeScreenViewModel(
             _statistics.value = null
             return
         }
-
-        val totalTarget = data.sumOf { it.targetSale }
-        val totalAverage = data.sumOf { it.averageSale ?: 0.0 }
+        val totalTarget   = data.sumOf { it.targetSale }
+        val totalAverage  = data.sumOf { it.averageSale ?: 0.0 }
         val monthsTargetMet = data.count { (it.averageSale ?: 0.0) >= it.targetSale }
 
         _statistics.value = ChartStatistics(
-            totalMonths = data.size,
-            totalTarget = totalTarget,
-            totalAverage = totalAverage,
-            monthsTargetMet = monthsTargetMet,
+            totalMonths              = data.size,
+            totalTarget              = totalTarget,
+            totalAverage             = totalAverage,
+            monthsTargetMet          = monthsTargetMet,
             averageAchievementPercentage = if (totalTarget > 0) {
                 (totalAverage / totalTarget) * 100.0
             } else 0.0,

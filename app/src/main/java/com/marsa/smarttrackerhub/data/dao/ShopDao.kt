@@ -53,6 +53,11 @@ interface ShopDao {
     @Query("UPDATE shop_info SET isSynced = 1 WHERE shopId = :shopId")
     suspend fun markShopSynced(shopId: String)
 
+    /** Marks ALL shops as unsynced so they are re-pushed to Firestore on the next sync.
+     *  Use this after correcting shop data locally to force Firestore to receive the latest values. */
+    @Query("UPDATE shop_info SET isSynced = 0")
+    suspend fun markAllShopsUnsynced()
+
     // ── Pull support ───────────────────────────────────────────────────────────
 
     /** Look up a shop by its Firebase string ID — used after pull-insert to get the Room int PK. */
