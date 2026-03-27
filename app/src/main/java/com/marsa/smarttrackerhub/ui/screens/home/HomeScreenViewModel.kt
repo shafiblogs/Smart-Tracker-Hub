@@ -5,6 +5,7 @@ import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.google.firebase.FirebaseApp
+import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import com.marsa.smarttrackerhub.data.AppDatabase
 import com.marsa.smarttrackerhub.data.entity.SummaryEntity
@@ -31,7 +32,7 @@ import kotlin.coroutines.suspendCoroutine
 
 class HomeScreenViewModel(
     application: Application,
-    firebaseApp: FirebaseApp
+    private val firebaseApp: FirebaseApp
 ) : ViewModel() {
 
     private val _selectedShop = MutableStateFlow<ShopListDto?>(null)
@@ -94,6 +95,17 @@ class HomeScreenViewModel(
     // ── Public API ───────────────────────────────────────────────────────────
 
     fun loadScreenData(userAccessCode: AccessCode) = viewModelScope.launch {
+        // Authenticate with SmartTracker Firebase before reading shops/{shopId}/months/
+        val signedIn = suspendCoroutine<Boolean> { cont ->
+            FirebaseAuth.getInstance(firebaseApp).signInAnonymously()
+                .addOnSuccessListener { cont.resume(true) }
+                .addOnFailureListener { e ->
+                    Log.e("HomeScreenViewModel", "SmartTracker auth failed: ${e.message}")
+                    cont.resume(false)
+                }
+        }
+        if (!signedIn) return@launch
+
         _shops.value = getHomeShopUser(userAccessCode, database)
     }
 
@@ -222,7 +234,7 @@ class HomeScreenViewModel(
         shopId: String,
         monthId: String
     ): List<PurchaseItem> = suspendCoroutine { cont ->
-        firestore.collection("shops")
+        firestore.collection("summary")
             .document(shopId)
             .collection("months")
             .document(monthId)

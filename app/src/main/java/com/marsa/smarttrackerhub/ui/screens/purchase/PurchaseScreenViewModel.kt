@@ -5,6 +5,7 @@ import android.util.Log
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.google.firebase.FirebaseApp
+import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.ListenerRegistration
 import com.marsa.smarttrackerhub.data.AppDatabase
@@ -18,10 +19,12 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlin.coroutines.resume
+import kotlin.coroutines.suspendCoroutine
 
 /**
  * Reads category-wise purchase breakdown from SmartTracker's
- * `shops/{shopId}/months/{monthId}` Firestore document (`purchaseBreakdown` field).
+ * `summary/{shopId}/months/{monthId}` Firestore document (`purchaseBreakdown` field).
  */
 class PurchaseScreenViewModel(
     application: Application,
@@ -59,6 +62,17 @@ class PurchaseScreenViewModel(
 
     fun loadScreenData(userAccessCode: AccessCode) {
         viewModelScope.launch {
+            // Authenticate with SmartTracker Firebase before reading shops/{shopId}/months/
+            val signedIn = suspendCoroutine<Boolean> { cont ->
+                FirebaseAuth.getInstance(firebaseApp).signInAnonymously()
+                    .addOnSuccessListener { cont.resume(true) }
+                    .addOnFailureListener { e ->
+                        Log.e("PurchaseViewModel", "SmartTracker auth failed: ${e.message}")
+                        cont.resume(false)
+                    }
+            }
+            if (!signedIn) return@launch
+
             val shops = withContext(Dispatchers.IO) {
                 getHomeShopUser(userAccessCode, database)
             }
@@ -104,7 +118,7 @@ class PurchaseScreenViewModel(
 
     private fun loadMonthListForShop(shopId: String) {
         monthsListenerRegistration = firestore
-            .collection("shops").document(shopId).collection("months")
+            .collection("summary").document(shopId).collection("months")
             .addSnapshotListener { snapshot, error ->
                 if (error != null) {
                     Log.e("PurchaseViewModel", "Error fetching months for $shopId", error)
@@ -137,7 +151,7 @@ class PurchaseScreenViewModel(
     private fun loadPurchasesForMonth(shopId: String, monthId: String) {
         _isLoadingMonth.value = true
         firestore
-            .collection("shops").document(shopId)
+            .collection("summary").document(shopId)
             .collection("months").document(monthId)
             .get()
             .addOnSuccessListener { document ->
