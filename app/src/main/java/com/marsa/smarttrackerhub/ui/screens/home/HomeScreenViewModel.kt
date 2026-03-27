@@ -222,7 +222,7 @@ class HomeScreenViewModel(
         shopId: String,
         monthId: String
     ): List<PurchaseItem> = suspendCoroutine { cont ->
-        firestore.collection("summary")
+        firestore.collection("shops")
             .document(shopId)
             .collection("months")
             .document(monthId)

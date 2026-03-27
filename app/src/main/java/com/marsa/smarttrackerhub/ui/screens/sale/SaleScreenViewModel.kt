@@ -98,7 +98,7 @@ class SaleScreenViewModel(
 
     private fun loadMonthListForShop(shopId: String) {
         monthsListenerRegistration = trackerFireStore
-            .collection("summary").document(shopId).collection("months")
+            .collection("shops").document(shopId).collection("months")
             .addSnapshotListener { snapshot, error ->
                 if (error != null) {
                     Log.e("SaleScreenViewModel", "Error fetching months for $shopId", error)
@@ -146,7 +146,7 @@ class SaleScreenViewModel(
 
     private fun loadFromFirestore(shopId: String, monthId: String) {
         trackerFireStore
-            .collection("summary").document(shopId)
+            .collection("shops").document(shopId)
             .collection("months").document(monthId)
             .get()
             .addOnSuccessListener { document ->

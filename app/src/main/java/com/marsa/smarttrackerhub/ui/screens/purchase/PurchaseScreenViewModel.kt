@@ -21,7 +21,7 @@ import kotlinx.coroutines.withContext
 
 /**
  * Reads category-wise purchase breakdown from SmartTracker's
- * `summary/{shopId}/months/{monthId}` Firestore document (`purchaseBreakdown` field).
+ * `shops/{shopId}/months/{monthId}` Firestore document (`purchaseBreakdown` field).
  */
 class PurchaseScreenViewModel(
     application: Application,
@@ -104,7 +104,7 @@ class PurchaseScreenViewModel(
 
     private fun loadMonthListForShop(shopId: String) {
         monthsListenerRegistration = firestore
-            .collection("summary").document(shopId).collection("months")
+            .collection("shops").document(shopId).collection("months")
             .addSnapshotListener { snapshot, error ->
                 if (error != null) {
                     Log.e("PurchaseViewModel", "Error fetching months for $shopId", error)
@@ -137,7 +137,7 @@ class PurchaseScreenViewModel(
     private fun loadPurchasesForMonth(shopId: String, monthId: String) {
         _isLoadingMonth.value = true
         firestore
-            .collection("summary").document(shopId)
+            .collection("shops").document(shopId)
             .collection("months").document(monthId)
             .get()
             .addOnSuccessListener { document ->
