@@ -62,11 +62,11 @@ fun AccountSummaryContent(summary: AccountSummary) {
 
         // Totals Section
         InfoRow(
-            "💰 Profit Margin",
+            "💰 Net Margin",
             summary.netProfitMargin,
             color = MaterialTheme.colorScheme.primary
         )
-        InfoRow("💳 Sales Margin", summary.grossMargin, color = MaterialTheme.colorScheme.primary)
+        InfoRow("💳 Gross Margin", summary.grossMargin, color = MaterialTheme.colorScheme.primary)
         InfoRow("💰 Net Profit", summary.netProfit)
         InfoRow("🛒 Gross Profit", summary.grossProfit)
         InfoRow("💰 Total Sale", summary.totalCollection)
