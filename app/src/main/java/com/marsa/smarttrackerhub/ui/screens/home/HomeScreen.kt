@@ -389,7 +389,8 @@ fun HomeScreen(
                             isPurchaseLoading    = isPurchaseLoading,
                             purchaseCategoryData = purchaseCategoryData,
                             purchaseStatistics   = purchaseStatistics,
-                            selectedShop         = selectedShop
+                            selectedShop         = selectedShop,
+                            periodLabel          = periodLabel
                         )
                     }
                 },
