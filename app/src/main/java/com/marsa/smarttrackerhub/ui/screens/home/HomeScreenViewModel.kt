@@ -246,7 +246,6 @@ class HomeScreenViewModel(
         }
 
         val chartItems = currentAggregated.values
-            .filter { it.categoryName.isNotBlank() }
             .sortedByDescending { it.totalAmount }
             .map { item ->
                 val prevAmount = previousAggregated[item.categoryId]
@@ -296,9 +295,8 @@ class HomeScreenViewModel(
                 cont.resume(raw.map { map ->
                     PurchaseItem(
                         categoryId   = (map["categoryId"] as? Long)?.toInt() ?: 0,
-                        categoryName = map["categoryName"] as? String ?: "",
-                        totalAmount  = (map["totalAmount"] as? Double)
-                            ?: (map["totalAmount"] as? Long)?.toDouble() ?: 0.0
+                        categoryName = map["categoryName"] as? String ?: "Uncategorised",
+                        totalAmount  = parseAmount(map["totalAmount"])
                     )
                 })
             }
@@ -309,6 +307,13 @@ class HomeScreenViewModel(
                 )
                 cont.resume(emptyList())
             }
+    }
+
+    private fun parseAmount(value: Any?): Double = when (value) {
+        is Double -> value
+        is Long   -> value.toDouble()
+        is String -> value.toDoubleOrNull() ?: 0.0
+        else      -> 0.0
     }
 
     private fun generatePeriodLabel(data: List<SummaryEntity>, range: MonthRange): String {
