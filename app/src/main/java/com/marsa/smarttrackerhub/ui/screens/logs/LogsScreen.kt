@@ -51,6 +51,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.marsa.smarttracker.ui.theme.sTypography
+import com.marsa.smarttrackerhub.utils.PdfExportUtil
 import com.marsa.smarttrackerhub.utils.ShareUtil
 import java.text.SimpleDateFormat
 import java.time.LocalDate
@@ -239,7 +240,7 @@ fun LogsScreen(viewModel: LogsViewModel = viewModel()) {
                 } else {
                     LazyColumn(
                         modifier       = Modifier.fillMaxSize(),
-                        contentPadding = PaddingValues(vertical = 8.dp, horizontal = 8.dp)
+                        contentPadding = PaddingValues(vertical = 8.dp, horizontal = 0.dp)
                     ) {
                         // Single unified card with summary and records
                         item(key = "shop_unified_card") {
@@ -276,21 +277,19 @@ fun LogsScreen(viewModel: LogsViewModel = viewModel()) {
                                                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                                                             )
                                                         }
-                                                        Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                                                            IconButton(onClick = { viewModel.refresh() }, modifier = Modifier.size(36.dp)) {
-                                                                Icon(Icons.Default.Refresh, contentDescription = "Refresh",
-                                                                    tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(18.dp))
+                                                        IconButton(onClick = {
+                                                            if (summary != null) {
+                                                                PdfExportUtil.generateAndShareShopLogsPdf(
+                                                                    context,
+                                                                    summary.shopName,
+                                                                    summary.monthDisplay,
+                                                                    shopDaySummaries,
+                                                                    summary
+                                                                )
                                                             }
-                                                            IconButton(onClick = {
-                                                                summaryViewRef.value?.let {
-                                                                    ShareUtil.shareViewAsImage(it, context,
-                                                                        "shop_logs_${summary?.shopName?.replace(" ", "_") ?: "shop"}_${selectedMonth.key}.png",
-                                                                        "Share Shop Logs")
-                                                                }
-                                                            }, modifier = Modifier.size(36.dp)) {
-                                                                Icon(Icons.Default.Share, contentDescription = "Share",
-                                                                    tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(18.dp))
-                                                            }
+                                                        }, modifier = Modifier.size(36.dp)) {
+                                                            Icon(Icons.Default.Share, contentDescription = "Share",
+                                                                tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(18.dp))
                                                         }
                                                     }
 
@@ -396,21 +395,19 @@ fun LogsScreen(viewModel: LogsViewModel = viewModel()) {
                                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                                             )
                                         }
-                                        Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                                            IconButton(onClick = { viewModel.refresh() }, modifier = Modifier.size(36.dp)) {
-                                                Icon(Icons.Default.Refresh, contentDescription = "Refresh",
-                                                    tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(18.dp))
+                                        IconButton(onClick = {
+                                            if (summary != null) {
+                                                PdfExportUtil.generateAndShareShopLogsPdf(
+                                                    context,
+                                                    summary.shopName,
+                                                    summary.monthDisplay,
+                                                    shopDaySummaries,
+                                                    summary
+                                                )
                                             }
-                                            IconButton(onClick = {
-                                                summaryViewRef.value?.let {
-                                                    ShareUtil.shareViewAsImage(it, context,
-                                                        "shop_logs_${summary?.shopName?.replace(" ", "_") ?: "shop"}_${selectedMonth.key}.png",
-                                                        "Share Shop Logs")
-                                                }
-                                            }, modifier = Modifier.size(36.dp)) {
-                                                Icon(Icons.Default.Share, contentDescription = "Share",
-                                                    tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(18.dp))
-                                            }
+                                        }, modifier = Modifier.size(36.dp)) {
+                                            Icon(Icons.Default.Share, contentDescription = "Share",
+                                                tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(18.dp))
                                         }
                                     }
 
@@ -506,7 +503,7 @@ fun LogsScreen(viewModel: LogsViewModel = viewModel()) {
                 } else {
                     LazyColumn(
                         modifier            = Modifier.fillMaxSize(),
-                        contentPadding      = PaddingValues(vertical = 8.dp, horizontal = 8.dp)
+                        contentPadding      = PaddingValues(vertical = 8.dp, horizontal = 0.dp)
                     ) {
                         // Single unified card with summary and records
                         item(key = "emp_unified_card") {
@@ -539,21 +536,20 @@ fun LogsScreen(viewModel: LogsViewModel = viewModel()) {
                                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                                             )
                                         }
-                                        Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                                            IconButton(onClick = { viewModel.refresh() }, modifier = Modifier.size(36.dp)) {
-                                                Icon(Icons.Default.Refresh, contentDescription = "Refresh",
-                                                    tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(18.dp))
+                                        IconButton(onClick = {
+                                            if (summary != null) {
+                                                PdfExportUtil.generateAndShareEmployeeLogsPdf(
+                                                    context,
+                                                    summary.employeeName,
+                                                    summary.shopName,
+                                                    summary.monthDisplay,
+                                                    employeeDayRecords,
+                                                    summary
+                                                )
                                             }
-                                            IconButton(onClick = {
-                                                summaryViewRef.value?.let {
-                                                    ShareUtil.shareViewAsImage(it, context,
-                                                        "emp_summary_${summary?.employeeName?.replace(" ", "_") ?: "employee"}_${selectedMonth.key}.png",
-                                                        "Share Employee Summary")
-                                                }
-                                            }, modifier = Modifier.size(36.dp)) {
-                                                Icon(Icons.Default.Share, contentDescription = "Share",
-                                                    tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(18.dp))
-                                            }
+                                        }, modifier = Modifier.size(36.dp)) {
+                                            Icon(Icons.Default.Share, contentDescription = "Share",
+                                                tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(18.dp))
                                         }
                                     }
 

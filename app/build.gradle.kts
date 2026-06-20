@@ -91,4 +91,5 @@ dependencies {
     implementation("com.google.firebase:firebase-messaging-ktx")
     implementation("com.google.firebase:firebase-firestore-ktx")
     implementation("com.github.msarhan:ummalqura-calendar:2.0.2")
+    implementation("com.itextpdf:itext7-core:7.2.5")
 }
