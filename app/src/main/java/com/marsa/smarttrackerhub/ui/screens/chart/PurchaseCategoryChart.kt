@@ -75,10 +75,22 @@ fun PurchaseCategoryChart(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
+            // On Target with color coding
+            val onTargetPercentage = if (statistics.totalCategories > 0)
+                (statistics.categoriesOnTarget.toDouble() / statistics.totalCategories) * 100
+            else 0.0
+
+            val onTargetColor = when {
+                onTargetPercentage >= 80 -> Color(0xFF22C55E)    // SuccessGreen (good)
+                onTargetPercentage >= 50 -> Color(0xFFF59E0B)    // WarningAmber (warning)
+                else                     -> colors.error          // ErrorRed (poor)
+            }
+
             Text(
                 text = "${statistics.categoriesOnTarget} / ${statistics.totalCategories} on target",
                 style = MaterialTheme.typography.bodySmall,
-                color = colors.onSurfaceVariant
+                color = onTargetColor,
+                fontWeight = FontWeight.Medium
             )
             if (statistics.totalTarget > 0) {
                 Text(
