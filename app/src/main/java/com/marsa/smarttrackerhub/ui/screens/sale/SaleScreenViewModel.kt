@@ -143,8 +143,12 @@ class SaleScreenViewModel(
             try {
                 val cachedEntity = summaryDao.getSummary(shopId, monthId)
                 if (cachedEntity != null) {
+                    // Recalculate targets first so the minimum floor (1500) is always enforced,
+                    // even for data that was cached before the floor rule was introduced.
+                    recalculateTargetSales(shopId)
+                    val refreshed = summaryDao.getSummary(shopId, monthId) ?: cachedEntity
                     _summariesCache.value = _summariesCache.value.toMutableMap().apply {
-                        put(monthId, cachedEntity.toDomain())
+                        put(monthId, refreshed.toDomain())
                     }
                     _isLoadingMonth.value = false
                     Log.d("SaleScreenViewModel", "Loaded from cache: $shopId - $monthId")

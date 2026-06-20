@@ -45,6 +45,7 @@ fun PurchaseCategoryChart(
     categories: List<PurchaseCategoryChartData>,
     statistics: PurchaseChartStatistics,
     shopAddress: String = "",
+    periodLabel: String = "",
     modifier: Modifier = Modifier
 ) {
     val colors = MaterialTheme.colorScheme
@@ -54,7 +55,7 @@ fun PurchaseCategoryChart(
         // ── Header: shop name + period — matches sales card style ────────────
         ChartTitle(
             shopAddress = shopAddress,
-            periodLabel = statistics.monthLabel,
+            periodLabel = periodLabel.ifBlank { statistics.monthLabel },
             // Pass 100.0 when there is no previous-month target so the indicator
             // dot stays green (neutral — nothing to compare against yet)
             achievementPercentage = if (statistics.totalTarget > 0)

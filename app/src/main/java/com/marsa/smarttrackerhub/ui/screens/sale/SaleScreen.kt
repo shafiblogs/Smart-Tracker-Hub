@@ -162,7 +162,7 @@ fun SaleScreen(userAccessCode: AccessCode) {
                                             isSelected = isSelected,
                                             summary = summary,
                                             isLoading = isSelected && isLoadingMonth,
-                                            shopAddress = selectedShop?.address ?: "",
+                                            shopAddress = selectedShop?.name ?: "",
                                             onClick = { viewModel.selectMonth(monthItem.id) },
                                             onRefresh = { viewModel.refreshMonth(monthItem.id) },
                                             onShare = if (summary != null && isSelected) {
@@ -203,7 +203,7 @@ fun SaleScreen(userAccessCode: AccessCode) {
                                         isSelected = isSelected,
                                         summary = summary,
                                         isLoading = isSelected && isLoadingMonth,
-                                        shopAddress = selectedShop?.address ?: "",
+                                        shopAddress = selectedShop?.name ?: "",
                                         onClick = { viewModel.selectMonth(monthItem.id) },
                                         onRefresh = { viewModel.refreshMonth(monthItem.id) },
                                         onShare = if (summary != null && isSelected) {

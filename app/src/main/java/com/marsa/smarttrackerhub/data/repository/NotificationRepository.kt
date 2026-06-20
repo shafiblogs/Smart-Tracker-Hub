@@ -30,6 +30,8 @@ class NotificationRepository(
 
             // Check shop licenses
             shops.forEach { shop ->
+                if (shop.shopStatus == "Closed") return@forEach
+
                 val daysUntilExpiry = TimeUnit.MILLISECONDS.toDays(shop.licenseExpiryDate - currentTime)
 
                 when {
@@ -48,8 +50,8 @@ class NotificationRepository(
                             )
                         )
                     }
-                    daysUntilExpiry <= 60 -> {
-                        // Near expiry (within 2 months)
+                    daysUntilExpiry <= 30 -> {
+                        // Near expiry (within 1 month)
                         notifications.add(
                             NotificationItem(
                                 id = "shop_license_${shop.id}",

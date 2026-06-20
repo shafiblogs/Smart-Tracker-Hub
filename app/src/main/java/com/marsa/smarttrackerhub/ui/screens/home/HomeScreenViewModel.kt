@@ -17,6 +17,7 @@ import com.marsa.smarttrackerhub.ui.screens.chart.MonthlyChartData
 import com.marsa.smarttrackerhub.ui.screens.chart.PurchaseCategoryChartData
 import com.marsa.smarttrackerhub.ui.screens.chart.PurchaseChartStatistics
 import com.marsa.smarttrackerhub.ui.screens.purchase.PurchaseItem
+import com.marsa.smarttrackerhub.ui.screens.sale.TargetSaleCalculator
 import com.marsa.smarttrackerhub.ui.screens.statement.ShopListDto
 import com.marsa.smarttrackerhub.utils.getShortMonthName
 import kotlinx.coroutines.Dispatchers
@@ -29,6 +30,8 @@ import java.util.Calendar
 import java.util.Locale
 import kotlin.coroutines.resume
 import kotlin.coroutines.suspendCoroutine
+
+private const val MIN_PURCHASE_CATEGORY_TARGET = 500.0
 
 class HomeScreenViewModel(
     application: Application,
@@ -138,6 +141,12 @@ class HomeScreenViewModel(
     private fun loadChartData(shopId: String) {
         viewModelScope.launch(Dispatchers.IO) {
             allSummaries = summaryDao.getAllSummariesForShop(shopId = shopId)
+            // Recalculate targets so the 1500 minimum floor is enforced on cached data
+            val recalculated = TargetSaleCalculator.calculateTargetSalesForShop(allSummaries)
+            if (recalculated.isNotEmpty()) {
+                summaryDao.insertSummaries(recalculated)
+                allSummaries = recalculated
+            }
             val sortedData = allSummaries.sortedByDescending { it.monthTimestamp }
 
             val selectedRange = _selectedRange.value
@@ -166,18 +175,32 @@ class HomeScreenViewModel(
             calculateStatistics(statsMonths)
             _periodLabel.value = generatePeriodLabel(statsMonths, selectedRange)
 
-            // Purchase chart always uses the most recent month regardless of period selector
-            loadPurchaseChartData(shopId, sortedData)
+            // Purchase chart: pick current/previous indices based on the selected range so
+            // each period shows a distinct, meaningful pair.
+            // Current Month  → newest vs newest-1
+            // Previous Month → newest-1 vs newest-2
+            // Last 3 Months  → newest vs newest-3  (start-of-window comparison)
+            // Last 6 Months  → newest vs newest-6
+            val (purchaseCurrentIdx, purchasePreviousIdx) = when (selectedRange) {
+                is MonthRange.CurrentMonth  -> Pair(0, 1)
+                is MonthRange.PreviousMonth -> Pair(1, 2)
+                is MonthRange.Last3Months   -> Pair(0, 3)
+                is MonthRange.Last6Months   -> Pair(0, 6)
+            }
+            loadPurchaseChartData(shopId, sortedData, purchaseCurrentIdx, purchasePreviousIdx)
         }
     }
 
     /**
-     * Fetches purchase breakdowns for the two most recent months, then builds
-     * [PurchaseCategoryChartData] where target = previousMonth.totalAmount × 1.10.
+     * Fetches purchase breakdowns for [currentIdx] and [previousIdx] within [sortedSummaries]
+     * (newest-first), then builds [PurchaseCategoryChartData] where
+     * target = previousMonth.totalAmount × 1.10.
      */
     private suspend fun loadPurchaseChartData(
         shopId: String,
-        sortedSummaries: List<SummaryEntity>
+        sortedSummaries: List<SummaryEntity>,
+        currentIdx: Int,
+        previousIdx: Int
     ) {
         if (sortedSummaries.isEmpty()) {
             _purchaseCategoryData.value = emptyList()
@@ -187,8 +210,8 @@ class HomeScreenViewModel(
 
         _isPurchaseLoading.value = true
 
-        val currentMonthId  = sortedSummaries[0].monthYear
-        val previousMonthId = sortedSummaries.getOrNull(1)?.monthYear
+        val currentMonthId  = sortedSummaries.getOrNull(currentIdx)?.monthYear  ?: sortedSummaries.first().monthYear
+        val previousMonthId = sortedSummaries.getOrNull(previousIdx)?.monthYear
 
         val currentBreakdown  = fetchPurchaseBreakdown(shopId, currentMonthId)
         val previousBreakdown = if (previousMonthId != null)
@@ -206,7 +229,10 @@ class HomeScreenViewModel(
                     categoryId   = item.categoryId,
                     categoryName = item.categoryName,
                     actual       = item.totalAmount,
-                    target       = if (prevAmount != null) prevAmount * 1.10 else 0.0
+                    target       = if (prevAmount != null)
+                        maxOf(prevAmount * 1.10, MIN_PURCHASE_CATEGORY_TARGET)
+                    else
+                        MIN_PURCHASE_CATEGORY_TARGET
                 )
             }
 

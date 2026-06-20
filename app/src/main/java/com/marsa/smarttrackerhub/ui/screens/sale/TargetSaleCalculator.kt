@@ -54,9 +54,9 @@ object TargetSaleCalculator {
                 }
             }
 
-            // Create updated entity with calculated target
+            // Enforce minimum target — never drop below INITIAL_TARGET (1500)
             updatedSummaries.add(
-                summary.copy(targetSale = calculatedTarget)
+                summary.copy(targetSale = maxOf(calculatedTarget, INITIAL_TARGET))
             )
         }
 

@@ -21,6 +21,7 @@ import com.google.firebase.FirebaseApp
 import com.marsa.smarttrackerhub.domain.AccessCode
 import com.marsa.smarttrackerhub.ui.screens.chart.MonthlySalesChart
 import com.marsa.smarttrackerhub.ui.screens.chart.PurchaseCategoryChart
+import com.marsa.smarttrackerhub.ui.screens.chart.PurchaseStatisticsCard
 import com.marsa.smarttrackerhub.ui.screens.chart.StatisticsCard
 import com.marsa.smarttrackerhub.utils.ShareUtil
 
@@ -53,9 +54,10 @@ fun HomeScreen(
     val purchaseCategoryData by viewModel.purchaseCategoryData.collectAsState()
     val purchaseStatistics   by viewModel.purchaseStatistics.collectAsState()
 
-    var chartView         by remember { mutableStateOf<View?>(null) }
-    var statsView         by remember { mutableStateOf<View?>(null) }
-    var purchaseChartView by remember { mutableStateOf<View?>(null) }
+    var chartView              by remember { mutableStateOf<View?>(null) }
+    var statsView              by remember { mutableStateOf<View?>(null) }
+    var purchaseChartView      by remember { mutableStateOf<View?>(null) }
+    var purchaseStatsView      by remember { mutableStateOf<View?>(null) }
 
     LaunchedEffect(Unit) {
         viewModel.loadScreenData(userAccessCode)
@@ -162,7 +164,7 @@ fun HomeScreen(
                         setContent {
                             StatisticsCard(
                                 statistics = stats,
-                                shopAddress = selectedShop?.address ?: "",
+                                shopAddress = selectedShop?.name ?: "",
                                 periodLabel = periodLabel,
                                 onShareClick = {
                                     statsView?.let { view ->
@@ -182,7 +184,7 @@ fun HomeScreen(
                     view.setContent {
                         StatisticsCard(
                             statistics = stats,
-                            shopAddress = selectedShop?.address ?: "",
+                            shopAddress = selectedShop?.name ?: "",
                             periodLabel = periodLabel,
                             onShareClick = {
                                 statsView?.let { v ->
@@ -276,6 +278,54 @@ fun HomeScreen(
 
         Spacer(modifier = Modifier.height(24.dp))
 
+        // ── Purchase Statistics Card ─────────────────────────────────────────
+        purchaseStatistics?.let { stats ->
+            AndroidView(
+                factory = { ctx ->
+                    androidx.compose.ui.platform.ComposeView(ctx).apply {
+                        setContent {
+                            PurchaseStatisticsCard(
+                                statistics  = stats,
+                                shopAddress = selectedShop?.name ?: "",
+                                periodLabel = periodLabel,
+                                onShareClick = {
+                                    purchaseStatsView?.let { view ->
+                                        ShareUtil.shareViewAsImage(
+                                            view = view,
+                                            context = ctx,
+                                            fileName = "purchase_stats_${selectedShop?.name?.replace(" ", "_")}.png",
+                                            shareTitle = "Share Purchase Statistics"
+                                        )
+                                    }
+                                }
+                            )
+                        }
+                    }.also { purchaseStatsView = it }
+                },
+                update = { view ->
+                    view.setContent {
+                        PurchaseStatisticsCard(
+                            statistics  = stats,
+                            shopAddress = selectedShop?.name ?: "",
+                            periodLabel = periodLabel,
+                            onShareClick = {
+                                purchaseStatsView?.let { v ->
+                                    ShareUtil.shareViewAsImage(
+                                        view = v,
+                                        context = context,
+                                        fileName = "purchase_stats_${selectedShop?.name?.replace(" ", "_")}.png",
+                                        shareTitle = "Share Purchase Statistics"
+                                    )
+                                }
+                            }
+                        )
+                    }
+                },
+                modifier = Modifier.fillMaxWidth()
+            )
+            Spacer(modifier = Modifier.height(24.dp))
+        }
+
         // ── Purchase Progress title + share ─────────────────────────────────
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -327,7 +377,8 @@ fun HomeScreen(
                                 isPurchaseLoading    = isPurchaseLoading,
                                 purchaseCategoryData = purchaseCategoryData,
                                 purchaseStatistics   = purchaseStatistics,
-                                selectedShop         = selectedShop
+                                selectedShop         = selectedShop,
+                                periodLabel          = periodLabel
                             )
                         }
                     }.also { purchaseChartView = it }
@@ -357,7 +408,8 @@ private fun PurchaseChartContent(
     isPurchaseLoading: Boolean,
     purchaseCategoryData: List<com.marsa.smarttrackerhub.ui.screens.chart.PurchaseCategoryChartData>,
     purchaseStatistics: com.marsa.smarttrackerhub.ui.screens.chart.PurchaseChartStatistics?,
-    selectedShop: com.marsa.smarttrackerhub.ui.screens.statement.ShopListDto?
+    selectedShop: com.marsa.smarttrackerhub.ui.screens.statement.ShopListDto?,
+    periodLabel: String = ""
 ) {
     when {
         isPurchaseLoading -> {
@@ -390,10 +442,11 @@ private fun PurchaseChartContent(
         else -> {
             purchaseStatistics?.let { stats ->
                 com.marsa.smarttrackerhub.ui.screens.chart.PurchaseCategoryChart(
-                    categories  = purchaseCategoryData,
-                    statistics  = stats,
-                    shopAddress = selectedShop?.address ?: selectedShop?.name ?: "",
-                    modifier    = Modifier.fillMaxWidth()
+                    categories   = purchaseCategoryData,
+                    statistics   = stats,
+                    shopAddress  = selectedShop?.name ?: "",
+                    periodLabel  = periodLabel,
+                    modifier     = Modifier.fillMaxWidth()
                 )
             }
         }
@@ -433,7 +486,7 @@ private fun SalesChartContent(
     } else {
         MonthlySalesChart(
             data = chartData,
-            shopAddress = selectedShop?.address ?: "",
+            shopAddress = selectedShop?.name ?: "",
             periodLabel = periodLabel,
             isTargetAchieved = (statistics?.averageAchievementPercentage ?: 0.0) >= 100,
             achievementPercentage = statistics?.averageAchievementPercentage ?: 0.0,

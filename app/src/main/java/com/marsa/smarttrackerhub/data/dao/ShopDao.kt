@@ -18,8 +18,8 @@ interface ShopDao {
     @Query("SELECT * FROM shop_info")
     suspend fun getAllShopsAsList(): List<ShopInfo>
 
-    /** Running + Initial shops only — used for selection dropdowns (excludes Closed). */
-    @Query("SELECT * FROM shop_info WHERE shopStatus != 'Closed'")
+    /** Running shops only — used for selection dropdowns (excludes Initial and Closed). */
+    @Query("SELECT * FROM shop_info WHERE shopStatus = 'Running'")
     suspend fun getActiveShopsAsList(): List<ShopInfo>
 
     @Query("SELECT * FROM shop_info WHERE id = :id")
