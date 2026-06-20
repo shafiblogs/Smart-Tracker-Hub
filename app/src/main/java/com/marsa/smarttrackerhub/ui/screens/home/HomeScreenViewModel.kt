@@ -88,6 +88,9 @@ class HomeScreenViewModel(
     private val _isPurchaseLoading = MutableStateFlow(false)
     val isPurchaseLoading: StateFlow<Boolean> = _isPurchaseLoading.asStateFlow()
 
+    private val _salesMargin = MutableStateFlow(0.0)
+    val salesMargin: StateFlow<Double> = _salesMargin.asStateFlow()
+
     // ── Internal state ───────────────────────────────────────────────────────
 
     private var allSummaries: List<SummaryEntity> = emptyList()
@@ -180,6 +183,14 @@ class HomeScreenViewModel(
             val statsMonths = dataToUse.take(statsMonthCount)
             calculateStatistics(statsMonths)
             _periodLabel.value = generatePeriodLabel(statsMonths, selectedRange)
+
+            // Calculate sales margin from total sales and total purchases
+            val totalSales = statsMonths.sumOf { it.totalSales }
+            val totalPurchases = statsMonths.sumOf { it.totalPurchases }
+            val margin = if (totalSales > 0)
+                ((totalSales - totalPurchases) / totalSales) * 100
+            else 0.0
+            _salesMargin.value = margin
 
             // Purchase chart indices (newest-first).
             // Single-month ranges: one current + one previous for target baseline.

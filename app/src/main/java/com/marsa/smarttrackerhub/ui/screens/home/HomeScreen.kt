@@ -47,6 +47,7 @@ fun HomeScreen(
     val availableRanges  by viewModel.availableRanges.collectAsState()
     val selectedRange    by viewModel.selectedRange.collectAsState()
     val periodExpanded   by viewModel.periodExpanded.collectAsState()
+    val salesMargin      by viewModel.salesMargin.collectAsState()
 
     // Purchase chart state
     val isPurchaseLoading    by viewModel.isPurchaseLoading.collectAsState()
@@ -165,6 +166,7 @@ fun HomeScreen(
                                 purchaseStatistics = purchaseStatistics!!,
                                 shopName = selectedShop?.name ?: "",
                                 periodLabel = periodLabel,
+                                salesMargin = salesMargin,
                                 onShareClick = {
                                     statsView?.let { view ->
                                         ShareUtil.shareViewAsImage(
@@ -186,6 +188,7 @@ fun HomeScreen(
                             purchaseStatistics = purchaseStatistics!!,
                             shopName = selectedShop?.name ?: "",
                             periodLabel = periodLabel,
+                            salesMargin = salesMargin,
                             onShareClick = {
                                 statsView?.let { v ->
                                     ShareUtil.shareViewAsImage(
@@ -278,14 +281,14 @@ fun HomeScreen(
 
         Spacer(modifier = Modifier.height(24.dp))
 
-        // ── Purchase Progress title + share ─────────────────────────────────
+        // ── Purchase Trend title + share ─────────────────────────────────
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text(
-                text = "Purchase Progress",
+                text = "Purchase Trend",
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.SemiBold
             )
@@ -296,7 +299,7 @@ fun HomeScreen(
                             view = view,
                             context = context,
                             fileName = "purchase_chart_${selectedShop?.name?.replace(" ", "_")}.png",
-                            shareTitle = "Share Purchase Progress"
+                            shareTitle = "Share Purchase Trend"
                         )
                     }
                 },
