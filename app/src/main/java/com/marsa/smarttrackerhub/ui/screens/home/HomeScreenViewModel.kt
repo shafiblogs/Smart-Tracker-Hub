@@ -32,6 +32,7 @@ import kotlin.coroutines.resume
 import kotlin.coroutines.suspendCoroutine
 
 private const val MIN_PURCHASE_CATEGORY_TARGET = 500.0
+private const val MIN_TOTAL_PURCHASE_TARGET = 10000.0
 
 class HomeScreenViewModel(
     application: Application,
@@ -141,9 +142,12 @@ class HomeScreenViewModel(
     private fun loadChartData(shopId: String) {
         viewModelScope.launch(Dispatchers.IO) {
             allSummaries = summaryDao.getAllSummariesForShop(shopId = shopId)
-            // Recalculate targets so the 1500 minimum floor is enforced on cached data
+            // Recalculate targets so the 1500 minimum floor is enforced on cached data.
+            // Only write back to Room if any target value actually changed.
             val recalculated = TargetSaleCalculator.calculateTargetSalesForShop(allSummaries)
-            if (recalculated.isNotEmpty()) {
+            val oldTargetMap = allSummaries.associate { it.monthYear to it.targetSale }
+            val targetsChanged = recalculated.any { it.targetSale != oldTargetMap[it.monthYear] }
+            if (targetsChanged) {
                 summaryDao.insertSummaries(recalculated)
                 allSummaries = recalculated
             }
@@ -151,14 +155,16 @@ class HomeScreenViewModel(
 
             val selectedRange = _selectedRange.value
 
-            val (chartMonthCount, statsMonthCount, skipCurrentMonth) = when (selectedRange) {
-                is MonthRange.CurrentMonth  -> Triple(1, 1, false)
-                is MonthRange.PreviousMonth -> Triple(1, 1, true)
-                is MonthRange.Last3Months   -> Triple(3, 3, true)
-                is MonthRange.Last6Months   -> Triple(6, 6, true)
+            // skipCount = how many newest months to drop before taking chart data
+            val (chartMonthCount, statsMonthCount, skipCount) = when (selectedRange) {
+                is MonthRange.CurrentMonth        -> Triple(1, 1, 0)
+                is MonthRange.PreviousMonth       -> Triple(1, 1, 1)
+                is MonthRange.PreviousPreviousMonth -> Triple(1, 1, 2)
+                is MonthRange.Last3Months         -> Triple(3, 3, 1)
+                is MonthRange.Last6Months         -> Triple(6, 6, 1)
             }
 
-            val dataToUse = if (skipCurrentMonth) sortedData.drop(1) else sortedData
+            val dataToUse = sortedData.drop(skipCount)
             val chartMonths = dataToUse.take(chartMonthCount).reversed()
 
             _chartData.value = chartMonths.map { summary ->
@@ -175,32 +181,37 @@ class HomeScreenViewModel(
             calculateStatistics(statsMonths)
             _periodLabel.value = generatePeriodLabel(statsMonths, selectedRange)
 
-            // Purchase chart: pick current/previous indices based on the selected range so
-            // each period shows a distinct, meaningful pair.
-            // Current Month  → newest vs newest-1
-            // Previous Month → newest-1 vs newest-2
-            // Last 3 Months  → newest vs newest-3  (start-of-window comparison)
-            // Last 6 Months  → newest vs newest-6
-            val (purchaseCurrentIdx, purchasePreviousIdx) = when (selectedRange) {
-                is MonthRange.CurrentMonth  -> Pair(0, 1)
-                is MonthRange.PreviousMonth -> Pair(1, 2)
-                is MonthRange.Last3Months   -> Pair(0, 3)
-                is MonthRange.Last6Months   -> Pair(0, 6)
+            // Purchase chart indices (newest-first).
+            // Single-month ranges: one current + one previous for target baseline.
+            // Multi-month ranges: aggregate actuals across the window; target = same-size prior window × 1.10.
+            // Current Month  → [0] vs [1]
+            // Previous Month → [1] vs [2]
+            // Last 3 Months  → [1,2,3] vs [4,5,6]   (skips current incomplete month)
+            // Last 6 Months  → [1,2,3,4,5,6] vs [7,8,9,10,11,12]
+            val (purchaseCurrentIndices, purchasePreviousIndices) = when (selectedRange) {
+                is MonthRange.CurrentMonth          -> Pair(listOf(0), listOf(1))
+                is MonthRange.PreviousMonth         -> Pair(listOf(1), listOf(2))
+                is MonthRange.PreviousPreviousMonth -> Pair(listOf(2), listOf(3))
+                is MonthRange.Last3Months           -> Pair(listOf(1, 2, 3), listOf(2, 3, 4))
+                is MonthRange.Last6Months           -> Pair(listOf(1, 2, 3, 4, 5, 6), listOf(2, 3, 4, 5, 6, 7))
             }
-            loadPurchaseChartData(shopId, sortedData, purchaseCurrentIdx, purchasePreviousIdx)
+            loadPurchaseChartData(shopId, sortedData, purchaseCurrentIndices, purchasePreviousIndices)
         }
     }
 
     /**
-     * Fetches purchase breakdowns for [currentIdx] and [previousIdx] within [sortedSummaries]
-     * (newest-first), then builds [PurchaseCategoryChartData] where
-     * target = previousMonth.totalAmount × 1.10.
+     * Aggregates purchase breakdowns across [currentIndices] months (newest-first) for actuals,
+     * and across [previousIndices] months for the target baseline.
+     * For single-month periods (Current/Previous Month) each list has one entry.
+     * For multi-month periods (Last 3/6 Months) each list has multiple entries — amounts are
+     * summed per category across all months in the window.
+     * Target = aggregated previous-window amount × 1.10, floored at MIN_PURCHASE_CATEGORY_TARGET.
      */
     private suspend fun loadPurchaseChartData(
         shopId: String,
         sortedSummaries: List<SummaryEntity>,
-        currentIdx: Int,
-        previousIdx: Int
+        currentIndices: List<Int>,
+        previousIndices: List<Int>
     ) {
         if (sortedSummaries.isEmpty()) {
             _purchaseCategoryData.value = emptyList()
@@ -210,44 +221,57 @@ class HomeScreenViewModel(
 
         _isPurchaseLoading.value = true
 
-        val currentMonthId  = sortedSummaries.getOrNull(currentIdx)?.monthYear  ?: sortedSummaries.first().monthYear
-        val previousMonthId = sortedSummaries.getOrNull(previousIdx)?.monthYear
+        val currentMonthIds  = currentIndices.mapNotNull  { sortedSummaries.getOrNull(it)?.monthYear }
+        val previousMonthIds = previousIndices.mapNotNull { sortedSummaries.getOrNull(it)?.monthYear }
 
-        val currentBreakdown  = fetchPurchaseBreakdown(shopId, currentMonthId)
-        val previousBreakdown = if (previousMonthId != null)
-            fetchPurchaseBreakdown(shopId, previousMonthId) else emptyList()
+        // Aggregate actuals: sum totalAmount per categoryId across all current-window months
+        val currentAggregated = mutableMapOf<Int, PurchaseItem>()
+        currentMonthIds.forEach { monthId ->
+            fetchPurchaseBreakdown(shopId, monthId).forEach { item ->
+                val existing = currentAggregated[item.categoryId]
+                currentAggregated[item.categoryId] = if (existing != null)
+                    existing.copy(totalAmount = existing.totalAmount + item.totalAmount)
+                else
+                    item
+            }
+        }
 
-        // Map: categoryId → previous month's totalAmount
-        val prevAmountMap = previousBreakdown.associateBy({ it.categoryId }, { it.totalAmount })
+        // Aggregate previous window: sum totalAmount per categoryId for target baseline
+        val previousAggregated = mutableMapOf<Int, Double>()
+        previousMonthIds.forEach { monthId ->
+            fetchPurchaseBreakdown(shopId, monthId).forEach { item ->
+                previousAggregated[item.categoryId] =
+                    (previousAggregated[item.categoryId] ?: 0.0) + item.totalAmount
+            }
+        }
 
-        val chartItems = currentBreakdown
+        val chartItems = currentAggregated.values
             .filter { it.categoryName.isNotBlank() }
             .sortedByDescending { it.totalAmount }
             .map { item ->
-                val prevAmount = prevAmountMap[item.categoryId]
+                val prevAmount = previousAggregated[item.categoryId]
                 PurchaseCategoryChartData(
                     categoryId   = item.categoryId,
                     categoryName = item.categoryName,
                     actual       = item.totalAmount,
-                    target       = if (prevAmount != null)
+                    target       = if (prevAmount != null && prevAmount > 0)
                         maxOf(prevAmount * 1.10, MIN_PURCHASE_CATEGORY_TARGET)
                     else
                         MIN_PURCHASE_CATEGORY_TARGET
                 )
             }
 
-        val totalActual           = chartItems.sumOf { it.actual }
-        val totalTarget           = chartItems.sumOf { it.target }
-        // "on target" = actual reached or exceeded the target (more purchase = more sale = good)
-        val categoriesUnderTarget = chartItems.count { !it.hasTarget || it.actual >= it.target }
+        val totalActual        = chartItems.sumOf { it.actual }
+        val totalTarget        = maxOf(chartItems.sumOf { it.target }, MIN_TOTAL_PURCHASE_TARGET)
+        val categoriesOnTarget = chartItems.count { !it.hasTarget || it.actual >= it.target }
 
         _purchaseCategoryData.value = chartItems
         _purchaseStatistics.value = PurchaseChartStatistics(
-            totalActual           = totalActual,
-            totalTarget           = totalTarget,
-            monthLabel            = currentMonthId,
-            categoriesUnderTarget = categoriesUnderTarget,
-            totalCategories       = chartItems.size
+            totalActual        = totalActual,
+            totalTarget        = totalTarget,
+            monthLabel         = currentMonthIds.firstOrNull() ?: "",
+            categoriesOnTarget = categoriesOnTarget,
+            totalCategories    = chartItems.size
         )
         _isPurchaseLoading.value = false
     }
@@ -292,10 +316,11 @@ class HomeScreenViewModel(
         val dateFormat  = SimpleDateFormat("dd MMM yyyy", Locale.getDefault())
         val monthFormat = SimpleDateFormat("MMMM yyyy",   Locale.getDefault())
         return when (range) {
-            is MonthRange.CurrentMonth  -> dateFormat.format(Calendar.getInstance().time)
-            is MonthRange.PreviousMonth -> monthFormat.format(data[0].monthTimestamp)
-            is MonthRange.Last3Months   -> "Last 3 Months"
-            is MonthRange.Last6Months   -> "Last 6 Months"
+            is MonthRange.CurrentMonth          -> dateFormat.format(Calendar.getInstance().time)
+            is MonthRange.PreviousMonth         -> monthFormat.format(data[0].monthTimestamp)
+            is MonthRange.PreviousPreviousMonth -> monthFormat.format(data[0].monthTimestamp)
+            is MonthRange.Last3Months           -> "Last 3 Months"
+            is MonthRange.Last6Months           -> "Last 6 Months"
         }
     }
 

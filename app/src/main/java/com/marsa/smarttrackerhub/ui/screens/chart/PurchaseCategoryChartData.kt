@@ -30,7 +30,7 @@ data class PurchaseChartStatistics(
     val totalActual: Double,
     val totalTarget: Double,
     val monthLabel: String,
-    val categoriesUnderTarget: Int,
+    val categoriesOnTarget: Int,
     val totalCategories: Int
 ) {
     val achievementPercentage: Double =

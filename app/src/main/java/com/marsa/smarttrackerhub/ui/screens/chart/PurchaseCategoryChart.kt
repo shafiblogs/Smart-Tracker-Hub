@@ -76,7 +76,7 @@ fun PurchaseCategoryChart(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text(
-                text = "${statistics.categoriesUnderTarget} / ${statistics.totalCategories} on target",
+                text = "${statistics.categoriesOnTarget} / ${statistics.totalCategories} on target",
                 style = MaterialTheme.typography.bodySmall,
                 color = colors.onSurfaceVariant
             )

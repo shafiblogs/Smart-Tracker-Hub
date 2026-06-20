@@ -10,6 +10,7 @@ sealed class MonthRange(val displayName: String, val months: Int) {
 
     data class CurrentMonth(val monthName: String) : MonthRange(monthName, 1)
     data class PreviousMonth(val monthName: String) : MonthRange(monthName, 1)
+    data class PreviousPreviousMonth(val monthName: String) : MonthRange(monthName, 1)
     object Last3Months : MonthRange("Last 3 Months", 3)
     object Last6Months : MonthRange("Last 6 Months", 6)
 
@@ -24,13 +25,18 @@ sealed class MonthRange(val displayName: String, val months: Int) {
             // Current month
             val currentMonthName = monthFormat.format(calendar.time)
 
-            // Previous month
+            // Previous month (1 month back)
             calendar.add(Calendar.MONTH, -1)
             val previousMonthName = monthFormat.format(calendar.time)
+
+            // Previous previous month (2 months back)
+            calendar.add(Calendar.MONTH, -1)
+            val previousPreviousMonthName = monthFormat.format(calendar.time)
 
             return listOf(
                 CurrentMonth(currentMonthName),
                 PreviousMonth(previousMonthName),
+                PreviousPreviousMonth(previousPreviousMonthName),
                 Last3Months,
                 Last6Months
             )
