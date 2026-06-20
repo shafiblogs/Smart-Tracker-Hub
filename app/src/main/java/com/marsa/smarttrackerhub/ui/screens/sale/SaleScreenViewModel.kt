@@ -9,6 +9,7 @@ import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.ListenerRegistration
 import com.marsa.smarttrackerhub.data.AppDatabase
+import com.marsa.smarttrackerhub.data.entity.PurchaseEntity
 import com.marsa.smarttrackerhub.data.entity.toDomain
 import com.marsa.smarttrackerhub.data.entity.toEntity
 import com.marsa.smarttrackerhub.domain.AccessCode
@@ -40,6 +41,7 @@ class SaleScreenViewModel(
     private val trackerFireStore = FirebaseFirestore.getInstance(firebaseApp)
     private val database = AppDatabase.getDatabase(application)
     private val summaryDao = database.summaryDao()
+    private val purchaseDao = database.purchaseDao()
 
     private val _selectedShop = MutableStateFlow<ShopListDto?>(null)
     val selectedShop: StateFlow<ShopListDto?> = _selectedShop
@@ -56,14 +58,22 @@ class SaleScreenViewModel(
     private var monthsListenerRegistration: ListenerRegistration? = null
 
     fun setSelectedShop(shop: ShopListDto?) {
-        monthsListenerRegistration?.remove()
-        _selectedShop.value = shop
-        _selectedMonthId.value = null
-        _availableMonths.value = emptyList()
-        _summariesCache.value = emptyMap()
+        // Only clear cache and re-register listener if shop actually changed
+        val shopIdChanged = _selectedShop.value?.shopId != shop?.shopId
 
-        shop?.shopId?.let { shopId ->
-            loadMonthListForShop(shopId)
+        if (shopIdChanged) {
+            monthsListenerRegistration?.remove()
+            _selectedMonthId.value = null
+            _availableMonths.value = emptyList()
+            _summariesCache.value = emptyMap()
+        }
+
+        _selectedShop.value = shop
+
+        if (shopIdChanged) {
+            shop?.shopId?.let { shopId ->
+                loadMonthListForShop(shopId)
+            }
         }
     }
 
@@ -184,6 +194,24 @@ class SaleScreenViewModel(
                                     put(monthId, updated.toDomain())
                                 }
                             }
+
+                            // Save purchase breakdown to Room
+                            @Suppress("UNCHECKED_CAST")
+                            val purchaseBreakdown = document.get("purchaseBreakdown") as? List<Map<String, Any>> ?: emptyList()
+                            if (purchaseBreakdown.isNotEmpty()) {
+                                val purchaseEntities = purchaseBreakdown.map { map ->
+                                    PurchaseEntity(
+                                        shopId = shopId,
+                                        monthId = monthId,
+                                        categoryId = (map["categoryId"] as? Long)?.toInt() ?: 0,
+                                        categoryName = map["categoryName"] as? String ?: "Uncategorised",
+                                        totalAmount = parseAmount(map["totalAmount"]),
+                                        lastUpdated = System.currentTimeMillis()
+                                    )
+                                }
+                                purchaseDao.insertPurchases(purchaseEntities)
+                                Log.d("SaleScreenViewModel", "Saved ${purchaseEntities.size} purchase items for $shopId - $monthId")
+                            }
                         } catch (e: Exception) {
                             Log.e("SaleScreenViewModel", "Error saving to local DB", e)
                         }
@@ -196,6 +224,13 @@ class SaleScreenViewModel(
                 Log.e("SaleScreenViewModel", "Error fetching month $monthId", e)
                 _isLoadingMonth.value = false
             }
+    }
+
+    private fun parseAmount(value: Any?): Double = when (value) {
+        is Double -> value
+        is Long   -> value.toDouble()
+        is String -> value.toDoubleOrNull() ?: 0.0
+        else      -> 0.0
     }
 
     private suspend fun recalculateTargetSales(shopId: String) {

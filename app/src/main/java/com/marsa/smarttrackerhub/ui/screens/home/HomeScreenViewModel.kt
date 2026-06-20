@@ -97,6 +97,7 @@ class HomeScreenViewModel(
 
     private val database = AppDatabase.getDatabase(application)
     private val summaryDao = database.summaryDao()
+    private val purchaseDao = database.purchaseDao()
     private val firestore = FirebaseFirestore.getInstance(firebaseApp)
 
     // ── Public API ───────────────────────────────────────────────────────────
@@ -287,37 +288,59 @@ class HomeScreenViewModel(
     }
 
     /**
-     * One-shot Firestore fetch for a single month's purchaseBreakdown array.
+     * Fetches purchase breakdown for a month.
+     * First tries to read from Room cache, then falls back to Firestore if not cached.
      * Returns an empty list on any error.
      */
     private suspend fun fetchPurchaseBreakdown(
         shopId: String,
         monthId: String
     ): List<PurchaseItem> = suspendCoroutine { cont ->
-        firestore.collection("summary")
-            .document(shopId)
-            .collection("months")
-            .document(monthId)
-            .get()
-            .addOnSuccessListener { document ->
-                @Suppress("UNCHECKED_CAST")
-                val raw = document.get("purchaseBreakdown") as? List<Map<String, Any>>
-                    ?: emptyList()
-                cont.resume(raw.map { map ->
-                    PurchaseItem(
-                        categoryId   = (map["categoryId"] as? Long)?.toInt() ?: 0,
-                        categoryName = map["categoryName"] as? String ?: "Uncategorised",
-                        totalAmount  = parseAmount(map["totalAmount"])
+        // First, try to read from Room cache
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                val cachedPurchases = purchaseDao.getPurchasesForMonth(shopId, monthId)
+                if (cachedPurchases.isNotEmpty()) {
+                    Log.d("HomeScreenViewModel", "Loaded purchases from Room cache: $shopId - $monthId")
+                    cont.resume(cachedPurchases.map { entity ->
+                        PurchaseItem(
+                            categoryId = entity.categoryId,
+                            categoryName = entity.categoryName,
+                            totalAmount = entity.totalAmount
+                        )
+                    })
+                    return@launch
+                }
+            } catch (e: Exception) {
+                Log.e("HomeScreenViewModel", "Error reading from Room cache: ${e.message}")
+            }
+
+            // Fallback to Firestore if not in Room
+            firestore.collection("summary")
+                .document(shopId)
+                .collection("months")
+                .document(monthId)
+                .get()
+                .addOnSuccessListener { document ->
+                    @Suppress("UNCHECKED_CAST")
+                    val raw = document.get("purchaseBreakdown") as? List<Map<String, Any>>
+                        ?: emptyList()
+                    cont.resume(raw.map { map ->
+                        PurchaseItem(
+                            categoryId   = (map["categoryId"] as? Long)?.toInt() ?: 0,
+                            categoryName = map["categoryName"] as? String ?: "Uncategorised",
+                            totalAmount  = parseAmount(map["totalAmount"])
+                        )
+                    })
+                }
+                .addOnFailureListener { e ->
+                    Log.e(
+                        "HomeScreenViewModel",
+                        "Error fetching purchaseBreakdown from Firestore for $shopId / $monthId: ${e.message}"
                     )
-                })
-            }
-            .addOnFailureListener { e ->
-                Log.e(
-                    "HomeScreenViewModel",
-                    "Error fetching purchaseBreakdown for $shopId / $monthId: ${e.message}"
-                )
-                cont.resume(emptyList())
-            }
+                    cont.resume(emptyList())
+                }
+        }
     }
 
     private fun parseAmount(value: Any?): Double = when (value) {

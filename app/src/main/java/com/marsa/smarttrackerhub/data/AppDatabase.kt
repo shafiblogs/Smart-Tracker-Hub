@@ -10,6 +10,7 @@ import com.marsa.smarttrackerhub.data.dao.AccountSummaryDao
 import com.marsa.smarttrackerhub.data.dao.EmployeeInfoDao
 import com.marsa.smarttrackerhub.data.dao.InvestmentTransactionDao
 import com.marsa.smarttrackerhub.data.dao.InvestorDao
+import com.marsa.smarttrackerhub.data.dao.PurchaseDao
 import com.marsa.smarttrackerhub.data.dao.ShopDao
 import com.marsa.smarttrackerhub.data.dao.ShopInvestorDao
 import com.marsa.smarttrackerhub.data.dao.SummaryDao
@@ -19,6 +20,7 @@ import com.marsa.smarttrackerhub.data.entity.AccountSummaryEntity
 import com.marsa.smarttrackerhub.data.entity.EmployeeInfo
 import com.marsa.smarttrackerhub.data.entity.InvestmentTransaction
 import com.marsa.smarttrackerhub.data.entity.InvestorInfo
+import com.marsa.smarttrackerhub.data.entity.PurchaseEntity
 import com.marsa.smarttrackerhub.data.entity.SettlementEntry
 import com.marsa.smarttrackerhub.data.entity.ShopInfo
 import com.marsa.smarttrackerhub.data.entity.ShopInvestor
@@ -28,6 +30,7 @@ import com.marsa.smarttrackerhub.data.entity.YearEndSettlement
 import com.marsa.smarttrackerhub.data.helper.Converters
 import com.marsa.smarttrackerhub.data.migrations.MIGRATION_1_2
 import com.marsa.smarttrackerhub.data.migrations.MIGRATION_2_3
+import com.marsa.smarttrackerhub.data.migrations.MIGRATION_3_4
 
 
 /**
@@ -63,9 +66,10 @@ import com.marsa.smarttrackerhub.data.migrations.MIGRATION_2_3
         ShopInvestor::class,
         InvestmentTransaction::class,
         YearEndSettlement::class,
-        SettlementEntry::class
+        SettlementEntry::class,
+        PurchaseEntity::class
     ],
-    version = 3
+    version = 4
 )
 @TypeConverters(Converters::class)
 abstract class AppDatabase : RoomDatabase() {
@@ -78,6 +82,7 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun shopInvestorDao(): ShopInvestorDao
     abstract fun investmentTransactionDao(): InvestmentTransactionDao
     abstract fun yearEndSettlementDao(): YearEndSettlementDao
+    abstract fun purchaseDao(): PurchaseDao
 
     companion object {
         @Volatile
@@ -90,7 +95,7 @@ abstract class AppDatabase : RoomDatabase() {
                     AppDatabase::class.java,
                     "tracker_hub_db"
                 )
-                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3)
+                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4)
                     .fallbackToDestructiveMigrationOnDowngrade()
                     .addCallback(object : Callback() {
                         override fun onCreate(db: SupportSQLiteDatabase) {
