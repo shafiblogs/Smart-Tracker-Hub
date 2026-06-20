@@ -7,14 +7,19 @@ import androidx.lifecycle.viewModelScope
 import com.google.firebase.FirebaseApp
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.ListenerRegistration
+import com.marsa.smarttrackerhub.data.AppDatabase
+import com.marsa.smarttrackerhub.data.entity.toDomain
+import com.marsa.smarttrackerhub.data.entity.toEntity
 import com.marsa.smarttrackerhub.domain.AccessCode
 import com.marsa.smarttrackerhub.domain.AccountSummary
 import com.marsa.smarttrackerhub.domain.getSummaryShopList
 import com.marsa.smarttrackerhub.ui.screens.sale.TargetSaleCalculator
 import com.marsa.smarttrackerhub.ui.screens.statement.ShopListDto
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 class SummaryViewModel(
     application: Application,
@@ -31,6 +36,8 @@ class SummaryViewModel(
     val summariesCache: StateFlow<Map<String, AccountSummary>> = _summariesCache
 
     private val firestore = FirebaseFirestore.getInstance(firebaseApp)
+    private val database = AppDatabase.getDatabase(application)
+    private val accountSummaryDao = database.accountSummaryDao()
 
     private val _selectedShop = MutableStateFlow<ShopListDto?>(null)
     val selectedShop: StateFlow<ShopListDto?> = _selectedShop
@@ -55,14 +62,22 @@ class SummaryViewModel(
     }
 
     fun setSelectedShop(shop: ShopListDto?) {
-        monthsListenerRegistration?.remove()
-        _selectedShop.value = shop
-        _selectedMonthId.value = null
-        _availableMonths.value = emptyList()
-        _summariesCache.value = emptyMap()
+        // Only clear cache and re-register listener if shop actually changed
+        val shopIdChanged = _selectedShop.value?.shopId != shop?.shopId
 
-        shop?.shopId?.let { shopId ->
-            loadMonthListForShop(shopId)
+        if (shopIdChanged) {
+            monthsListenerRegistration?.remove()
+            _selectedMonthId.value = null
+            _availableMonths.value = emptyList()
+            _summariesCache.value = emptyMap()
+        }
+
+        _selectedShop.value = shop
+
+        if (shopIdChanged) {
+            shop?.shopId?.let { shopId ->
+                loadMonthListForShop(shopId)
+            }
         }
     }
 
@@ -82,7 +97,16 @@ class SummaryViewModel(
         val shopId = _selectedShop.value?.shopId ?: return
         _summariesCache.value = _summariesCache.value.toMutableMap().apply { remove(monthId) }
         _isLoadingMonth.value = true
-        loadSummaryForMonth(shopId, monthId)
+        // Delete old data from Room to force fresh Firestore fetch (prevents duplicates)
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                accountSummaryDao.deleteAccountSummary(shopId, monthId)
+                loadSummaryForMonth(shopId, monthId)
+            } catch (e: Exception) {
+                Log.e("SummaryViewModel", "Error deleting old summary data on refresh", e)
+                loadSummaryForMonth(shopId, monthId)
+            }
+        }
     }
 
     private fun loadMonthListForShop(shopId: String) {
@@ -113,30 +137,59 @@ class SummaryViewModel(
     }
 
     /**
-     * Reads `summary/{shopId}/months/{monthId}` from AccountTrackerApp Firebase
-     * and deserializes directly to [AccountSummary].
+     * Reads `summary/{shopId}/months/{monthId}` from Room cache first,
+     * then falls back to Firestore if not cached.
+     * Persists any Firestore data to Room for future loads.
      */
     private fun loadSummaryForMonth(shopId: String, monthId: String) {
         _isLoadingMonth.value = true
-        firestore
-            .collection("summary").document(shopId)
-            .collection("months").document(monthId)
-            .get()
-            .addOnSuccessListener { document ->
-                val summary = document.toObject(AccountSummary::class.java)
-                    ?.let { if (it.lastUpdated == 0L) it.copy(lastUpdated = System.currentTimeMillis()) else it }
-                if (summary != null) {
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                // First, try to read from Room cache
+                val cachedEntity = accountSummaryDao.getAccountSummary(shopId, monthId)
+                if (cachedEntity != null) {
+                    val summary = cachedEntity.toDomain()
                     _summariesCache.value = _summariesCache.value.toMutableMap().apply {
                         put(monthId, summary)
                     }
-                    Log.d("SummaryViewModel", "Loaded summary for $shopId $monthId")
+                    _isLoadingMonth.value = false
+                    Log.d("SummaryViewModel", "Loaded summary from Room cache: $shopId - $monthId")
+                    return@launch
                 }
-                _isLoadingMonth.value = false
+            } catch (e: Exception) {
+                Log.e("SummaryViewModel", "Error reading from Room cache: ${e.message}")
             }
-            .addOnFailureListener { e ->
-                Log.e("SummaryViewModel", "Error fetching summary $shopId $monthId", e)
-                _isLoadingMonth.value = false
-            }
+
+            // Fallback to Firestore if not in Room
+            firestore
+                .collection("summary").document(shopId)
+                .collection("months").document(monthId)
+                .get()
+                .addOnSuccessListener { document ->
+                    val summary = document.toObject(AccountSummary::class.java)
+                        ?.let { if (it.lastUpdated == 0L) it.copy(lastUpdated = System.currentTimeMillis()) else it }
+                    if (summary != null) {
+                        _summariesCache.value = _summariesCache.value.toMutableMap().apply {
+                            put(monthId, summary)
+                        }
+                        // Save to Room for future loads
+                        viewModelScope.launch(Dispatchers.IO) {
+                            try {
+                                accountSummaryDao.insertAccountSummary(summary.toEntity(shopId, monthId))
+                                Log.d("SummaryViewModel", "Saved summary to Room: $shopId - $monthId")
+                            } catch (e: Exception) {
+                                Log.e("SummaryViewModel", "Error saving to Room", e)
+                            }
+                        }
+                        Log.d("SummaryViewModel", "Loaded summary from Firestore: $shopId - $monthId")
+                    }
+                    _isLoadingMonth.value = false
+                }
+                .addOnFailureListener { e ->
+                    Log.e("SummaryViewModel", "Error fetching summary $shopId $monthId", e)
+                    _isLoadingMonth.value = false
+                }
+        }
     }
 
     override fun onCleared() {

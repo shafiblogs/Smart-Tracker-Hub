@@ -17,4 +17,7 @@ interface AccountSummaryDao {
 
     @Query("SELECT * FROM account_summary WHERE shopId = :shopId ORDER BY monthTimestamp DESC")
     suspend fun getAllAccountSummariesForShop(shopId: String): List<AccountSummaryEntity>
+
+    @androidx.room.Query("DELETE FROM account_summary WHERE shopId = :shopId AND monthId = :monthId")
+    suspend fun deleteAccountSummary(shopId: String, monthId: String)
 }

@@ -123,7 +123,16 @@ class PurchaseScreenViewModel(
         _purchaseCache.value = _purchaseCache.value.toMutableMap().apply { remove(monthId) }
         _lastUpdatedCache.value = _lastUpdatedCache.value.toMutableMap().apply { remove(monthId) }
         _isLoadingMonth.value = true
-        loadPurchasesForMonth(shopId, monthId)
+        // Delete old data from Room to force fresh Firestore fetch (prevents duplicates)
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                purchaseDao.deletePurchasesForMonth(shopId, monthId)
+                loadPurchasesForMonth(shopId, monthId)
+            } catch (e: Exception) {
+                Log.e("PurchaseViewModel", "Error deleting old purchase data on refresh", e)
+                loadPurchasesForMonth(shopId, monthId)
+            }
+        }
     }
 
     private fun loadMonthListForShop(shopId: String) {
