@@ -21,8 +21,7 @@ import com.google.firebase.FirebaseApp
 import com.marsa.smarttrackerhub.domain.AccessCode
 import com.marsa.smarttrackerhub.ui.screens.chart.MonthlySalesChart
 import com.marsa.smarttrackerhub.ui.screens.chart.PurchaseCategoryChart
-import com.marsa.smarttrackerhub.ui.screens.chart.PurchaseStatisticsCard
-import com.marsa.smarttrackerhub.ui.screens.chart.StatisticsCard
+import com.marsa.smarttrackerhub.ui.screens.chart.UnifiedStatisticsCard
 import com.marsa.smarttrackerhub.utils.ShareUtil
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -57,7 +56,6 @@ fun HomeScreen(
     var chartView              by remember { mutableStateOf<View?>(null) }
     var statsView              by remember { mutableStateOf<View?>(null) }
     var purchaseChartView      by remember { mutableStateOf<View?>(null) }
-    var purchaseStatsView      by remember { mutableStateOf<View?>(null) }
 
     LaunchedEffect(Unit) {
         viewModel.loadScreenData(userAccessCode)
@@ -156,23 +154,24 @@ fun HomeScreen(
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        // ── Statistics Card ──────────────────────────────────────────────────
-        statistics?.let { stats ->
+        // ── Unified Statistics Card (Sales + Purchases) ──────────────────────
+        if (statistics != null && purchaseStatistics != null) {
             AndroidView(
                 factory = { ctx ->
                     androidx.compose.ui.platform.ComposeView(ctx).apply {
                         setContent {
-                            StatisticsCard(
-                                statistics = stats,
-                                shopAddress = selectedShop?.name ?: "",
+                            UnifiedStatisticsCard(
+                                salesStatistics = statistics!!,
+                                purchaseStatistics = purchaseStatistics!!,
+                                shopName = selectedShop?.name ?: "",
                                 periodLabel = periodLabel,
                                 onShareClick = {
                                     statsView?.let { view ->
                                         ShareUtil.shareViewAsImage(
                                             view = view,
                                             context = context,
-                                            fileName = "sales_stats_${selectedShop?.name?.replace(" ", "_")}.png",
-                                            shareTitle = "Share Sales Statistics"
+                                            fileName = "statistics_${selectedShop?.name?.replace(" ", "_")}.png",
+                                            shareTitle = "Share Statistics"
                                         )
                                     }
                                 }
@@ -182,17 +181,18 @@ fun HomeScreen(
                 },
                 update = { view ->
                     view.setContent {
-                        StatisticsCard(
-                            statistics = stats,
-                            shopAddress = selectedShop?.name ?: "",
+                        UnifiedStatisticsCard(
+                            salesStatistics = statistics!!,
+                            purchaseStatistics = purchaseStatistics!!,
+                            shopName = selectedShop?.name ?: "",
                             periodLabel = periodLabel,
                             onShareClick = {
                                 statsView?.let { v ->
                                     ShareUtil.shareViewAsImage(
                                         view = v,
                                         context = context,
-                                        fileName = "sales_stats_${selectedShop?.name?.replace(" ", "_")}.png",
-                                        shareTitle = "Share Sales Statistics"
+                                        fileName = "statistics_${selectedShop?.name?.replace(" ", "_")}.png",
+                                        shareTitle = "Share Statistics"
                                     )
                                 }
                             }
@@ -277,54 +277,6 @@ fun HomeScreen(
         }
 
         Spacer(modifier = Modifier.height(24.dp))
-
-        // ── Purchase Statistics Card ─────────────────────────────────────────
-        purchaseStatistics?.let { stats ->
-            AndroidView(
-                factory = { ctx ->
-                    androidx.compose.ui.platform.ComposeView(ctx).apply {
-                        setContent {
-                            PurchaseStatisticsCard(
-                                statistics  = stats,
-                                shopAddress = selectedShop?.name ?: "",
-                                periodLabel = periodLabel,
-                                onShareClick = {
-                                    purchaseStatsView?.let { view ->
-                                        ShareUtil.shareViewAsImage(
-                                            view = view,
-                                            context = ctx,
-                                            fileName = "purchase_stats_${selectedShop?.name?.replace(" ", "_")}.png",
-                                            shareTitle = "Share Purchase Statistics"
-                                        )
-                                    }
-                                }
-                            )
-                        }
-                    }.also { purchaseStatsView = it }
-                },
-                update = { view ->
-                    view.setContent {
-                        PurchaseStatisticsCard(
-                            statistics  = stats,
-                            shopAddress = selectedShop?.name ?: "",
-                            periodLabel = periodLabel,
-                            onShareClick = {
-                                purchaseStatsView?.let { v ->
-                                    ShareUtil.shareViewAsImage(
-                                        view = v,
-                                        context = context,
-                                        fileName = "purchase_stats_${selectedShop?.name?.replace(" ", "_")}.png",
-                                        shareTitle = "Share Purchase Statistics"
-                                    )
-                                }
-                            }
-                        )
-                    }
-                },
-                modifier = Modifier.fillMaxWidth()
-            )
-            Spacer(modifier = Modifier.height(24.dp))
-        }
 
         // ── Purchase Progress title + share ─────────────────────────────────
         Row(
