@@ -1,5 +1,6 @@
 package com.marsa.smarttrackerhub.ui.screens.logs
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -25,7 +26,6 @@ import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -137,7 +137,13 @@ fun LogsScreen(viewModel: LogsViewModel = viewModel()) {
                 }
 
                 if (employees.isNotEmpty()) {
-                    HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(1.dp)
+                            .background(MaterialTheme.colorScheme.outlineVariant)
+                            .padding(vertical = 4.dp)
+                    )
                     DropdownMenuItem(
                         text    = {
                             Text(
@@ -220,7 +226,7 @@ fun LogsScreen(viewModel: LogsViewModel = viewModel()) {
             }
 
             selectedItem is SelectionItem.ShopItem -> {
-                // ── Shop view ──────────────────────────────────────────────
+                // ── Shop view (Table Format) ───────────────────────────────
                 val summary = shopMonthSummary
                 if (shopDaySummaries.isEmpty() && summary == null) {
                     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -232,76 +238,253 @@ fun LogsScreen(viewModel: LogsViewModel = viewModel()) {
                     }
                 } else {
                     LazyColumn(
-                        modifier            = Modifier.fillMaxSize(),
-                        contentPadding      = PaddingValues(vertical = 4.dp),
-                        verticalArrangement = Arrangement.spacedBy(10.dp)
+                        modifier       = Modifier.fillMaxSize(),
+                        contentPadding = PaddingValues(vertical = 8.dp, horizontal = 8.dp)
                     ) {
-                        // Summary card (shareable)
-                        if (summary != null) {
-                            item(key = "shop_summary") {
-                                AndroidView(
-                                    factory = { ctx ->
-                                        ComposeView(ctx).apply {
-                                            setContent {
-                                                ShopSummaryCard(
-                                                    summary = summary,
-                                                    onRefresh = { viewModel.refresh() },
-                                                    onShare = {
-                                                        summaryViewRef.value?.let {
-                                                            ShareUtil.shareViewAsImage(it, ctx,
-                                                                "shop_summary_${summary.shopName.replace(" ", "_")}_${selectedMonth.key}.png",
-                                                                "Share Shop Summary")
-                                                        }
-                                                    }
-                                                )
-                                            }
-                                        }
-                                    },
-                                    update = { view ->
-                                        summaryViewRef.value = view
-                                        (view as? ComposeView)?.setContent {
-                                            ShopSummaryCard(
-                                                summary = summary,
-                                                onRefresh = { viewModel.refresh() },
-                                                onShare = {
-                                                    ShareUtil.shareViewAsImage(view, context,
-                                                        "shop_summary_${summary.shopName.replace(" ", "_")}_${selectedMonth.key}.png",
-                                                        "Share Shop Summary")
-                                                }
-                                            )
-                                        }
-                                    },
-                                    modifier = Modifier.fillMaxWidth()
-                                )
-                            }
-                        }
-
-                        // Day cards
-                        items(shopDaySummaries, key = { it.date }) { day ->
+                        // Single unified card with summary and records
+                        item(key = "shop_unified_card") {
                             AndroidView(
                                 factory = { ctx ->
                                     ComposeView(ctx).apply {
                                         setContent {
-                                            ShopDayCard(day = day, onShare = {
-                                                dayCardViewRefs[day.date]?.let {
-                                                    ShareUtil.shareViewAsImage(it, ctx,
-                                                        "shop_log_${day.date}.png", "Share Log")
+                                            Card(
+                                                modifier = Modifier.fillMaxWidth(),
+                                                shape = RoundedCornerShape(12.dp),
+                                                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                                                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+                                            ) {
+                                                Column(modifier = Modifier.fillMaxWidth()) {
+                                                    // Header row with title and action buttons
+                                                    Row(
+                                                        modifier              = Modifier
+                                                            .fillMaxWidth()
+                                                            .padding(horizontal = 16.dp, vertical = 12.dp),
+                                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                                        verticalAlignment     = Alignment.CenterVertically
+                                                    ) {
+                                                        Column(modifier = Modifier.weight(1f)) {
+                                                            Text(
+                                                                text  = summary?.shopName ?: "Shop",
+                                                                style = MaterialTheme.typography.titleSmall,
+                                                                fontWeight = FontWeight.Bold,
+                                                                color = MaterialTheme.colorScheme.primary
+                                                            )
+                                                            Spacer(modifier = Modifier.height(4.dp))
+                                                            Text(
+                                                                text  = selectedMonth.displayName,
+                                                                style = MaterialTheme.typography.bodySmall,
+                                                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                                                            )
+                                                        }
+                                                        Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                                                            IconButton(onClick = { viewModel.refresh() }, modifier = Modifier.size(36.dp)) {
+                                                                Icon(Icons.Default.Refresh, contentDescription = "Refresh",
+                                                                    tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(18.dp))
+                                                            }
+                                                            IconButton(onClick = {
+                                                                summaryViewRef.value?.let {
+                                                                    ShareUtil.shareViewAsImage(it, context,
+                                                                        "shop_logs_${summary?.shopName?.replace(" ", "_") ?: "shop"}_${selectedMonth.key}.png",
+                                                                        "Share Shop Logs")
+                                                                }
+                                                            }, modifier = Modifier.size(36.dp)) {
+                                                                Icon(Icons.Default.Share, contentDescription = "Share",
+                                                                    tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(18.dp))
+                                                            }
+                                                        }
+                                                    }
+
+                                    // Stats row
+                                    if (summary != null) {
+                                        Row(
+                                            modifier              = Modifier
+                                                .fillMaxWidth()
+                                                .padding(horizontal = 16.dp, vertical = 8.dp),
+                                            horizontalArrangement = Arrangement.spacedBy(16.dp)
+                                        ) {
+                                            Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                                                Text(
+                                                    text  = "Days Open:",
+                                                    style = MaterialTheme.typography.bodySmall,
+                                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                                )
+                                                Text(
+                                                    text  = "${summary.totalDaysOpen}",
+                                                    style = MaterialTheme.typography.bodySmall,
+                                                    color = MaterialTheme.colorScheme.onSurface
+                                                )
+                                            }
+                                            Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                                                Text(
+                                                    text  = "Total:",
+                                                    style = MaterialTheme.typography.bodySmall,
+                                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                                )
+                                                Text(
+                                                    text  = summary.totalMinutes.toHoursLabel(),
+                                                    style = MaterialTheme.typography.bodySmall,
+                                                    color = MaterialTheme.colorScheme.onSurface
+                                                )
+                                            }
+                                            Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                                                Text(
+                                                    text  = "Avg:",
+                                                    style = MaterialTheme.typography.bodySmall,
+                                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                                )
+                                                Text(
+                                                    text  = summary.avgMinutesPerDay.toHoursLabel(),
+                                                    style = MaterialTheme.typography.bodySmall,
+                                                    color = MaterialTheme.colorScheme.onSurface
+                                                )
+                                            }
+                                        }
+
+                                        Spacer(modifier = Modifier.height(8.dp))
+                                        Box(
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .height(1.dp)
+                                                .background(MaterialTheme.colorScheme.outlineVariant)
+                                        )
+                                    }
+
+                                    // Table
+                                    ShopLogsTableHeader()
+
+                                    for (day in shopDaySummaries) {
+                                        ShopLogsTableRow(
+                                            day = day,
+                                            onShare = {},
+                                            viewRef = {}
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                        }
+                    },
+                    update = { view ->
+                        summaryViewRef.value = view
+                        (view as? ComposeView)?.setContent {
+                            Card(
+                                modifier = Modifier.fillMaxWidth(),
+                                shape = RoundedCornerShape(12.dp),
+                                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+                            ) {
+                                Column(modifier = Modifier.fillMaxWidth()) {
+                                    // Header row with title and action buttons
+                                    Row(
+                                        modifier              = Modifier
+                                            .fillMaxWidth()
+                                            .padding(horizontal = 16.dp, vertical = 12.dp),
+                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                        verticalAlignment     = Alignment.CenterVertically
+                                    ) {
+                                        Column(modifier = Modifier.weight(1f)) {
+                                            Text(
+                                                text  = summary?.shopName ?: "Shop",
+                                                style = MaterialTheme.typography.titleSmall,
+                                                fontWeight = FontWeight.Bold,
+                                                color = MaterialTheme.colorScheme.primary
+                                            )
+                                            Spacer(modifier = Modifier.height(4.dp))
+                                            Text(
+                                                text  = selectedMonth.displayName,
+                                                style = MaterialTheme.typography.bodySmall,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                                            )
+                                        }
+                                        Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                                            IconButton(onClick = { viewModel.refresh() }, modifier = Modifier.size(36.dp)) {
+                                                Icon(Icons.Default.Refresh, contentDescription = "Refresh",
+                                                    tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(18.dp))
+                                            }
+                                            IconButton(onClick = {
+                                                summaryViewRef.value?.let {
+                                                    ShareUtil.shareViewAsImage(it, context,
+                                                        "shop_logs_${summary?.shopName?.replace(" ", "_") ?: "shop"}_${selectedMonth.key}.png",
+                                                        "Share Shop Logs")
                                                 }
-                                            })
+                                            }, modifier = Modifier.size(36.dp)) {
+                                                Icon(Icons.Default.Share, contentDescription = "Share",
+                                                    tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(18.dp))
+                                            }
                                         }
                                     }
-                                },
-                                update = { view ->
-                                    dayCardViewRefs[day.date] = view
-                                    (view as? ComposeView)?.setContent {
-                                        ShopDayCard(day = day, onShare = {
-                                            ShareUtil.shareViewAsImage(view, context,
-                                                "shop_log_${day.date}.png", "Share Log")
-                                        })
+
+                                    // Stats row
+                                    if (summary != null) {
+                                        Row(
+                                            modifier              = Modifier
+                                                .fillMaxWidth()
+                                                .padding(horizontal = 16.dp, vertical = 8.dp),
+                                            horizontalArrangement = Arrangement.spacedBy(16.dp)
+                                        ) {
+                                            Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                                                Text(
+                                                    text  = "Days Open:",
+                                                    style = MaterialTheme.typography.bodySmall,
+                                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                                )
+                                                Text(
+                                                    text  = "${summary.totalDaysOpen}",
+                                                    style = MaterialTheme.typography.bodySmall,
+                                                    color = MaterialTheme.colorScheme.onSurface
+                                                )
+                                            }
+                                            Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                                                Text(
+                                                    text  = "Total:",
+                                                    style = MaterialTheme.typography.bodySmall,
+                                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                                )
+                                                Text(
+                                                    text  = summary.totalMinutes.toHoursLabel(),
+                                                    style = MaterialTheme.typography.bodySmall,
+                                                    color = MaterialTheme.colorScheme.onSurface
+                                                )
+                                            }
+                                            Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                                                Text(
+                                                    text  = "Avg:",
+                                                    style = MaterialTheme.typography.bodySmall,
+                                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                                )
+                                                Text(
+                                                    text  = summary.avgMinutesPerDay.toHoursLabel(),
+                                                    style = MaterialTheme.typography.bodySmall,
+                                                    color = MaterialTheme.colorScheme.onSurface
+                                                )
+                                            }
+                                        }
+
+                                        Spacer(modifier = Modifier.height(8.dp))
+                                        Box(
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .height(1.dp)
+                                                .background(MaterialTheme.colorScheme.outlineVariant)
+                                        )
                                     }
-                                },
-                                modifier = Modifier.fillMaxWidth()
-                            )
+
+                                    // Table
+                                    ShopLogsTableHeader()
+
+                                    for (day in shopDaySummaries) {
+                                        ShopLogsTableRow(
+                                            day = day,
+                                            onShare = {},
+                                            viewRef = {}
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    modifier = Modifier.fillMaxWidth()
+                )
                         }
 
                         item { Spacer(modifier = Modifier.height(80.dp)) }
@@ -323,75 +506,143 @@ fun LogsScreen(viewModel: LogsViewModel = viewModel()) {
                 } else {
                     LazyColumn(
                         modifier            = Modifier.fillMaxSize(),
-                        contentPadding      = PaddingValues(vertical = 4.dp),
-                        verticalArrangement = Arrangement.spacedBy(10.dp)
+                        contentPadding      = PaddingValues(vertical = 8.dp, horizontal = 8.dp)
                     ) {
-                        // Summary card (shareable)
-                        if (summary != null) {
-                            item(key = "emp_summary") {
-                                AndroidView(
-                                    factory = { ctx ->
-                                        ComposeView(ctx).apply {
-                                            setContent {
-                                                EmployeeSummaryCard(
-                                                    summary = summary,
-                                                    onRefresh = { viewModel.refresh() },
-                                                    onShare = {
-                                                        summaryViewRef.value?.let {
-                                                            ShareUtil.shareViewAsImage(it, ctx,
-                                                                "emp_summary_${summary.employeeName.replace(" ", "_")}_${selectedMonth.key}.png",
-                                                                "Share Employee Summary")
-                                                        }
-                                                    }
+                        // Single unified card with summary and records
+                        item(key = "emp_unified_card") {
+                            Card(
+                                modifier = Modifier.fillMaxWidth(),
+                                shape = RoundedCornerShape(12.dp),
+                                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+                            ) {
+                                Column(modifier = Modifier.fillMaxWidth()) {
+                                    // Header row with title and action buttons
+                                    Row(
+                                        modifier              = Modifier
+                                            .fillMaxWidth()
+                                            .padding(horizontal = 16.dp, vertical = 12.dp),
+                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                        verticalAlignment     = Alignment.CenterVertically
+                                    ) {
+                                        Column(modifier = Modifier.weight(1f)) {
+                                            Text(
+                                                text  = summary?.employeeName ?: "Employee",
+                                                style = MaterialTheme.typography.titleSmall,
+                                                fontWeight = FontWeight.Bold,
+                                                color = MaterialTheme.colorScheme.primary
+                                            )
+                                            Spacer(modifier = Modifier.height(4.dp))
+                                            Text(
+                                                text  = selectedMonth.displayName,
+                                                style = MaterialTheme.typography.bodySmall,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                                            )
+                                        }
+                                        Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                                            IconButton(onClick = { viewModel.refresh() }, modifier = Modifier.size(36.dp)) {
+                                                Icon(Icons.Default.Refresh, contentDescription = "Refresh",
+                                                    tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(18.dp))
+                                            }
+                                            IconButton(onClick = {
+                                                summaryViewRef.value?.let {
+                                                    ShareUtil.shareViewAsImage(it, context,
+                                                        "emp_summary_${summary?.employeeName?.replace(" ", "_") ?: "employee"}_${selectedMonth.key}.png",
+                                                        "Share Employee Summary")
+                                                }
+                                            }, modifier = Modifier.size(36.dp)) {
+                                                Icon(Icons.Default.Share, contentDescription = "Share",
+                                                    tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(18.dp))
+                                            }
+                                        }
+                                    }
+
+                                    // Stats row
+                                    if (summary != null) {
+                                        Row(
+                                            modifier              = Modifier
+                                                .fillMaxWidth()
+                                                .padding(horizontal = 16.dp, vertical = 8.dp),
+                                            horizontalArrangement = Arrangement.spacedBy(12.dp)
+                                        ) {
+                                            Row(modifier = Modifier.weight(1f), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                                                Text(
+                                                    text  = "Days Worked:",
+                                                    style = MaterialTheme.typography.bodySmall,
+                                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                                )
+                                                Text(
+                                                    text  = "${summary.totalDays}",
+                                                    style = MaterialTheme.typography.bodySmall,
+                                                    color = MaterialTheme.colorScheme.onSurface
+                                                )
+                                            }
+                                            Row(modifier = Modifier.weight(1f), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                                                Text(
+                                                    text  = "Total:",
+                                                    style = MaterialTheme.typography.bodySmall,
+                                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                                )
+                                                Text(
+                                                    text  = summary.totalMinutes.toHoursLabel(),
+                                                    style = MaterialTheme.typography.bodySmall,
+                                                    color = MaterialTheme.colorScheme.onSurface
+                                                )
+                                            }
+                                            Row(modifier = Modifier.weight(1f), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                                                Text(
+                                                    text  = "Avg:",
+                                                    style = MaterialTheme.typography.bodySmall,
+                                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                                )
+                                                Text(
+                                                    text  = summary.avgMinutesPerDay.toHoursLabel(),
+                                                    style = MaterialTheme.typography.bodySmall,
+                                                    color = MaterialTheme.colorScheme.onSurface
                                                 )
                                             }
                                         }
-                                    },
-                                    update = { view ->
-                                        summaryViewRef.value = view
-                                        (view as? ComposeView)?.setContent {
-                                            EmployeeSummaryCard(
-                                                summary = summary,
-                                                onRefresh = { viewModel.refresh() },
-                                                onShare = {
-                                                    ShareUtil.shareViewAsImage(view, context,
-                                                        "emp_summary_${summary.employeeName.replace(" ", "_")}_${selectedMonth.key}.png",
-                                                        "Share Employee Summary")
-                                                }
-                                            )
-                                        }
-                                    },
-                                    modifier = Modifier.fillMaxWidth()
-                                )
-                            }
-                        }
 
-                        // Day cards
-                        items(employeeDayRecords, key = { it.date }) { day ->
-                            AndroidView(
-                                factory = { ctx ->
-                                    ComposeView(ctx).apply {
-                                        setContent {
-                                            EmployeeDayCard(day = day, onShare = {
-                                                dayCardViewRefs[day.date]?.let {
-                                                    ShareUtil.shareViewAsImage(it, ctx,
-                                                        "emp_log_${day.date}.png", "Share Log")
+                                        Spacer(modifier = Modifier.height(8.dp))
+                                        Box(
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .height(1.dp)
+                                                .background(MaterialTheme.colorScheme.outlineVariant)
+                                        )
+                                    }
+
+                                    // Table
+                                    ShopLogsTableHeader()
+
+                                    for (day in employeeDayRecords) {
+                                        AndroidView(
+                                            factory = { ctx ->
+                                                ComposeView(ctx).apply {
+                                                    setContent {
+                                                        EmployeeDayCard(day = day, onShare = {
+                                                            dayCardViewRefs[day.date]?.let {
+                                                                ShareUtil.shareViewAsImage(it, ctx,
+                                                                    "emp_log_${day.date}.png", "Share Log")
+                                                            }
+                                                        })
+                                                    }
                                                 }
-                                            })
-                                        }
+                                            },
+                                            update = { view ->
+                                                dayCardViewRefs[day.date] = view
+                                                (view as? ComposeView)?.setContent {
+                                                    EmployeeDayCard(day = day, onShare = {
+                                                        ShareUtil.shareViewAsImage(view, context,
+                                                            "emp_log_${day.date}.png", "Share Log")
+                                                    })
+                                                }
+                                            },
+                                            modifier = Modifier.fillMaxWidth()
+                                        )
                                     }
-                                },
-                                update = { view ->
-                                    dayCardViewRefs[day.date] = view
-                                    (view as? ComposeView)?.setContent {
-                                        EmployeeDayCard(day = day, onShare = {
-                                            ShareUtil.shareViewAsImage(view, context,
-                                                "emp_log_${day.date}.png", "Share Log")
-                                        })
-                                    }
-                                },
-                                modifier = Modifier.fillMaxWidth()
-                            )
+                                }
+                            }
                         }
 
                         item { Spacer(modifier = Modifier.height(80.dp)) }
@@ -399,6 +650,138 @@ fun LogsScreen(viewModel: LogsViewModel = viewModel()) {
                 }
             }
         }
+    }
+}
+
+// ── Shop Logs Table ───────────────────────────────────────────────────────────
+
+@Composable
+private fun ShopLogsTableHeader() {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f))
+            .padding(horizontal = 16.dp, vertical = 12.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text("Date", style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold, modifier = Modifier.width(28.dp))
+        Text("In", style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f), textAlign = TextAlign.Center)
+        Text("Out", style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f), textAlign = TextAlign.Center)
+        Text("Dur", style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold, modifier = Modifier.weight(0.8f), textAlign = TextAlign.End)
+        Text("Total", style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold, modifier = Modifier.weight(0.8f), textAlign = TextAlign.End)
+    }
+}
+
+@Composable
+private fun ShopLogsTableRow(
+    day: DayLogSummary,
+    onShare: () -> Unit,
+    viewRef: (android.view.View) -> Unit
+) {
+    val isOpen = day.sessions.isNotEmpty()
+    val backgroundColor = if (isOpen) MaterialTheme.colorScheme.surface
+                         else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.2f)
+
+    // Extract date number (01, 02, etc)
+    val dateNumber = try {
+        day.date.split("-")[2]
+    } catch (e: Exception) {
+        "01"
+    }
+
+    Column(modifier = Modifier.fillMaxWidth()) {
+        if (isOpen && day.sessions.isNotEmpty()) {
+            // Multiple sessions or single session
+            for (index in day.sessions.indices) {
+                val session = day.sessions[index]
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(backgroundColor)
+                        .padding(horizontal = 16.dp, vertical = 12.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    // Show date only on first row
+                    if (index == 0) {
+                        Text(
+                            text = dateNumber,
+                            style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.SemiBold),
+                            modifier = Modifier.width(28.dp)
+                        )
+                    } else {
+                        Spacer(modifier = Modifier.width(28.dp))
+                    }
+
+                    Text(
+                        text = formatLogTime(session.openTime),
+                        style = MaterialTheme.typography.bodySmall,
+                        modifier = Modifier.weight(1f),
+                        textAlign = TextAlign.Center,
+                        color = Color(0xFF22C55E)
+                    )
+                    Text(
+                        text = if (session.closeTime != null) formatLogTime(session.closeTime)
+                               else "--",
+                        style = MaterialTheme.typography.bodySmall,
+                        modifier = Modifier.weight(1f),
+                        textAlign = TextAlign.Center,
+                        color = if (session.closeTime == null) Color(0xFFEF4444)
+                               else MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+
+                    // Individual session duration
+                    Text(
+                        text = session.durationMinutes.toHoursLabel(),
+                        style = MaterialTheme.typography.bodySmall,
+                        modifier = Modifier.weight(0.8f),
+                        textAlign = TextAlign.End,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+
+                    // Show day total only on first row
+                    if (index == 0) {
+                        Text(
+                            text = day.totalMinutes.toHoursLabel(),
+                            style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Bold),
+                            modifier = Modifier.weight(0.8f),
+                            textAlign = TextAlign.End,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                    } else {
+                        Spacer(modifier = Modifier.weight(0.8f))
+                    }
+                }
+            }
+        } else {
+            // Closed day
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(backgroundColor)
+                    .padding(horizontal = 16.dp, vertical = 12.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = dateNumber,
+                    style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.SemiBold),
+                    modifier = Modifier.width(40.dp)
+                )
+                Text(
+                    text = "Closed",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.weight(3f)
+                )
+            }
+        }
+
+        // Divider between dates
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(1.dp)
+                .background(MaterialTheme.colorScheme.outlineVariant)
+        )
     }
 }
 
@@ -445,10 +828,14 @@ private fun ShopSummaryCard(
                 }
             }
 
-            HorizontalDivider(
-                modifier  = Modifier.padding(vertical = 8.dp),
-                color     = MaterialTheme.colorScheme.outlineVariant
+            Spacer(modifier = Modifier.height(8.dp))
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(1.dp)
+                    .background(MaterialTheme.colorScheme.outlineVariant)
             )
+            Spacer(modifier = Modifier.height(8.dp))
 
             Row(
                 modifier              = Modifier.fillMaxWidth(),
@@ -505,10 +892,14 @@ private fun EmployeeSummaryCard(
                 }
             }
 
-            HorizontalDivider(
-                modifier  = Modifier.padding(vertical = 8.dp),
-                color     = MaterialTheme.colorScheme.outlineVariant
+            Spacer(modifier = Modifier.height(8.dp))
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(1.dp)
+                    .background(MaterialTheme.colorScheme.outlineVariant)
             )
+            Spacer(modifier = Modifier.height(8.dp))
 
             Row(
                 modifier              = Modifier.fillMaxWidth(),
@@ -539,170 +930,124 @@ private fun SummaryStatColumn(label: String, value: String) {
     }
 }
 
-// ── Shop Day Card ─────────────────────────────────────────────────────────────
-
-@Composable
-private fun ShopDayCard(day: DayLogSummary, onShare: () -> Unit) {
-    Card(
-        modifier  = Modifier.fillMaxWidth(),
-        shape     = RoundedCornerShape(12.dp),
-        colors    = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-    ) {
-        Column(modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp)) {
-            Row(
-                modifier          = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text     = formatLogDate(day.date),
-                    style    = sTypography.bodySmall.copy(fontWeight = FontWeight.Bold, fontSize = 13.sp),
-                    color    = MaterialTheme.colorScheme.onSurface,
-                    modifier = Modifier.weight(1f)
-                )
-                IconButton(onClick = onShare, modifier = Modifier.size(28.dp)) {
-                    Icon(Icons.Default.Share, contentDescription = "Share",
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.size(16.dp))
-                }
-            }
-
-            Spacer(modifier = Modifier.height(8.dp))
-
-            if (day.shopOpenTime == null) {
-                Text("Not opened", style = sTypography.bodySmall.copy(fontSize = 12.sp),
-                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f))
-            } else {
-                Row(
-                    verticalAlignment     = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(6.dp)
-                ) {
-                    TimeChip(label = "Open",  time = day.shopOpenTime,  color = Color(0xFF22C55E))
-                    Text("→", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    if (day.shopCloseTime != null) {
-                        TimeChip(label = "Close", time = day.shopCloseTime, color = Color(0xFFEF4444))
-                    } else {
-                        Text("Still open", style = sTypography.bodySmall.copy(fontSize = 11.sp),
-                            color = Color(0xFF22C55E))
-                    }
-                    day.shopTotalMinutes?.let { mins ->
-                        Spacer(modifier = Modifier.weight(1f))
-                        Text(mins.toHoursLabel(),
-                            style = sTypography.bodySmall.copy(fontWeight = FontWeight.Bold, fontSize = 12.sp),
-                            color = MaterialTheme.colorScheme.primary)
-                    }
-                }
-            }
-        }
-    }
-}
-
 // ── Employee Day Card ─────────────────────────────────────────────────────────
 
 @Composable
 private fun EmployeeDayCard(day: EmployeeDayRecord, onShare: () -> Unit) {
-    Card(
-        modifier  = Modifier.fillMaxWidth(),
-        shape     = RoundedCornerShape(12.dp),
-        colors    = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-    ) {
-        Column(modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp)) {
-            // Date header
+    // Extract date number (01, 02, etc)
+    val dateNumber = try {
+        day.date.split("-")[2]
+    } catch (e: Exception) {
+        "01"
+    }
+
+    Column(modifier = Modifier.fillMaxWidth()) {
+        if (day.sessions.isEmpty()) {
             Row(
-                modifier          = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.2f))
+                    .padding(horizontal = 16.dp, vertical = 12.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text     = formatLogDate(day.date),
-                    style    = sTypography.bodySmall.copy(fontWeight = FontWeight.Bold, fontSize = 13.sp),
-                    color    = MaterialTheme.colorScheme.onSurface,
-                    modifier = Modifier.weight(1f)
+                    text = dateNumber,
+                    style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.SemiBold),
+                    modifier = Modifier.width(40.dp)
                 )
-                IconButton(onClick = onShare, modifier = Modifier.size(28.dp)) {
-                    Icon(Icons.Default.Share, contentDescription = "Share",
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.size(16.dp))
-                }
+                Text(
+                    text = "No record",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.weight(3f)
+                )
             }
+        } else {
+            // Multiple sessions or single session
+            for (index in day.sessions.indices) {
+                val session = day.sessions[index]
+                val backgroundColor = MaterialTheme.colorScheme.surface
 
-            Spacer(modifier = Modifier.height(6.dp))
-
-            if (day.sessions.isEmpty()) {
-                Text("No record", style = sTypography.bodySmall.copy(fontSize = 12.sp),
-                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f))
-            } else {
-                // Sessions
-                day.sessions.forEachIndexed { idx, session ->
-                    Row(
-                        modifier          = Modifier.fillMaxWidth().padding(vertical = 2.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        if (day.sessions.size > 1) {
-                            Text("S${idx + 1} ", style = sTypography.bodySmall.copy(fontSize = 10.sp),
-                                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
-                                modifier = Modifier.width(20.dp))
-                        } else {
-                            Spacer(modifier = Modifier.width(20.dp))
-                        }
-                        Text(formatLogTime(session.loginTime),
-                            style = sTypography.bodySmall.copy(fontSize = 12.sp),
-                            color = Color(0xFF22C55E))
-                        Text(" → ", style = sTypography.bodySmall.copy(fontSize = 12.sp),
-                            color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(backgroundColor)
+                        .padding(horizontal = 16.dp, vertical = 12.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    // Show date only on first row
+                    if (index == 0) {
                         Text(
-                            text  = if (session.logoutTime != null) formatLogTime(session.logoutTime)
-                                    else "Working",
-                            style = sTypography.bodySmall.copy(fontSize = 12.sp),
-                            color = if (session.logoutTime == null) Color(0xFFF97316)
-                                    else MaterialTheme.colorScheme.onSurfaceVariant
+                            text = dateNumber,
+                            style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.SemiBold),
+                            modifier = Modifier.width(28.dp)
                         )
-                        if (session.durationMinutes > 0) {
-                            Spacer(modifier = Modifier.weight(1f))
-                            Text(session.durationMinutes.toHoursLabel(),
-                                style = sTypography.bodySmall.copy(fontWeight = FontWeight.Medium, fontSize = 12.sp),
-                                color = MaterialTheme.colorScheme.primary)
-                        }
+                    } else {
+                        Spacer(modifier = Modifier.width(28.dp))
                     }
-                }
-                // Day total (if multiple sessions or single with duration)
-                if (day.totalMinutes > 0) {
-                    HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp),
-                        color = MaterialTheme.colorScheme.outlineVariant, thickness = 0.5.dp)
-                    Row(modifier = Modifier.fillMaxWidth()) {
-                        Spacer(modifier = Modifier.weight(1f))
-                        Text("Total: ${day.totalMinutes.toHoursLabel()}",
-                            style = sTypography.bodySmall.copy(fontWeight = FontWeight.Bold, fontSize = 12.sp),
-                            color = MaterialTheme.colorScheme.primary)
+
+                    Text(
+                        text = formatLogTime(session.loginTime),
+                        style = MaterialTheme.typography.bodySmall,
+                        modifier = Modifier.weight(1f),
+                        textAlign = TextAlign.Center,
+                        color = Color(0xFF22C55E)
+                    )
+                    Text(
+                        text = if (session.logoutTime != null) formatLogTime(session.logoutTime)
+                               else "--",
+                        style = MaterialTheme.typography.bodySmall,
+                        modifier = Modifier.weight(1f),
+                        textAlign = TextAlign.Center,
+                        color = if (session.logoutTime == null) Color(0xFFEF4444)
+                               else MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+
+                    // Individual session duration
+                    Text(
+                        text = session.durationMinutes.toHoursLabel(),
+                        style = MaterialTheme.typography.bodySmall,
+                        modifier = Modifier.weight(0.8f),
+                        textAlign = TextAlign.End,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+
+                    // Show day total only on first row
+                    if (index == 0) {
+                        Text(
+                            text = day.totalMinutes.toHoursLabel(),
+                            style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Bold),
+                            modifier = Modifier.weight(0.8f),
+                            textAlign = TextAlign.End,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                    } else {
+                        Spacer(modifier = Modifier.weight(0.8f))
                     }
                 }
             }
         }
-    }
-}
 
-// ── Shared chip ───────────────────────────────────────────────────────────────
-
-@Composable
-private fun TimeChip(label: String, time: Long, color: Color) {
-    Column(horizontalAlignment = Alignment.Start) {
-        Text(label, style = sTypography.bodySmall.copy(fontSize = 9.sp), color = color.copy(alpha = 0.7f))
-        Text(formatLogTime(time),
-            style = sTypography.bodySmall.copy(fontWeight = FontWeight.SemiBold, fontSize = 12.sp),
-            color = color)
+        // Divider between dates
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(1.dp)
+                .background(MaterialTheme.colorScheme.outlineVariant)
+        )
     }
 }
 
 // ── Utilities ─────────────────────────────────────────────────────────────────
 
-internal fun formatLogDate(dateStr: String): String {
+fun formatLogDate(dateStr: String): String {
     return try {
         LocalDate.parse(dateStr, DateTimeFormatter.ofPattern("yyyy-MM-dd"))
             .format(DateTimeFormatter.ofPattern("dd MMM yyyy, EEEE"))
     } catch (e: Exception) { dateStr }
 }
 
-private fun formatLogTime(timestamp: Long): String {
+fun formatLogTime(timestamp: Long): String {
     if (timestamp == 0L) return ""
     return try { SimpleDateFormat("hh:mm a", Locale.getDefault()).format(Date(timestamp)) }
     catch (e: Exception) { "" }

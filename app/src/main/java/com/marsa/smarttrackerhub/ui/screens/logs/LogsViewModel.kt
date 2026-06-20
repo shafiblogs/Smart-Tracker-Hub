@@ -56,6 +56,12 @@ data class LogEntry(
 
 // ── Shop view data ────────────────────────────────────────────────────────────
 
+data class ShopSession(
+    val openTime:       Long,
+    val closeTime:      Long?,
+    val durationMinutes: Long
+)
+
 data class EmployeeSession(
     val loginTime:       Long,
     val logoutTime:      Long?,
@@ -64,9 +70,8 @@ data class EmployeeSession(
 
 data class DayLogSummary(
     val date:             String,
-    val shopOpenTime:     Long?,
-    val shopCloseTime:    Long?,
-    val shopTotalMinutes: Long?,
+    val sessions:         List<ShopSession>,  // Support up to 2 sessions per day
+    val totalMinutes:     Long,               // Total duration for all sessions in the day
     val isShopOpen:       Boolean
 )
 
@@ -256,14 +261,30 @@ class LogsViewModel : ViewModel() {
         return logs
             .filter { it.eventType == "SHOP_OPEN" || it.eventType == "SHOP_CLOSE" }
             .groupBy { it.date }
-            .entries.sortedByDescending { it.key }
+            .entries.sortedBy { it.key }
             .map { (date, dayLogs) ->
-                val open  = dayLogs.filter { it.eventType == "SHOP_OPEN"  }.minByOrNull { it.timestamp }
-                val close = dayLogs.filter { it.eventType == "SHOP_CLOSE" }.maxByOrNull { it.timestamp }
-                val last  = dayLogs.maxByOrNull { it.timestamp }
-                val total = if (open != null && close != null)
-                    (close.timestamp - open.timestamp) / 60_000L else null
-                DayLogSummary(date, open?.timestamp, close?.timestamp, total, last?.eventType == "SHOP_OPEN")
+                val sorted = dayLogs.sortedBy { it.timestamp }
+                val sessions = mutableListOf<ShopSession>()
+                var i = 0
+
+                while (i < sorted.size) {
+                    val cur = sorted[i]
+                    if (cur.eventType == "SHOP_OPEN") {
+                        val nxt = sorted.getOrNull(i + 1)
+                        if (nxt?.eventType == "SHOP_CLOSE") {
+                            val duration = (nxt.timestamp - cur.timestamp) / 60_000L
+                            sessions += ShopSession(cur.timestamp, nxt.timestamp, duration)
+                            i += 2
+                        } else {
+                            sessions += ShopSession(cur.timestamp, null, 0L)
+                            i++
+                        }
+                    } else i++
+                }
+
+                val totalMinutes = sessions.sumOf { it.durationMinutes }
+                val isShopOpen = sorted.lastOrNull()?.eventType == "SHOP_OPEN"
+                DayLogSummary(date, sessions, totalMinutes, isShopOpen)
             }
     }
 
@@ -271,8 +292,8 @@ class LogsViewModel : ViewModel() {
         logs: List<LogEntry>, shopName: String, monthDisplay: String
     ): ShopMonthSummary {
         val days     = computeShopDays(logs)
-        val openDays = days.filter { it.shopOpenTime != null }
-        val total    = openDays.sumOf { it.shopTotalMinutes ?: 0L }
+        val openDays = days.filter { it.sessions.isNotEmpty() }
+        val total    = openDays.sumOf { it.totalMinutes }
         val avg      = if (openDays.isNotEmpty()) total / openDays.size else 0L
         return ShopMonthSummary(monthDisplay, shopName, openDays.size, total, avg)
     }
@@ -283,7 +304,7 @@ class LogsViewModel : ViewModel() {
         return logs
             .filter { (it.eventType == "EMPLOYEE_LOGIN" || it.eventType == "EMPLOYEE_LOGOUT") && it.employeeId == employeeId }
             .groupBy { it.date }
-            .entries.sortedByDescending { it.key }
+            .entries.sortedBy { it.key }
             .map { (date, dayLogs) ->
                 val sessions = buildSessions(dayLogs.sortedBy { it.timestamp })
                 EmployeeDayRecord(date, sessions, sessions.sumOf { it.durationMinutes })
