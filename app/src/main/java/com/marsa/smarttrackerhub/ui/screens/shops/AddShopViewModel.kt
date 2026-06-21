@@ -189,6 +189,13 @@ class AddShopViewModel(
                 return@launch
             }
 
+            // Preserve the cached totalInvested on edit — the form doesn't carry it, so
+            // rebuilding ShopInfo without it would reset the shop's invested total to 0
+            // (and push 0 to Firestore). Keep the existing value.
+            val existingTotalInvested =
+                if (editingShopId != null) repo.getShopById(editingShopId!!)?.totalInvested ?: 0.0
+                else 0.0
+
             val shop = ShopInfo(
                 id = editingShopId ?: 0,
                 shopName = state.shopName,
@@ -201,7 +208,8 @@ class AddShopViewModel(
                 shopOpeningDate = state.shopOpeningDate ?: 0L,
                 stockValue = state.stockValue.toDoubleOrNull() ?: 0.0,
                 stockTakenDate = state.stockTakenDate ?: 0L,
-                shopStatus = state.shopStatus?.name ?: ShopStatus.Initial.name
+                shopStatus = state.shopStatus?.name ?: ShopStatus.Initial.name,
+                totalInvested = existingTotalInvested
             )
 
             if (editingShopId != null) {
