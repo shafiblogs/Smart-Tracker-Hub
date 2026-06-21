@@ -152,21 +152,22 @@ class FirebasePullRepository(private val db: AppDatabase) {
                 val investorFbId  = data["investorId"] as? String ?: continue
                 if (investorFbId.isBlank()) continue
 
-                val investorEmail = data["investorEmail"] as? String ?: ""
-                val existing = db.investorDao().getAllInvestors().first()
-                    .firstOrNull { it.investorEmail == investorEmail }
+                // Match existing rows by Firebase ID (consistent with pullShops/pullEmployees),
+                // not by email — email can be blank, shared, or edited.
+                val existing = db.investorDao().getInvestorByInvestorId(investorFbId)
 
                 val entity = InvestorInfo(
                     id            = existing?.id ?: 0,
-                    investorName  = data["investorName"] as? String ?: "",
-                    investorEmail = investorEmail,
-                    investorPhone = data["investorPhone"] as? String ?: ""
+                    investorId    = investorFbId,                                  // preserve identity
+                    investorName  = data["investorName"]  as? String ?: "",
+                    investorEmail = data["investorEmail"]  as? String ?: "",
+                    investorPhone = data["investorPhone"]  as? String ?: "",
+                    isSynced      = true                                           // pulled → already in Firestore
                 )
                 if (existing != null) db.investorDao().updateInvestor(entity)
                 else db.investorDao().insertInvestor(entity)
 
-                val roomId = db.investorDao().getAllInvestors().first()
-                    .firstOrNull { it.investorEmail == investorEmail }?.id ?: continue
+                val roomId = db.investorDao().getInvestorByInvestorId(investorFbId)?.id ?: continue
                 idMap[investorFbId] = roomId
             } catch (e: Exception) {
                 Log.e(tag, "pullInvestors: error processing document", e)
@@ -256,12 +257,14 @@ class FirebasePullRepository(private val db: AppDatabase) {
                     ?: (data["sharePercentage"] as? Long)?.toDouble() ?: 0.0
 
                 val entity = ShopInvestor(
-                    id              = 0,
-                    shopId          = shopRoomId,
-                    investorId      = investorRoomId,
-                    sharePercentage = sharePercentage,
-                    status          = data["status"] as? String ?: "Active",
-                    joinedDate      = data["joinedDate"] as? Long ?: System.currentTimeMillis()
+                    id                     = 0,
+                    shopId                 = shopRoomId,
+                    investorId             = investorRoomId,
+                    sharePercentage        = sharePercentage,
+                    status                 = data["status"] as? String ?: "Active",
+                    joinedDate             = data["joinedDate"] as? Long ?: System.currentTimeMillis(),
+                    shopInvestorFirebaseId = fbId,            // preserve identity
+                    isSynced               = true             // pulled → already in Firestore
                 )
                 db.shopInvestorDao().insertShopInvestor(entity)
 
@@ -284,9 +287,18 @@ class FirebasePullRepository(private val db: AppDatabase) {
         val docs = firestoreGetCollection("transactions")
         Log.d(tag, "pullTransactions: ${docs.size} document(s) from Firebase")
 
+        // Existing transactions keyed by their UUID Firebase ID — reuse Room PKs so a
+        // re-pull updates in place instead of inserting (and so the row is never re-pushed
+        // under a NEW UUID, which would duplicate the doc in Firestore).
+        val existingByFbId = db.investmentTransactionDao().getAllTransactionsList()
+            .filter { it.transactionFirebaseId.isNotBlank() }
+            .associateBy { it.transactionFirebaseId }
+
         var count = 0
         for (data in docs) {
             try {
+                val txFbId       = data["transactionFirebaseId"] as? String ?: continue
+                if (txFbId.isBlank()) continue
                 val shopFbId     = data["shopFirebaseId"] as? String ?: ""
                 val investorFbId = data["investorFirebaseId"] as? String ?: ""
                 val siFirebaseId = "${shopFbId}_${investorFbId}"
@@ -296,12 +308,16 @@ class FirebasePullRepository(private val db: AppDatabase) {
                     ?: (data["amount"] as? Long)?.toDouble() ?: 0.0
 
                 val entity = InvestmentTransaction(
-                    id              = 0,
-                    shopInvestorId  = siRoomId,
-                    amount          = amount,
-                    transactionDate = data["transactionDate"] as? Long ?: 0L,
-                    phase           = data["phase"] as? String ?: "",
-                    note            = data["note"] as? String ?: ""
+                    id                    = existingByFbId[txFbId]?.id ?: 0,
+                    shopInvestorId        = siRoomId,
+                    amount                = amount,
+                    transactionDate       = data["transactionDate"] as? Long ?: 0L,
+                    phase                 = data["phase"] as? String ?: "",
+                    note                  = data["note"] as? String ?: "",
+                    transactionFirebaseId = txFbId,            // preserve identity
+                    shopFirebaseId        = shopFbId,
+                    investorFirebaseId    = investorFbId,
+                    isSynced              = true               // pulled → already in Firestore
                 )
                 db.investmentTransactionDao().insertTransaction(entity)
                 count++
@@ -330,18 +346,27 @@ class FirebasePullRepository(private val db: AppDatabase) {
                 val totalInvested = (data["totalInvested"] as? Double)
                     ?: (data["totalInvested"] as? Long)?.toDouble() ?: 0.0
 
+                // Reuse the existing Room PK when this settlement was already pulled,
+                // so re-pulls update in place instead of inserting duplicates.
+                val existingRoomId = db.yearEndSettlementDao().getSettlementByFirebaseId(fbId)?.id ?: 0
+
                 val entity = YearEndSettlement(
-                    id               = 0,
-                    shopId           = shopRoomId,
-                    settlementDate   = data["settlementDate"] as? Long ?: 0L,
-                    periodStartDate  = data["periodStartDate"] as? Long ?: 0L,
-                    totalInvested    = totalInvested,
-                    note             = data["note"] as? String ?: "",
-                    isCarriedForward = data["isCarriedForward"] as? Boolean ?: true
+                    id                   = existingRoomId,
+                    shopId               = shopRoomId,
+                    settlementDate       = data["settlementDate"] as? Long ?: 0L,
+                    periodStartDate      = data["periodStartDate"] as? Long ?: 0L,
+                    totalInvested        = totalInvested,
+                    note                 = data["note"] as? String ?: "",
+                    isCarriedForward     = data["isCarriedForward"] as? Boolean ?: true,
+                    settlementFirebaseId = fbId,                                  // preserve identity
+                    shopFirebaseId       = shopFbId,
+                    isSynced             = true                                   // pulled → already in Firestore
                 )
                 db.yearEndSettlementDao().insertSettlement(entity)
 
-                val roomId = db.yearEndSettlementDao().getLatestSettlement(shopRoomId)?.id ?: continue
+                // Map by Firebase ID lookup — NOT getLatestSettlement, which mis-maps
+                // when a shop has more than one settlement.
+                val roomId = db.yearEndSettlementDao().getSettlementByFirebaseId(fbId)?.id ?: continue
                 idMap[fbId] = roomId
             } catch (e: Exception) {
                 Log.e(tag, "pullSettlements: error processing document", e)
@@ -362,11 +387,20 @@ class FirebasePullRepository(private val db: AppDatabase) {
         val docs = firestoreGetCollection("settlement_entries")
         Log.d(tag, "pullSettlementEntries: ${docs.size} document(s) from Firebase")
 
+        // Existing entries keyed by UUID Firebase ID — reuse Room PKs so re-pulls update in
+        // place and the row is never re-pushed under a new UUID (which would duplicate).
+        val existingByFbId = db.yearEndSettlementDao().getAllSettlementEntriesList()
+            .filter { it.entryFirebaseId.isNotBlank() }
+            .associateBy { it.entryFirebaseId }
+
         var count = 0
         for (data in docs) {
             try {
+                val entryFbId      = data["entryFirebaseId"] as? String ?: continue
+                if (entryFbId.isBlank()) continue
                 val settlementFbId = data["settlementFirebaseId"] as? String ?: ""
                 val investorFbId   = data["investorFirebaseId"] as? String ?: ""
+                val shopFbId       = data["shopFirebaseId"] as? String ?: ""
 
                 val settlementRoomId = settlementIdMap[settlementFbId] ?: continue
                 val investorRoomId   = investorIdMap[investorFbId] ?: continue
@@ -375,14 +409,19 @@ class FirebasePullRepository(private val db: AppDatabase) {
                     (data[key] as? Double) ?: (data[key] as? Long)?.toDouble() ?: 0.0
 
                 val entity = SettlementEntry(
-                    id                   = 0,
+                    id                   = existingByFbId[entryFbId]?.id ?: 0,
                     settlementId         = settlementRoomId,
                     investorId           = investorRoomId,
                     fairShareAmount      = toDouble("fairShareAmount"),
                     actualPaidAmount     = toDouble("actualPaidAmount"),
                     balanceAmount        = toDouble("balanceAmount"),
                     settlementPaidAmount = toDouble("settlementPaidAmount"),
-                    settlementPaidDate   = data["settlementPaidDate"] as? Long
+                    settlementPaidDate   = data["settlementPaidDate"] as? Long,
+                    entryFirebaseId      = entryFbId,            // preserve identity
+                    investorFirebaseId   = investorFbId,
+                    settlementFirebaseId = settlementFbId,
+                    shopFirebaseId       = shopFbId,
+                    isSynced             = true                 // pulled → already in Firestore
                 )
                 db.yearEndSettlementDao().insertSettlementEntries(listOf(entity))
                 count++

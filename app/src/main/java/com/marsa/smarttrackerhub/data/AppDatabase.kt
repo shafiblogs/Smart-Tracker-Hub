@@ -31,6 +31,7 @@ import com.marsa.smarttrackerhub.data.helper.Converters
 import com.marsa.smarttrackerhub.data.migrations.MIGRATION_1_2
 import com.marsa.smarttrackerhub.data.migrations.MIGRATION_2_3
 import com.marsa.smarttrackerhub.data.migrations.MIGRATION_3_4
+import com.marsa.smarttrackerhub.data.migrations.MIGRATION_4_5
 
 
 /**
@@ -53,6 +54,9 @@ import com.marsa.smarttrackerhub.data.migrations.MIGRATION_3_4
  *   - investment_transaction: added transactionFirebaseId, shopFirebaseId, investorFirebaseId, isSynced
  *   - year_end_settlement: added settlementFirebaseId, shopFirebaseId, isSynced
  *   - settlement_entry: added entryFirebaseId, investorFirebaseId, settlementFirebaseId, shopFirebaseId, isSynced
+ *
+ * v5 — Re-queue investor-domain rows stuck at isSynced=1 with blank Firebase IDs so they
+ *   push to Firestore (data-fix only, no schema change).
  */
 
 @Database(
@@ -69,7 +73,7 @@ import com.marsa.smarttrackerhub.data.migrations.MIGRATION_3_4
         SettlementEntry::class,
         PurchaseEntity::class
     ],
-    version = 4
+    version = 5
 )
 @TypeConverters(Converters::class)
 abstract class AppDatabase : RoomDatabase() {
@@ -95,7 +99,7 @@ abstract class AppDatabase : RoomDatabase() {
                     AppDatabase::class.java,
                     "tracker_hub_db"
                 )
-                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4)
+                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5)
                     .fallbackToDestructiveMigrationOnDowngrade()
                     .addCallback(object : Callback() {
                         override fun onCreate(db: SupportSQLiteDatabase) {

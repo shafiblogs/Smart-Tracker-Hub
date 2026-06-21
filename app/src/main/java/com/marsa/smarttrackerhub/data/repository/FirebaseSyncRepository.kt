@@ -101,21 +101,26 @@ class FirebaseSyncRepository(private val db: AppDatabase) {
     // ─────────────────────────────────────────────────────────────────────────
 
     suspend fun syncInvestor(entity: InvestorInfo): Boolean {
-        if (entity.investorId.isBlank()) {
-            db.investorDao().markInvestorSynced("")
-            return true
+        // Legacy rows have a blank investorId (column added blank by Migration2To3).
+        // Auto-assign a UUID and persist it so the investor can be pushed — mirrors syncEmployee.
+        val resolved = if (entity.investorId.isBlank()) {
+            val updated = entity.copy(investorId = UUID.randomUUID().toString())
+            db.investorDao().updateInvestor(updated)
+            updated
+        } else {
+            entity
         }
         if (!ensureSignedIn()) return false
 
         val map = mapOf(
-            "investorId"    to entity.investorId,
-            "investorName"  to entity.investorName,
-            "investorEmail" to entity.investorEmail,
-            "investorPhone" to entity.investorPhone
+            "investorId"    to resolved.investorId,
+            "investorName"  to resolved.investorName,
+            "investorEmail" to resolved.investorEmail,
+            "investorPhone" to resolved.investorPhone
         )
 
-        val success = firestoreSet("investors", entity.investorId, map)
-        if (success) db.investorDao().markInvestorSynced(entity.investorId)
+        val success = firestoreSet("investors", resolved.investorId, map)
+        if (success) db.investorDao().markInvestorSynced(resolved.investorId)
         return success
     }
 
@@ -174,27 +179,39 @@ class FirebaseSyncRepository(private val db: AppDatabase) {
     // ─────────────────────────────────────────────────────────────────────────
 
     suspend fun syncShopInvestor(entity: ShopInvestor): Boolean {
-        if (entity.shopInvestorFirebaseId.isBlank()) {
-            db.shopInvestorDao().markShopInvestorSynced("")
-            return true
-        }
-        if (!ensureSignedIn()) return false
-
-        // Resolve Firebase string IDs from Room local-int references
+        // Resolve Firebase string IDs from Room local-int references.
+        // syncAll() runs shops + investors before shop-investors, so parents have IDs by now.
         val shopFirebaseId     = db.shopDao().getShopById(entity.shopId)?.shopId ?: ""
         val investorFirebaseId = db.investorDao().getInvestorById(entity.investorId)?.investorId ?: ""
 
+        // Cannot build a valid composite doc id without both parent IDs — leave for a later
+        // pass (after the parents have been synced) rather than marking it permanently synced.
+        if (shopFirebaseId.isBlank() || investorFirebaseId.isBlank()) {
+            Log.w(tag, "syncShopInvestor: parent IDs not ready (shop='$shopFirebaseId', investor='$investorFirebaseId') — deferring")
+            return false
+        }
+
+        // Legacy rows have a blank composite id — build it from the parents and persist.
+        val resolved = if (entity.shopInvestorFirebaseId.isBlank()) {
+            val updated = entity.copy(shopInvestorFirebaseId = "${shopFirebaseId}_${investorFirebaseId}")
+            db.shopInvestorDao().updateShopInvestor(updated)
+            updated
+        } else {
+            entity
+        }
+        if (!ensureSignedIn()) return false
+
         val map = mapOf(
-            "shopInvestorFirebaseId" to entity.shopInvestorFirebaseId,
+            "shopInvestorFirebaseId" to resolved.shopInvestorFirebaseId,
             "shopFirebaseId"         to shopFirebaseId,
             "investorFirebaseId"     to investorFirebaseId,
-            "sharePercentage"        to entity.sharePercentage,
-            "status"                 to entity.status,
-            "joinedDate"             to entity.joinedDate
+            "sharePercentage"        to resolved.sharePercentage,
+            "status"                 to resolved.status,
+            "joinedDate"             to resolved.joinedDate
         )
 
-        val success = firestoreSet("shop_investors", entity.shopInvestorFirebaseId, map)
-        if (success) db.shopInvestorDao().markShopInvestorSynced(entity.shopInvestorFirebaseId)
+        val success = firestoreSet("shop_investors", resolved.shopInvestorFirebaseId, map)
+        if (success) db.shopInvestorDao().markShopInvestorSynced(resolved.shopInvestorFirebaseId)
         return success
     }
 
@@ -203,24 +220,50 @@ class FirebaseSyncRepository(private val db: AppDatabase) {
     // ─────────────────────────────────────────────────────────────────────────
 
     suspend fun syncTransaction(entity: InvestmentTransaction): Boolean {
-        if (entity.transactionFirebaseId.isBlank()) {
-            db.investmentTransactionDao().markTransactionSynced("")
-            return true
+        // Resolve denormalized Firebase IDs from the parent shop-investor link.
+        // Legacy rows were inserted before these fields existed, so they are blank.
+        val si = db.shopInvestorDao().getShopInvestorById(entity.shopInvestorId)
+        val shopFirebaseId = entity.shopFirebaseId.ifBlank {
+            si?.let { db.shopDao().getShopById(it.shopId)?.shopId } ?: ""
+        }
+        val investorFirebaseId = entity.investorFirebaseId.ifBlank {
+            si?.let { db.investorDao().getInvestorById(it.investorId)?.investorId } ?: ""
+        }
+
+        if (shopFirebaseId.isBlank() || investorFirebaseId.isBlank()) {
+            Log.w(tag, "syncTransaction: parent IDs not ready — deferring tx id=${entity.id}")
+            return false
+        }
+
+        // Generate a UUID doc id for legacy rows and persist all resolved fields.
+        val resolved = if (entity.transactionFirebaseId.isBlank()
+            || entity.shopFirebaseId.isBlank()
+            || entity.investorFirebaseId.isBlank()
+        ) {
+            val updated = entity.copy(
+                transactionFirebaseId = entity.transactionFirebaseId.ifBlank { UUID.randomUUID().toString() },
+                shopFirebaseId        = shopFirebaseId,
+                investorFirebaseId    = investorFirebaseId
+            )
+            db.investmentTransactionDao().updateTransaction(updated)
+            updated
+        } else {
+            entity
         }
         if (!ensureSignedIn()) return false
 
         val map = mapOf(
-            "transactionFirebaseId" to entity.transactionFirebaseId,
-            "shopFirebaseId"        to entity.shopFirebaseId,
-            "investorFirebaseId"    to entity.investorFirebaseId,
-            "amount"                to entity.amount,
-            "transactionDate"       to entity.transactionDate,
-            "phase"                 to entity.phase,
-            "note"                  to entity.note
+            "transactionFirebaseId" to resolved.transactionFirebaseId,
+            "shopFirebaseId"        to resolved.shopFirebaseId,
+            "investorFirebaseId"    to resolved.investorFirebaseId,
+            "amount"                to resolved.amount,
+            "transactionDate"       to resolved.transactionDate,
+            "phase"                 to resolved.phase,
+            "note"                  to resolved.note
         )
 
-        val success = firestoreSet("transactions", entity.transactionFirebaseId, map)
-        if (success) db.investmentTransactionDao().markTransactionSynced(entity.transactionFirebaseId)
+        val success = firestoreSet("transactions", resolved.transactionFirebaseId, map)
+        if (success) db.investmentTransactionDao().markTransactionSynced(resolved.transactionFirebaseId)
         return success
     }
 
@@ -229,24 +272,40 @@ class FirebaseSyncRepository(private val db: AppDatabase) {
     // ─────────────────────────────────────────────────────────────────────────
 
     suspend fun syncSettlement(entity: YearEndSettlement): Boolean {
-        if (entity.settlementFirebaseId.isBlank()) {
-            db.yearEndSettlementDao().markSettlementSynced("")
-            return true
+        // Resolve denormalized shop Firebase ID from the Room shop reference (blank on legacy rows).
+        val shopFirebaseId = entity.shopFirebaseId.ifBlank {
+            db.shopDao().getShopById(entity.shopId)?.shopId ?: ""
+        }
+        if (shopFirebaseId.isBlank()) {
+            Log.w(tag, "syncSettlement: shop ID not ready — deferring settlement id=${entity.id}")
+            return false
+        }
+
+        // Generate a UUID doc id for legacy rows and persist resolved fields.
+        val resolved = if (entity.settlementFirebaseId.isBlank() || entity.shopFirebaseId.isBlank()) {
+            val updated = entity.copy(
+                settlementFirebaseId = entity.settlementFirebaseId.ifBlank { UUID.randomUUID().toString() },
+                shopFirebaseId       = shopFirebaseId
+            )
+            db.yearEndSettlementDao().updateSettlement(updated)
+            updated
+        } else {
+            entity
         }
         if (!ensureSignedIn()) return false
 
         val map = mapOf(
-            "settlementFirebaseId" to entity.settlementFirebaseId,
-            "shopFirebaseId"       to entity.shopFirebaseId,
-            "settlementDate"       to entity.settlementDate,
-            "periodStartDate"      to entity.periodStartDate,
-            "totalInvested"        to entity.totalInvested,
-            "note"                 to entity.note,
-            "isCarriedForward"     to entity.isCarriedForward
+            "settlementFirebaseId" to resolved.settlementFirebaseId,
+            "shopFirebaseId"       to resolved.shopFirebaseId,
+            "settlementDate"       to resolved.settlementDate,
+            "periodStartDate"      to resolved.periodStartDate,
+            "totalInvested"        to resolved.totalInvested,
+            "note"                 to resolved.note,
+            "isCarriedForward"     to resolved.isCarriedForward
         )
 
-        val success = firestoreSet("settlements", entity.settlementFirebaseId, map)
-        if (success) db.yearEndSettlementDao().markSettlementSynced(entity.settlementFirebaseId)
+        val success = firestoreSet("settlements", resolved.settlementFirebaseId, map)
+        if (success) db.yearEndSettlementDao().markSettlementSynced(resolved.settlementFirebaseId)
         return success
     }
 
@@ -255,26 +314,52 @@ class FirebaseSyncRepository(private val db: AppDatabase) {
     // ─────────────────────────────────────────────────────────────────────────
 
     suspend fun syncSettlementEntry(entity: SettlementEntry): Boolean {
-        if (entity.entryFirebaseId.isBlank()) {
-            db.yearEndSettlementDao().markSettlementEntrySynced("")
-            return true
+        // Resolve denormalized Firebase IDs from the parent settlement + investor (blank on legacy rows).
+        val parent = db.yearEndSettlementDao().getSettlementById(entity.settlementId)
+        val settlementFirebaseId = entity.settlementFirebaseId.ifBlank { parent?.settlementFirebaseId ?: "" }
+        val shopFirebaseId = entity.shopFirebaseId.ifBlank { parent?.shopFirebaseId ?: "" }
+        val investorFirebaseId = entity.investorFirebaseId.ifBlank {
+            db.investorDao().getInvestorById(entity.investorId)?.investorId ?: ""
+        }
+
+        if (settlementFirebaseId.isBlank() || shopFirebaseId.isBlank() || investorFirebaseId.isBlank()) {
+            Log.w(tag, "syncSettlementEntry: parent IDs not ready — deferring entry id=${entity.id}")
+            return false
+        }
+
+        // Generate a UUID doc id for legacy rows and persist resolved fields.
+        val resolved = if (entity.entryFirebaseId.isBlank()
+            || entity.settlementFirebaseId.isBlank()
+            || entity.shopFirebaseId.isBlank()
+            || entity.investorFirebaseId.isBlank()
+        ) {
+            val updated = entity.copy(
+                entryFirebaseId      = entity.entryFirebaseId.ifBlank { UUID.randomUUID().toString() },
+                settlementFirebaseId = settlementFirebaseId,
+                shopFirebaseId       = shopFirebaseId,
+                investorFirebaseId   = investorFirebaseId
+            )
+            db.yearEndSettlementDao().updateSettlementEntry(updated)
+            updated
+        } else {
+            entity
         }
         if (!ensureSignedIn()) return false
 
         val map = mapOf(
-            "entryFirebaseId"      to entity.entryFirebaseId,
-            "settlementFirebaseId" to entity.settlementFirebaseId,
-            "shopFirebaseId"       to entity.shopFirebaseId,
-            "investorFirebaseId"   to entity.investorFirebaseId,
-            "fairShareAmount"      to entity.fairShareAmount,
-            "actualPaidAmount"     to entity.actualPaidAmount,
-            "balanceAmount"        to entity.balanceAmount,
-            "settlementPaidAmount" to entity.settlementPaidAmount,
-            "settlementPaidDate"   to entity.settlementPaidDate
+            "entryFirebaseId"      to resolved.entryFirebaseId,
+            "settlementFirebaseId" to resolved.settlementFirebaseId,
+            "shopFirebaseId"       to resolved.shopFirebaseId,
+            "investorFirebaseId"   to resolved.investorFirebaseId,
+            "fairShareAmount"      to resolved.fairShareAmount,
+            "actualPaidAmount"     to resolved.actualPaidAmount,
+            "balanceAmount"        to resolved.balanceAmount,
+            "settlementPaidAmount" to resolved.settlementPaidAmount,
+            "settlementPaidDate"   to resolved.settlementPaidDate
         )
 
-        val success = firestoreSet("settlement_entries", entity.entryFirebaseId, map)
-        if (success) db.yearEndSettlementDao().markSettlementEntrySynced(entity.entryFirebaseId)
+        val success = firestoreSet("settlement_entries", resolved.entryFirebaseId, map)
+        if (success) db.yearEndSettlementDao().markSettlementEntrySynced(resolved.entryFirebaseId)
         return success
     }
 

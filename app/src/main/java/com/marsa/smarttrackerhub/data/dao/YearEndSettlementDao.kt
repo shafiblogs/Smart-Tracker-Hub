@@ -25,6 +25,10 @@ interface YearEndSettlementDao {
     @Query("SELECT * FROM year_end_settlement WHERE shopId = :shopId ORDER BY settlementDate DESC LIMIT 1")
     suspend fun getLatestSettlement(shopId: Int): YearEndSettlement?
 
+    /** Single settlement by Room primary key — used by sync to resolve a parent settlement. */
+    @Query("SELECT * FROM year_end_settlement WHERE id = :id LIMIT 1")
+    suspend fun getSettlementById(id: Int): YearEndSettlement?
+
     /** All investor entries for a specific settlement. */
     @Query("""
         SELECT se.*, i.investorName
@@ -40,6 +44,9 @@ interface YearEndSettlementDao {
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertSettlementEntries(entries: List<SettlementEntry>)
+
+    @Update
+    suspend fun updateSettlement(settlement: YearEndSettlement)
 
     @Update
     suspend fun updateSettlementEntry(entry: SettlementEntry)
