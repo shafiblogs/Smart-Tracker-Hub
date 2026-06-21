@@ -145,6 +145,10 @@ interface InvestmentTransactionDao {
     @Query("UPDATE investment_transaction SET isSynced = 0")
     suspend fun markAllTransactionsUnsynced()
 
+    /** Duplicate cleanup: move transactions from a duplicate link onto the kept one. */
+    @Query("UPDATE investment_transaction SET shopInvestorId = :keepId WHERE shopInvestorId = :dupId")
+    suspend fun repointShopInvestor(dupId: Int, keepId: Int)
+
     /** Marks the transaction with the given [transactionFirebaseId] (UUID) as synced. */
     @Query("UPDATE investment_transaction SET isSynced = 1 WHERE transactionFirebaseId = :transactionFirebaseId")
     suspend fun markTransactionSynced(transactionFirebaseId: String)

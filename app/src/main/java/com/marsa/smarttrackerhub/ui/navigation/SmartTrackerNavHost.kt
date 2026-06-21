@@ -57,6 +57,7 @@ import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkManager
 import androidx.work.workDataOf
 import android.widget.Toast
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.ShoppingCart
 import com.marsa.smarttracker.ui.theme.sTypography
@@ -88,7 +89,9 @@ import com.marsa.smarttrackerhub.ui.screens.logs.LogsScreen
 import com.marsa.smarttrackerhub.ui.screens.logs.LogsViewModel
 import com.marsa.smarttrackerhub.ui.screens.statement.StatementScreen
 import com.marsa.smarttrackerhub.ui.screens.summary.SummaryScreen
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 
 /**
@@ -776,6 +779,33 @@ fun SmartTrackerNavHost(navController: NavHostController) {
                                         .build()
                                     WorkManager.getInstance(context).enqueue(syncRequest)
                                     Toast.makeText(context, "Sync started", Toast.LENGTH_SHORT).show()
+                                },
+                                modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding)
+                            )
+
+                            // Remove Duplicates — LOCAL ONLY, does not touch Firestore.
+                            NavigationDrawerItem(
+                                label = { Text("Remove Duplicates") },
+                                icon = { Icon(Icons.Default.Delete, contentDescription = "Remove Duplicates") },
+                                selected = false,
+                                onClick = {
+                                    scope.launch { drawerState.close() }
+                                    scope.launch {
+                                        Toast.makeText(context, "Cleaning duplicates…", Toast.LENGTH_SHORT).show()
+                                        val r = withContext(Dispatchers.IO) {
+                                            com.marsa.smarttrackerhub.data.repository
+                                                .DuplicateCleanupRepository(
+                                                    com.marsa.smarttrackerhub.data.AppDatabase.getDatabase(context)
+                                                ).removeDuplicates()
+                                        }
+                                        Toast.makeText(
+                                            context,
+                                            "Removed ${r.investorsRemoved} investor, ${r.linksRemoved} link, " +
+                                                "${r.transactionsRemoved} payment, ${r.settlementsRemoved} settlement, " +
+                                                "${r.entriesRemoved} entry duplicates (local only)",
+                                            Toast.LENGTH_LONG
+                                        ).show()
+                                    }
                                 },
                                 modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding)
                             )
