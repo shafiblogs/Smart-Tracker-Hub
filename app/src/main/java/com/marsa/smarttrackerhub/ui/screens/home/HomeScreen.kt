@@ -2,6 +2,7 @@ package com.marsa.smarttrackerhub.ui.screens.home
 
 import android.app.Application
 import android.view.View
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -22,6 +23,7 @@ import com.marsa.smarttrackerhub.domain.AccessCode
 import com.marsa.smarttrackerhub.ui.screens.chart.MonthlySalesChart
 import com.marsa.smarttrackerhub.ui.screens.chart.PurchaseCategoryChart
 import com.marsa.smarttrackerhub.ui.screens.chart.UnifiedStatisticsCard
+import com.marsa.smarttracker.ui.theme.SmartTrackerTheme
 import com.marsa.smarttrackerhub.utils.ShareUtil
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -367,6 +369,11 @@ private fun PurchaseChartContent(
     selectedShop: com.marsa.smarttrackerhub.ui.screens.statement.ShopListDto?,
     periodLabel: String = ""
 ) {
+    // Wrap in the app theme + a solid surface background so the shared image (captured from
+    // this ComposeView) isn't transparent — a transparent PNG renders dark and hides the
+    // dark shop-name text, which looked like "dark mode" in light mode.
+    SmartTrackerTheme {
+    Box(modifier = Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.surface)) {
     when {
         isPurchaseLoading -> {
             Box(
@@ -407,6 +414,8 @@ private fun PurchaseChartContent(
             }
         }
     }
+    }
+    }
 }
 
 @Composable
@@ -417,6 +426,9 @@ private fun SalesChartContent(
     periodLabel: String,
     statistics: com.marsa.smarttrackerhub.domain.ChartStatistics?
 ) {
+    // Themed + solid surface background so the shared capture isn't transparent (see PurchaseChartContent).
+    SmartTrackerTheme {
+    Box(modifier = Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.surface)) {
     if (isLoading) {
         Box(
             modifier = Modifier
@@ -450,5 +462,7 @@ private fun SalesChartContent(
                 .fillMaxWidth()
                 .height(350.dp)
         )
+    }
+    }
     }
 }
