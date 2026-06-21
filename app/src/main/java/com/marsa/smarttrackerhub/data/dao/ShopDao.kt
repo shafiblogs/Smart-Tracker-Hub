@@ -34,7 +34,8 @@ interface ShopDao {
     @Delete
     suspend fun deleteShop(shop: ShopInfo)
 
-    @Query("UPDATE shop_info SET totalInvested = :totalInvested WHERE id = :shopId")
+    // Changing the cached total also means the shop must be re-pushed, so reset isSynced.
+    @Query("UPDATE shop_info SET totalInvested = :totalInvested, isSynced = 0 WHERE id = :shopId")
     suspend fun updateTotalInvested(shopId: Int, totalInvested: Double)
 
     /** Returns the count of shops that already use [shopId], excluding the record with [excludeId].

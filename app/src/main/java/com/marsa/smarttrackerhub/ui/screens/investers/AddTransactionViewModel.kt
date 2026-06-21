@@ -186,16 +186,22 @@ class AddTransactionViewModel(
                 investorFirebaseId = investorFirebaseId
             )
             txRepo.insertTransaction(transaction)
-            // Keep cached totalInvested in sync
+            // Keep cached totalInvested in sync (also resets shop.isSynced = 0)
             val newTotal = txRepo.getTotalPaidForShop(currentShopId)
             shopRepo.updateTotalInvested(currentShopId, newTotal)
             _isSaved.value = true
             onSuccess()
 
-            // Best-effort inline sync — WorkManager will retry if this fails
+            // Best-effort inline sync — WorkManager will retry if this fails.
+            // Push the transaction AND the shop (its totalInvested changed) so other
+            // devices see the updated total immediately, not only after a force-resync.
             val db = AppDatabase.getDatabase(context)
             launch(Dispatchers.IO) {
-                try { FirebaseSyncRepository(db).syncTransaction(transaction) } catch (_: Exception) {}
+                try {
+                    val syncRepo = FirebaseSyncRepository(db)
+                    syncRepo.syncTransaction(transaction)
+                    shopRepo.getShopById(currentShopId)?.let { syncRepo.syncShop(it) }
+                } catch (_: Exception) {}
             }
         } catch (e: Exception) {
             onFail("Failed to save: ${e.localizedMessage}")

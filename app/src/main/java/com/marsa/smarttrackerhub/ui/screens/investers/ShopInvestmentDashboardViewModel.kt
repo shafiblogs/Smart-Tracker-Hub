@@ -303,12 +303,19 @@ class ShopInvestmentDashboardViewModel(
         }
     }
 
-    /** Recalculates the total invested sum and persists it in shop_info. */
+    /** Recalculates the total invested sum, persists it in shop_info, and re-pushes the shop. */
     private suspend fun refreshTotalInvested() {
         val tx = txRepo ?: return
         val sr = shopRepo ?: return
         val newTotal = tx.getTotalPaidForShop(currentShopId)
-        sr.updateTotalInvested(currentShopId, newTotal)
+        sr.updateTotalInvested(currentShopId, newTotal)   // also resets shop.isSynced = 0
+        // Push the updated total so other devices reflect it without a manual force-resync.
+        database?.let { d ->
+            viewModelScope.launch(Dispatchers.IO) {
+                try { sr.getShopById(currentShopId)?.let { FirebaseSyncRepository(d).syncShop(it) } }
+                catch (_: Exception) {}
+            }
+        }
     }
 
     /**

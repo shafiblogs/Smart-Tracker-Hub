@@ -68,11 +68,32 @@ class FirebasePullRepository(private val db: AppDatabase) {
         pullEmployees(shopIdMap)
         val siIdMap         = pullShopInvestors(shopIdMap, investorIdMap)
         pullTransactions(siIdMap)
+        recomputeShopTotals(shopIdMap)
         val settlementIdMap = pullSettlements(shopIdMap)
         pullSettlementEntries(settlementIdMap, investorIdMap)
 
         Log.d(tag, "pullAll: complete")
         return true
+    }
+
+    /**
+     * After transactions are pulled, recompute each shop's cached totalInvested from the
+     * actual transaction rows. Keeps the shop card accurate on this device even if the
+     * pulled cached value had drifted. Only writes when the value actually changed.
+     */
+    private suspend fun recomputeShopTotals(shopIdMap: Map<String, Int>) {
+        for (roomId in shopIdMap.values) {
+            try {
+                val computed = db.investmentTransactionDao().getTotalPaidForShop(roomId)
+                val current  = db.shopDao().getShopById(roomId)?.totalInvested ?: 0.0
+                if (kotlin.math.abs(computed - current) > 0.001) {
+                    db.shopDao().updateTotalInvested(roomId, computed)
+                    Log.d(tag, "recomputeShopTotals: shop room#$roomId total $current → $computed")
+                }
+            } catch (e: Exception) {
+                Log.e(tag, "recomputeShopTotals: error for shop room#$roomId", e)
+            }
+        }
     }
 
     // ─────────────────────────────────────────────────────────────────────────
