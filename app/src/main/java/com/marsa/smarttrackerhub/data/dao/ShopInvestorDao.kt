@@ -139,6 +139,10 @@ interface ShopInvestorDao {
     @Query("UPDATE shop_investor SET isSynced = 1 WHERE shopInvestorFirebaseId = :shopInvestorFirebaseId")
     suspend fun markShopInvestorSynced(shopInvestorFirebaseId: String)
 
+    /** Force-resync support: re-queue every shop-investor link. */
+    @Query("UPDATE shop_investor SET isSynced = 0")
+    suspend fun markAllShopInvestorsUnsynced()
+
     // ── Pull support ───────────────────────────────────────────────────────────
 
     /** One-shot list used by pull to build a Firebase-id → Room-id map. */

@@ -6,7 +6,9 @@ import androidx.lifecycle.viewModelScope
 import com.marsa.smarttrackerhub.data.AppDatabase
 import com.marsa.smarttrackerhub.data.dao.SettlementEntryWithName
 import com.marsa.smarttrackerhub.data.entity.YearEndSettlement
+import com.marsa.smarttrackerhub.data.repository.FirebaseSyncRepository
 import com.marsa.smarttrackerhub.data.repository.YearEndSettlementRepository
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.first
@@ -133,7 +135,23 @@ class SettlementHistoryViewModel : ViewModel() {
         _uiState.value = _uiState.value.copy(isDeleting = true)
         viewModelScope.launch {
             try {
+                // Gather Firestore doc IDs BEFORE the local delete cascades the entries away.
+                val entryFbIds = db.yearEndSettlementDao()
+                    .getSettlementEntriesList(settlement.id)
+                    .map { it.entryFirebaseId }
+                val settlementFbId = settlement.settlementFirebaseId
+
                 settlementRepo.deleteSettlement(settlement.id)
+
+                // Propagate the delete (settlement + its entries) to Firestore.
+                if (settlementFbId.isNotBlank() || entryFbIds.any { it.isNotBlank() }) {
+                    launch(Dispatchers.IO) {
+                        try {
+                            FirebaseSyncRepository(db)
+                                .deleteSettlementWithEntries(settlementFbId, entryFbIds)
+                        } catch (_: Exception) {}
+                    }
+                }
                 _uiState.value = _uiState.value.copy(
                     deletingSettlement = null,
                     isDeleting = false,

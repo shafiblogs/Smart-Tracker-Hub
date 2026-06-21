@@ -72,6 +72,17 @@ interface YearEndSettlementDao {
     @Query("UPDATE settlement_entry SET isSynced = 1 WHERE entryFirebaseId = :entryFirebaseId")
     suspend fun markSettlementEntrySynced(entryFirebaseId: String)
 
+    /** Force-resync support: re-queue every settlement and entry. */
+    @Query("UPDATE year_end_settlement SET isSynced = 0")
+    suspend fun markAllSettlementsUnsynced()
+
+    @Query("UPDATE settlement_entry SET isSynced = 0")
+    suspend fun markAllSettlementEntriesUnsynced()
+
+    /** Entries for one settlement — used by delete to gather Firestore doc IDs before cascade. */
+    @Query("SELECT * FROM settlement_entry WHERE settlementId = :settlementId")
+    suspend fun getSettlementEntriesList(settlementId: Int): List<SettlementEntry>
+
     // ── Pull support ───────────────────────────────────────────────────────────
 
     /** One-shot list of all settlements — used by pull to build Firebase-id → Room-id map. */

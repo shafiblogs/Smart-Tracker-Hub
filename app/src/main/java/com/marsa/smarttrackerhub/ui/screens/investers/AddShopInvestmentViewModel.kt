@@ -348,6 +348,10 @@ class AddShopInvestmentViewModel(
             val existing = shopInvestorRepo.getActiveInvestorsRaw(shopId)
             val existingTotal = existing.sumOf { it.sharePercentage }
 
+            // Investors whose share was redistributed — must be re-pushed to Firestore so
+            // other devices see the updated shares (isSynced reset to false).
+            val redistributed = mutableListOf<ShopInvestor>()
+
             if (existingTotal + share > 100.0) {
                 when (state.distributionMode) {
 
@@ -367,10 +371,14 @@ class AddShopInvestmentViewModel(
                         val lastShare = 100.0 - share - sumAllButLast
 
                         allButLast.forEach { (si, s) ->
-                            shopInvestorRepo.updateShopInvestor(si.copy(sharePercentage = s))
+                            val u = si.copy(sharePercentage = s, isSynced = false)
+                            shopInvestorRepo.updateShopInvestor(u)
+                            redistributed += u
                         }
                         scaled.last().let { (si, _) ->
-                            shopInvestorRepo.updateShopInvestor(si.copy(sharePercentage = lastShare))
+                            val u = si.copy(sharePercentage = lastShare, isSynced = false)
+                            shopInvestorRepo.updateShopInvestor(u)
+                            redistributed += u
                         }
                     }
 
@@ -395,9 +403,9 @@ class AddShopInvestmentViewModel(
                             }
                             return@launch
                         }
-                        shopInvestorRepo.updateShopInvestor(
-                            donor.copy(sharePercentage = newDonorShare)
-                        )
+                        val u = donor.copy(sharePercentage = newDonorShare, isSynced = false)
+                        shopInvestorRepo.updateShopInvestor(u)
+                        redistributed += u
                     }
                 }
             }
@@ -417,9 +425,14 @@ class AddShopInvestmentViewModel(
             _isSaved.value = true
             onSuccess()
 
-            // Best-effort inline sync — WorkManager will retry if this fails
+            // Best-effort inline sync — WorkManager will retry if this fails.
+            // Push the new link AND any investors whose share was redistributed.
             launch(Dispatchers.IO) {
-                try { FirebaseSyncRepository(db).syncShopInvestor(shopInvestor) } catch (_: Exception) {}
+                try {
+                    val syncRepo = FirebaseSyncRepository(db)
+                    syncRepo.syncShopInvestor(shopInvestor)
+                    redistributed.forEach { syncRepo.syncShopInvestor(it) }
+                } catch (_: Exception) {}
             }
         } catch (e: Exception) {
             onFail("Failed to save: ${e.localizedMessage}")

@@ -426,4 +426,50 @@ class FirebaseSyncRepository(private val db: AppDatabase) {
                 cont.resume(false)
             }
     }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Deletes — propagate local deletions to Firestore so other devices drop them
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /** Deletes a single transaction document. No-op if its Firebase ID is blank. */
+    suspend fun deleteTransactionDoc(transactionFirebaseId: String): Boolean {
+        if (transactionFirebaseId.isBlank()) return true
+        if (!ensureSignedIn()) return false
+        return firestoreDelete("transactions", transactionFirebaseId)
+    }
+
+    /**
+     * Deletes a settlement and all its entries from Firestore (explicit cascade —
+     * Firestore has no FK cascade like Room does). Pass the entry IDs gathered from Room
+     * BEFORE the local delete cascaded them away.
+     */
+    suspend fun deleteSettlementWithEntries(
+        settlementFirebaseId: String,
+        entryFirebaseIds: List<String>
+    ): Boolean {
+        if (!ensureSignedIn()) return false
+        var ok = true
+        entryFirebaseIds.filter { it.isNotBlank() }.forEach {
+            if (!firestoreDelete("settlement_entries", it)) ok = false
+        }
+        if (settlementFirebaseId.isNotBlank()) {
+            if (!firestoreDelete("settlements", settlementFirebaseId)) ok = false
+        }
+        return ok
+    }
+
+    private suspend fun firestoreDelete(collection: String, docId: String): Boolean =
+        suspendCoroutine { cont ->
+            firestore.collection(collection)
+                .document(docId)
+                .delete()
+                .addOnSuccessListener {
+                    Log.d(tag, "Deleted $collection/$docId")
+                    cont.resume(true)
+                }
+                .addOnFailureListener { e ->
+                    Log.e(tag, "Failed to delete $collection/$docId: ${e.message}")
+                    cont.resume(false)
+                }
+        }
 }

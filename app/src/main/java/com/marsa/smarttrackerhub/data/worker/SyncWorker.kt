@@ -44,11 +44,18 @@ class SyncWorker(
             val syncRepo = FirebaseSyncRepository(db)
             val pullRepo = FirebasePullRepository(db)
 
-            // Optional: mark all shops unsynced so their current local statuses overwrite Firestore
+            // Optional: mark all records unsynced so their current local values are (re)pushed.
+            // Covers the whole investor domain too, so existing investments/shares/settlements
+            // entered before sync existed are guaranteed to upload — no data left behind.
             val forceResync = inputData.getBoolean(KEY_FORCE_RESYNC, false)
             if (forceResync) {
                 db.shopDao().markAllShopsUnsynced()
-                Log.d("SyncWorker", "Force resync: all shops marked unsynced")
+                db.investorDao().markAllInvestorsUnsynced()
+                db.shopInvestorDao().markAllShopInvestorsUnsynced()
+                db.investmentTransactionDao().markAllTransactionsUnsynced()
+                db.yearEndSettlementDao().markAllSettlementsUnsynced()
+                db.yearEndSettlementDao().markAllSettlementEntriesUnsynced()
+                Log.d("SyncWorker", "Force resync: all shops + investor-domain records marked unsynced")
             }
 
             // 1. Push: upload all unsynced local records to Firestore

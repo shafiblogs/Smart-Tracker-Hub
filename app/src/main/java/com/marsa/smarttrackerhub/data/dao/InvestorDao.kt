@@ -47,6 +47,10 @@ interface InvestorDao {
     @Query("UPDATE investor_info SET isSynced = 1 WHERE investorId = :investorId")
     suspend fun markInvestorSynced(investorId: String)
 
+    /** Force-resync support: re-queue every investor. */
+    @Query("UPDATE investor_info SET isSynced = 0")
+    suspend fun markAllInvestorsUnsynced()
+
     // ── Pull support ───────────────────────────────────────────────────────────
 
     /** One-shot list used by pull to build a Firebase-id → Room-id map. */

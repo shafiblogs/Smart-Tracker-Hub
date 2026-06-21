@@ -6,11 +6,13 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.marsa.smarttrackerhub.data.AppDatabase
 import com.marsa.smarttrackerhub.data.entity.InvestmentTransaction
+import com.marsa.smarttrackerhub.data.repository.FirebaseSyncRepository
 import com.marsa.smarttrackerhub.data.repository.InvestmentTransactionRepository
 import com.marsa.smarttrackerhub.data.repository.ShopInvestorRepository
 import com.marsa.smarttrackerhub.data.repository.ShopRepository
 import com.marsa.smarttrackerhub.domain.PhaseTransactionDetail
 import com.marsa.smarttrackerhub.domain.ShopInvestorSummary
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -62,11 +64,13 @@ class ShopInvestmentDashboardViewModel(
     private var shopInvestorRepo: ShopInvestorRepository? = null
     private var txRepo: InvestmentTransactionRepository? = null
     private var shopRepo: ShopRepository? = null
+    private var database: AppDatabase? = null
     private var currentShopId: Int = 0
 
     fun init(context: Context, shopId: Int) {
         currentShopId = shopId
         val db = AppDatabase.getDatabase(context)
+        database = db
         shopRepo = ShopRepository(db.shopDao())
         shopInvestorRepo = ShopInvestorRepository(db.shopInvestorDao())
         txRepo = InvestmentTransactionRepository(db.investmentTransactionDao())
@@ -157,7 +161,9 @@ class ShopInvestmentDashboardViewModel(
             try {
                 val repo = shopInvestorRepo ?: return@launch
                 val raw = repo.getShopInvestorById(investor.shopInvestorId) ?: return@launch
-                repo.updateShopInvestor(raw.copy(status = "Withdrawn"))
+                val updated = raw.copy(status = "Withdrawn", isSynced = false)
+                repo.updateShopInvestor(updated)
+                syncShopInvestor(updated)
                 _uiState.value = _uiState.value.copy(
                     withdrawingInvestor = null,
                     isWithdrawing = false
@@ -225,16 +231,24 @@ class ShopInvestmentDashboardViewModel(
         _uiState.value = _uiState.value.copy(isSavingTransaction = true)
         viewModelScope.launch {
             try {
-                txRepo?.updateTransaction(
-                    InvestmentTransaction(
-                        id = tx.transactionId,
-                        shopInvestorId = tx.shopInvestorId,
-                        amount = amount,
-                        transactionDate = tx.transactionDate,
-                        phase = phase,
-                        note = _uiState.value.editTxNote.trim()
-                    )
+                // Load the existing row so we keep its Firebase IDs (PhaseTransactionDetail
+                // doesn't carry them). Editing must update the SAME Firestore doc, not orphan it.
+                val existing = database?.investmentTransactionDao()?.getTransactionById(tx.transactionId)
+                val updated = (existing ?: InvestmentTransaction(
+                    id = tx.transactionId,
+                    shopInvestorId = tx.shopInvestorId,
+                    amount = amount,
+                    transactionDate = tx.transactionDate,
+                    phase = phase,
+                    note = ""
+                )).copy(
+                    amount = amount,
+                    phase = phase,
+                    note = _uiState.value.editTxNote.trim(),
+                    isSynced = false
                 )
+                txRepo?.updateTransaction(updated)
+                syncTransaction(updated)
                 refreshTotalInvested()
                 _uiState.value = _uiState.value.copy(
                     editingTransaction = null,
@@ -259,8 +273,19 @@ class ShopInvestmentDashboardViewModel(
         _uiState.value = _uiState.value.copy(isSavingTransaction = true)
         viewModelScope.launch {
             try {
+                // Capture the Firestore doc ID BEFORE the local delete, then remove the doc
+                // so other devices drop it on next pull.
+                val existing = database?.investmentTransactionDao()?.getTransactionById(tx.transactionId)
                 txRepo?.deleteTransactionById(tx.transactionId)
                 refreshTotalInvested()
+                val fbId = existing?.transactionFirebaseId
+                if (!fbId.isNullOrBlank()) {
+                    database?.let { d ->
+                        launch(Dispatchers.IO) {
+                            try { FirebaseSyncRepository(d).deleteTransactionDoc(fbId) } catch (_: Exception) {}
+                        }
+                    }
+                }
                 _uiState.value = _uiState.value.copy(
                     editingTransaction = null,
                     editTxAmount = "",
@@ -324,7 +349,9 @@ class ShopInvestmentDashboardViewModel(
             try {
                 val repo = shopInvestorRepo ?: return@launch
                 val raw = repo.getShopInvestorById(investor.shopInvestorId) ?: return@launch
-                repo.updateShopInvestor(raw.copy(sharePercentage = newShare))
+                val updated = raw.copy(sharePercentage = newShare, isSynced = false)
+                repo.updateShopInvestor(updated)
+                syncShopInvestor(updated)
                 _uiState.value = _uiState.value.copy(
                     editingInvestor = null,
                     editShareInput = "",
@@ -337,6 +364,22 @@ class ShopInvestmentDashboardViewModel(
                     isSavingShare = false
                 )
             }
+        }
+    }
+
+    // ── Firebase push helpers (best-effort; SyncWorker retries on failure) ──────
+
+    private fun syncShopInvestor(entity: com.marsa.smarttrackerhub.data.entity.ShopInvestor) {
+        val db = database ?: return
+        viewModelScope.launch(Dispatchers.IO) {
+            try { FirebaseSyncRepository(db).syncShopInvestor(entity) } catch (_: Exception) {}
+        }
+    }
+
+    private fun syncTransaction(entity: InvestmentTransaction) {
+        val db = database ?: return
+        viewModelScope.launch(Dispatchers.IO) {
+            try { FirebaseSyncRepository(db).syncTransaction(entity) } catch (_: Exception) {}
         }
     }
 }

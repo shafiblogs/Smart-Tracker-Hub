@@ -131,11 +131,19 @@ interface InvestmentTransactionDao {
     @Query("DELETE FROM investment_transaction WHERE id = :id")
     suspend fun deleteTransactionById(id: Int)
 
+    /** Single transaction by Room PK — used by edit/delete sync to keep its Firebase ID. */
+    @Query("SELECT * FROM investment_transaction WHERE id = :id LIMIT 1")
+    suspend fun getTransactionById(id: Int): InvestmentTransaction?
+
     // ── Firebase sync ──────────────────────────────────────────────────────────
 
     /** All transactions not yet pushed to Firestore. */
     @Query("SELECT * FROM investment_transaction WHERE isSynced = 0")
     suspend fun getUnsyncedTransactions(): List<InvestmentTransaction>
+
+    /** Force-resync support: re-queue every transaction. */
+    @Query("UPDATE investment_transaction SET isSynced = 0")
+    suspend fun markAllTransactionsUnsynced()
 
     /** Marks the transaction with the given [transactionFirebaseId] (UUID) as synced. */
     @Query("UPDATE investment_transaction SET isSynced = 1 WHERE transactionFirebaseId = :transactionFirebaseId")
