@@ -2,6 +2,7 @@ package com.marsa.smarttrackerhub.ui.screens.home
 
 import android.app.Application
 import android.view.View
+import androidx.activity.ComponentActivity
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -13,7 +14,9 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
@@ -32,6 +35,11 @@ fun HomeScreen(
     userAccessCode: AccessCode
 ) {
     val context = LocalContext.current
+    // For full-height off-screen chart capture when sharing trend graphs.
+    val activity = context as? ComponentActivity
+    val density = LocalDensity.current
+    val configuration = LocalConfiguration.current
+    val shareWidthPx = with(density) { configuration.screenWidthDp.dp.roundToPx() }
     val firebaseApp = FirebaseApp.getInstance("SmartTrackerApp")
     val viewModel: HomeScreenViewModel = viewModel(
         factory = HomeScreenViewModelFactory(
@@ -222,13 +230,27 @@ fun HomeScreen(
             )
             IconButton(
                 onClick = {
-                    chartView?.let { view ->
-                        ShareUtil.shareViewAsImage(
-                            view = view,
-                            context = context,
-                            fileName = "sales_chart_${selectedShop?.name?.replace(" ", "_")}.png",
-                            shareTitle = "Share Sales Chart"
-                        )
+                    val act = activity ?: return@IconButton
+                    ShareUtil.shareComposableAsImage(
+                        activity = act,
+                        widthPx = shareWidthPx,
+                        fileName = "sales_chart_${selectedShop?.name?.replace(" ", "_")}.png",
+                        shareTitle = "Share Sales Chart"
+                    ) {
+                        SmartTrackerTheme {
+                            Surface(color = MaterialTheme.colorScheme.surface) {
+                                MonthlySalesChart(
+                                    data = chartData,
+                                    shopAddress = selectedShop?.name ?: "",
+                                    periodLabel = periodLabel,
+                                    isTargetAchieved = (statistics?.averageAchievementPercentage ?: 0.0) >= 100,
+                                    achievementPercentage = statistics?.averageAchievementPercentage ?: 0.0,
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .height(350.dp)
+                                )
+                            }
+                        }
                     }
                 },
                 enabled = chartData.isNotEmpty()
@@ -296,13 +318,25 @@ fun HomeScreen(
             )
             IconButton(
                 onClick = {
-                    purchaseChartView?.let { view ->
-                        ShareUtil.shareViewAsImage(
-                            view = view,
-                            context = context,
-                            fileName = "purchase_chart_${selectedShop?.name?.replace(" ", "_")}.png",
-                            shareTitle = "Share Purchase Trend"
-                        )
+                    val act = activity ?: return@IconButton
+                    val stats = purchaseStatistics ?: return@IconButton
+                    ShareUtil.shareComposableAsImage(
+                        activity = act,
+                        widthPx = shareWidthPx,
+                        fileName = "purchase_chart_${selectedShop?.name?.replace(" ", "_")}.png",
+                        shareTitle = "Share Purchase Trend"
+                    ) {
+                        SmartTrackerTheme {
+                            Surface(color = MaterialTheme.colorScheme.surface) {
+                                PurchaseCategoryChart(
+                                    categories = purchaseCategoryData,
+                                    statistics = stats,
+                                    shopAddress = selectedShop?.name ?: "",
+                                    periodLabel = periodLabel,
+                                    modifier = Modifier.fillMaxWidth()
+                                )
+                            }
+                        }
                     }
                 },
                 enabled = purchaseCategoryData.isNotEmpty()
