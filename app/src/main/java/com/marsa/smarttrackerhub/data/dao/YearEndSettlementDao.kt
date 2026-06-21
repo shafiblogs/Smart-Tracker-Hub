@@ -83,16 +83,6 @@ interface YearEndSettlementDao {
     @Query("SELECT * FROM settlement_entry WHERE settlementId = :settlementId")
     suspend fun getSettlementEntriesList(settlementId: Int): List<SettlementEntry>
 
-    // ── Duplicate cleanup (local only) ──
-    @Query("UPDATE settlement_entry SET investorId = :keepId WHERE investorId = :dupId")
-    suspend fun repointEntryInvestor(dupId: Int, keepId: Int)
-
-    @Query("UPDATE settlement_entry SET settlementId = :keepId WHERE settlementId = :dupId")
-    suspend fun repointEntrySettlement(dupId: Int, keepId: Int)
-
-    @Query("DELETE FROM settlement_entry WHERE id = :id")
-    suspend fun deleteSettlementEntryById(id: Int)
-
     // ── Pull support ───────────────────────────────────────────────────────────
 
     /** One-shot list of all settlements — used by pull to build Firebase-id → Room-id map. */
