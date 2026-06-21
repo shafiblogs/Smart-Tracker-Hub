@@ -75,7 +75,7 @@ import java.util.Locale
  * muhammed.poyil@morohub.com
  */
 @Composable
-fun SettlementHistoryScreen(shopId: Int) {
+fun SettlementHistoryScreen(shopId: Int, isAdmin: Boolean = false) {
     val viewModel: SettlementHistoryViewModel = viewModel()
     val uiState by viewModel.uiState.collectAsState()
     val context = LocalContext.current
@@ -181,6 +181,7 @@ fun SettlementHistoryScreen(shopId: Int) {
                             isExpanded = isExpanded,
                             entries = if (isExpanded) uiState.expandedEntries else emptyList(),
                             isLoadingEntries = isExpanded && uiState.isLoadingEntries,
+                            isAdmin = isAdmin,
                             onToggle = { viewModel.toggleSettlement(settlement.id) },
                             onMarkPaid = { entry -> viewModel.showMarkPaidDialog(entry) },
                             onReverseSettlement = { viewModel.showDeleteSettlementDialog(settlement) }
@@ -202,6 +203,7 @@ private fun SettlementHistoryCard(
     isExpanded: Boolean,
     entries: List<SettlementEntryWithName>,
     isLoadingEntries: Boolean,
+    isAdmin: Boolean = false,
     onToggle: () -> Unit,
     onMarkPaid: (SettlementEntryWithName) -> Unit,
     onReverseSettlement: () -> Unit
@@ -253,17 +255,19 @@ private fun SettlementHistoryCard(
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
-                // Reverse / delete icon
-                IconButton(
-                    onClick = onReverseSettlement,
-                    modifier = Modifier.size(32.dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Delete,
-                        contentDescription = "Reverse settlement",
-                        modifier = Modifier.size(18.dp),
-                        tint = MaterialTheme.colorScheme.error
-                    )
+                // Reverse / delete icon — admin only
+                if (isAdmin) {
+                    IconButton(
+                        onClick = onReverseSettlement,
+                        modifier = Modifier.size(32.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Delete,
+                            contentDescription = "Reverse settlement",
+                            modifier = Modifier.size(18.dp),
+                            tint = MaterialTheme.colorScheme.error
+                        )
+                    }
                 }
                 Icon(
                     imageVector = if (isExpanded) Icons.Default.KeyboardArrowUp

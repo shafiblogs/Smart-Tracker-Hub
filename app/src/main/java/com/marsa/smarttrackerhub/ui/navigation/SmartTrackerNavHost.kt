@@ -390,7 +390,7 @@ fun SmartTrackerNavHost(navController: NavHostController) {
                 )
             ) { backStackEntry ->
                 val shopId = backStackEntry.arguments!!.getInt("shopId")
-                SettlementHistoryScreen(shopId = shopId)
+                SettlementHistoryScreen(shopId = shopId, isAdmin = isAdmin)
             }
 
             composable(Screen.Employees.route) {
