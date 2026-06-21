@@ -111,7 +111,7 @@ val DarkColorScheme = darkColorScheme(
     surfaceVariant     = DarkCardSurface,
     onSurfaceVariant   = DarkTextSecondary,
     outline            = DarkOutline,
-    outlineVariant     = Color(0xFF1E293B),
+    outlineVariant     = Color(0xFF475569),  // Lighter for visibility in dark mode
 
     error              = DarkErrorRed,
     onError            = DarkErrorDark,
