@@ -431,6 +431,13 @@ class FirebaseSyncRepository(private val db: AppDatabase) {
     // Deletes — propagate local deletions to Firestore so other devices drop them
     // ─────────────────────────────────────────────────────────────────────────
 
+    /** Deletes a shop document. No-op if its Firebase ID is blank. */
+    suspend fun deleteShopDoc(shopFirebaseId: String): Boolean {
+        if (shopFirebaseId.isBlank()) return true
+        if (!ensureSignedIn()) return false
+        return firestoreDelete("shops", shopFirebaseId)
+    }
+
     /** Deletes a single transaction document. No-op if its Firebase ID is blank. */
     suspend fun deleteTransactionDoc(transactionFirebaseId: String): Boolean {
         if (transactionFirebaseId.isBlank()) return true

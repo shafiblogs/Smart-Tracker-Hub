@@ -48,6 +48,10 @@ interface EmployeeInfoDao {
     @Query("SELECT COUNT(*) FROM employee_info WHERE employeeId = :employeeId AND id != :excludeId")
     suspend fun countByEmployeeId(employeeId: String, excludeId: Int): Int
 
+    /** Count of employees assigned to a shop — used to block shop delete when non-empty. */
+    @Query("SELECT COUNT(*) FROM employee_info WHERE associatedShopId = :shopRoomId")
+    suspend fun countByShop(shopRoomId: Int): Int
+
     // ── Firebase sync ──────────────────────────────────────────────────────────
 
     /** All employees not yet pushed to Firestore. */

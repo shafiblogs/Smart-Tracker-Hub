@@ -16,7 +16,9 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.DateRange
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -32,6 +34,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -65,7 +68,8 @@ fun AddShopScreen(
     shopId: Int? = null,
     isAdmin: Boolean = false,
     onShopCreated: () -> Unit,
-    onAddInvestorClick: (Int) -> Unit = {}
+    onAddInvestorClick: (Int) -> Unit = {},
+    onDeleted: () -> Unit = {}
 ) {
     val viewModel: AddShopViewModel = viewModel()
     val state by viewModel.formState.collectAsState()
@@ -77,6 +81,39 @@ fun AddShopScreen(
     val totalInvested by viewModel.totalInvested.collectAsState()
     val context = LocalContext.current
     val isLoaded by viewModel.isLoaded.collectAsState()
+    val showDeleteDialog by viewModel.showDeleteDialog.collectAsState()
+    val isDeleting by viewModel.isDeleting.collectAsState()
+    val deleteBlockedMessage by viewModel.deleteBlockedMessage.collectAsState()
+
+    // Show "can't delete" reason as a toast, then clear it.
+    LaunchedEffect(deleteBlockedMessage) {
+        deleteBlockedMessage?.let {
+            Toast.makeText(context, it, Toast.LENGTH_LONG).show()
+            viewModel.dismissBlockedMessage()
+        }
+    }
+
+    if (showDeleteDialog) {
+        AlertDialog(
+            onDismissRequest = { viewModel.dismissDeleteDialog() },
+            title = { Text("Delete shop?") },
+            text = {
+                Text(
+                    "This permanently removes \"${state.shopName}\" from all devices. " +
+                    "Shops with employees, investors, or investments can't be deleted."
+                )
+            },
+            confirmButton = {
+                TextButton(
+                    enabled = !isDeleting,
+                    onClick = { viewModel.deleteShop(context, onDeleted) }
+                ) { Text("Delete", color = MaterialTheme.colorScheme.error) }
+            },
+            dismissButton = {
+                TextButton(onClick = { viewModel.dismissDeleteDialog() }) { Text("Cancel") }
+            }
+        )
+    }
 
     // Edit mode state - disabled by default when loading existing shop
     var isEditEnabled by remember { mutableStateOf(shopId == null) }
@@ -584,6 +621,30 @@ fun AddShopScreen(
                         )
                     ) {
                         Text(text = buttonText, fontSize = 16.sp, fontWeight = FontWeight.Medium)
+                    }
+                }
+
+                // Delete shop — only for an existing shop, admin, while editing.
+                // Blocked at action time if the shop still has employees/investors/investments.
+                if (isLoaded && isAdmin && isEditEnabled) {
+                    Spacer(modifier = Modifier.height(12.dp))
+                    OutlinedButton(
+                        onClick = { viewModel.requestDelete() },
+                        enabled = !isDeleting,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(56.dp),
+                        shape = MaterialTheme.shapes.medium,
+                        colors = ButtonDefaults.outlinedButtonColors(
+                            contentColor = MaterialTheme.colorScheme.error
+                        )
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Delete,
+                            contentDescription = null,
+                            modifier = Modifier.padding(end = 8.dp)
+                        )
+                        Text(text = "Delete Shop", fontSize = 16.sp, fontWeight = FontWeight.Medium)
                     }
                 }
 

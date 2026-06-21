@@ -47,6 +47,16 @@ class AddShopViewModel(
     private var editingShopId: Int? = null
     private var shopInvestorRepo: ShopInvestorRepository? = null
 
+    // ── Delete shop ──
+    private val _showDeleteDialog = MutableStateFlow(false)
+    val showDeleteDialog: StateFlow<Boolean> = _showDeleteDialog.asStateFlow()
+
+    private val _isDeleting = MutableStateFlow(false)
+    val isDeleting: StateFlow<Boolean> = _isDeleting.asStateFlow()
+
+    private val _deleteBlockedMessage = MutableStateFlow<String?>(null)
+    val deleteBlockedMessage: StateFlow<String?> = _deleteBlockedMessage.asStateFlow()
+
     val isFormValid: StateFlow<Boolean> = formState
         .map {
             it.shopName.isNotBlank() &&
@@ -226,6 +236,61 @@ class AddShopViewModel(
             }
         } catch (e: Exception) {
             onFail("Failed to save shop: ${e.localizedMessage}")
+        }
+    }
+
+    // ── Delete shop ─────────────────────────────────────────────────────────
+
+    fun requestDelete() { _showDeleteDialog.value = true }
+    fun dismissDeleteDialog() { _showDeleteDialog.value = false }
+    fun dismissBlockedMessage() { _deleteBlockedMessage.value = null }
+
+    /**
+     * Deletes the shop — only if it has no employees, no investors, and no investments.
+     * Otherwise the delete is blocked with a message. On success the shop doc is removed
+     * from Firestore so other devices drop it on the next pull.
+     */
+    fun deleteShop(context: Context, onDeleted: () -> Unit = {}) {
+        val shopRoomId = editingShopId ?: return
+        _isDeleting.value = true
+        viewModelScope.launch {
+            try {
+                val db = AppDatabase.getDatabase(context)
+                val shop = ShopRepository(db.shopDao()).getShopById(shopRoomId) ?: run {
+                    _isDeleting.value = false
+                    _showDeleteDialog.value = false
+                    return@launch
+                }
+
+                val employeeCount = db.employeeDao().countByShop(shopRoomId)
+                val investorCount = db.shopInvestorDao().getInvestorCountForShop(shopRoomId)
+
+                if (employeeCount > 0 || investorCount > 0 || shop.totalInvested > 0.0) {
+                    val reasons = buildList {
+                        if (employeeCount > 0) add("$employeeCount employee(s)")
+                        if (investorCount > 0) add("$investorCount investor(s)")
+                        if (shop.totalInvested > 0.0) add("investment records")
+                    }.joinToString(", ")
+                    _deleteBlockedMessage.value =
+                        "Cannot delete \"${shop.shopName}\" — it still has $reasons. " +
+                        "Remove those first."
+                    _isDeleting.value = false
+                    _showDeleteDialog.value = false
+                    return@launch
+                }
+
+                ShopRepository(db.shopDao()).deleteShop(shop)
+                kotlinx.coroutines.withContext(Dispatchers.IO) {
+                    try { FirebaseSyncRepository(db).deleteShopDoc(shop.shopId) } catch (_: Exception) {}
+                }
+                _isDeleting.value = false
+                _showDeleteDialog.value = false
+                onDeleted()
+            } catch (e: Exception) {
+                _error.value = e.localizedMessage ?: "Failed to delete shop"
+                _isDeleting.value = false
+                _showDeleteDialog.value = false
+            }
         }
     }
 }

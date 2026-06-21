@@ -210,7 +210,8 @@ fun SmartTrackerNavHost(navController: NavHostController) {
                     onAddInvestorClick = { id ->
                         // Navigate to ShopInvestmentDashboard for this shop
                         navController.navigate(Screen.ShopInvestmentDashboard.createRoute(id))
-                    }
+                    },
+                    onDeleted = { navController.popBackStack() }
                 )
             }
             composable(
