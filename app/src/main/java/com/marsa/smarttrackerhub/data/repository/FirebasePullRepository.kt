@@ -309,12 +309,19 @@ class FirebasePullRepository(private val db: AppDatabase) {
         val docs = firestoreGetCollection("transactions")
         Log.d(tag, "pullTransactions: ${docs.size} document(s) from Firebase")
 
-        // Existing transactions keyed by their UUID Firebase ID — reuse Room PKs so a
-        // re-pull updates in place instead of inserting (and so the row is never re-pushed
-        // under a NEW UUID, which would duplicate the doc in Firestore).
-        val existingByFbId = db.investmentTransactionDao().getAllTransactionsList()
+        // Dedup by Firebase ID AND by content. Firestore may hold several docs for the
+        // SAME payment under different IDs (from earlier buggy syncs); matching on content
+        // (link + amount + date + phase + note) collapses them into one local row so a pull
+        // can never add duplicates, regardless of how many ID variants exist in Firestore.
+        val existing = db.investmentTransactionDao().getAllTransactionsList()
+        val existingByFbId = existing
             .filter { it.transactionFirebaseId.isNotBlank() }
             .associateBy { it.transactionFirebaseId }
+        fun contentKey(siRoomId: Int, amount: Double, date: Long, phase: String, note: String) =
+            "$siRoomId|$amount|$date|${phase.trim()}|${note.trim()}"
+        val existingByContent = existing
+            .associateBy { contentKey(it.shopInvestorId, it.amount, it.transactionDate, it.phase, it.note) }
+        val handledContent = HashSet<String>()
 
         var count = 0
         for (data in docs) {
@@ -328,20 +335,31 @@ class FirebasePullRepository(private val db: AppDatabase) {
 
                 val amount = (data["amount"] as? Double)
                     ?: (data["amount"] as? Long)?.toDouble() ?: 0.0
+                val date  = data["transactionDate"] as? Long ?: 0L
+                val phase = data["phase"] as? String ?: ""
+                val note  = data["note"] as? String ?: ""
+                val key   = contentKey(siRoomId, amount, date, phase, note)
+
+                // Resolve the local row this doc maps to: prefer Firebase ID, else content.
+                val match = existingByFbId[txFbId] ?: existingByContent[key]
+                // Already handled an identical-content payment in this pull → skip the extra
+                // Firestore doc instead of inserting a duplicate row.
+                if (match == null && key in handledContent) continue
 
                 val entity = InvestmentTransaction(
-                    id                    = existingByFbId[txFbId]?.id ?: 0,
+                    id                    = match?.id ?: 0,
                     shopInvestorId        = siRoomId,
                     amount                = amount,
-                    transactionDate       = data["transactionDate"] as? Long ?: 0L,
-                    phase                 = data["phase"] as? String ?: "",
-                    note                  = data["note"] as? String ?: "",
+                    transactionDate       = date,
+                    phase                 = phase,
+                    note                  = note,
                     transactionFirebaseId = txFbId,            // preserve identity
                     shopFirebaseId        = shopFbId,
                     investorFirebaseId    = investorFbId,
                     isSynced              = true               // pulled → already in Firestore
                 )
                 db.investmentTransactionDao().insertTransaction(entity)
+                handledContent.add(key)
                 count++
             } catch (e: Exception) {
                 Log.e(tag, "pullTransactions: error processing document", e)
