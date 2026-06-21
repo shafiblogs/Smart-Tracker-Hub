@@ -63,11 +63,11 @@ val LightColorScheme = lightColorScheme(
     secondaryContainer   = BrandOrangeLight.copy(alpha = 0.25f),
     onSecondaryContainer = BrandOrangeDark,
 
-    // Tertiary — neutral blue-grey for supplementary elements
-    tertiary            = Color(0xFF6B7280),
+    // Tertiary — success/positive states (green)
+    tertiary            = SuccessGreen,
     onTertiary          = Color.White,
-    tertiaryContainer   = Color(0xFFE5E7EB),
-    onTertiaryContainer = TextPrimary,
+    tertiaryContainer   = SuccessGreen.copy(alpha = 0.2f),
+    onTertiaryContainer = Color(0xFF165E2D),
 
     background         = AppBackground,
     onBackground       = TextPrimary,
@@ -98,10 +98,10 @@ val DarkColorScheme = darkColorScheme(
     secondaryContainer   = Color(0xFF5C3200),
     onSecondaryContainer = BrandOrangeDarkTheme,
 
-    tertiary            = DarkTextSecondary,
+    tertiary            = DarkSuccessGreen,
     onTertiary          = DarkBackground,
-    tertiaryContainer   = Color(0xFF1E293B),
-    onTertiaryContainer = DarkTextPrimary,
+    tertiaryContainer   = DarkSuccessGreen.copy(alpha = 0.2f),
+    onTertiaryContainer = DarkSuccessGreen,
 
     background         = DarkBackground,
     onBackground       = DarkTextPrimary,

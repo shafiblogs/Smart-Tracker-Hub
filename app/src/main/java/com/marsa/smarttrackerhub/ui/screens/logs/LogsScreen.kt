@@ -41,7 +41,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
@@ -713,7 +712,7 @@ private fun ShopLogsTableRow(
                         style = MaterialTheme.typography.bodySmall,
                         modifier = Modifier.weight(1f),
                         textAlign = TextAlign.Center,
-                        color = Color(0xFF22C55E)
+                        color = MaterialTheme.colorScheme.tertiary
                     )
                     Text(
                         text = if (session.closeTime != null) formatLogTime(session.closeTime)
@@ -721,7 +720,7 @@ private fun ShopLogsTableRow(
                         style = MaterialTheme.typography.bodySmall,
                         modifier = Modifier.weight(1f),
                         textAlign = TextAlign.Center,
-                        color = if (session.closeTime == null) Color(0xFFEF4444)
+                        color = if (session.closeTime == null) MaterialTheme.colorScheme.error
                                else MaterialTheme.colorScheme.onSurfaceVariant
                     )
 
@@ -987,7 +986,7 @@ private fun EmployeeDayCard(day: EmployeeDayRecord, onShare: () -> Unit) {
                         style = MaterialTheme.typography.bodySmall,
                         modifier = Modifier.weight(1f),
                         textAlign = TextAlign.Center,
-                        color = Color(0xFF22C55E)
+                        color = MaterialTheme.colorScheme.tertiary
                     )
                     Text(
                         text = if (session.logoutTime != null) formatLogTime(session.logoutTime)
@@ -995,7 +994,7 @@ private fun EmployeeDayCard(day: EmployeeDayRecord, onShare: () -> Unit) {
                         style = MaterialTheme.typography.bodySmall,
                         modifier = Modifier.weight(1f),
                         textAlign = TextAlign.Center,
-                        color = if (session.logoutTime == null) Color(0xFFEF4444)
+                        color = if (session.logoutTime == null) MaterialTheme.colorScheme.error
                                else MaterialTheme.colorScheme.onSurfaceVariant
                     )
 
