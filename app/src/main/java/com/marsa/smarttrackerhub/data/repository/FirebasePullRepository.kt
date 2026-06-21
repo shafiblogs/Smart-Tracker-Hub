@@ -265,20 +265,19 @@ class FirebasePullRepository(private val db: AppDatabase) {
                 val shopRoomId     = shopIdMap[shopFbId] ?: continue
                 val investorRoomId = investorIdMap[investorFbId] ?: continue
 
-                // Check if this shop-investor link already exists
-                val alreadyLinked = db.shopInvestorDao().isInvestorInShop(shopRoomId, investorRoomId) > 0
-                if (alreadyLinked) {
-                    val roomId = db.shopInvestorDao().getActiveInvestorsRaw(shopRoomId)
-                        .firstOrNull { it.investorId == investorRoomId }?.id ?: continue
-                    idMap[fbId] = roomId
-                    continue
-                }
+                // Find an existing link (by Firebase ID, else by shop+investor pair) so a
+                // re-pull UPDATES it in place — this is how share-% edits and withdrawals
+                // made on another device reach this one. Reusing the Room PK lets REPLACE
+                // update rather than insert a duplicate.
+                val existing = db.shopInvestorDao().getShopInvestorByFirebaseId(fbId)
+                    ?: db.shopInvestorDao().getLinksForInvestor(investorRoomId)
+                        .firstOrNull { it.shopId == shopRoomId }
 
                 val sharePercentage = (data["sharePercentage"] as? Double)
                     ?: (data["sharePercentage"] as? Long)?.toDouble() ?: 0.0
 
                 val entity = ShopInvestor(
-                    id                     = 0,
+                    id                     = existing?.id ?: 0,
                     shopId                 = shopRoomId,
                     investorId             = investorRoomId,
                     sharePercentage        = sharePercentage,
@@ -289,8 +288,10 @@ class FirebasePullRepository(private val db: AppDatabase) {
                 )
                 db.shopInvestorDao().insertShopInvestor(entity)
 
-                val roomId = db.shopInvestorDao().getActiveInvestorsRaw(shopRoomId)
-                    .firstOrNull { it.investorId == investorRoomId }?.id ?: continue
+                val roomId = db.shopInvestorDao().getShopInvestorByFirebaseId(fbId)?.id
+                    ?: db.shopInvestorDao().getLinksForInvestor(investorRoomId)
+                        .firstOrNull { it.shopId == shopRoomId }?.id
+                    ?: continue
                 idMap[fbId] = roomId
             } catch (e: Exception) {
                 Log.e(tag, "pullShopInvestors: error processing document", e)
