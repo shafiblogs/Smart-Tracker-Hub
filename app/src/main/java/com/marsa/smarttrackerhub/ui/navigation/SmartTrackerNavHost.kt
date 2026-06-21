@@ -298,7 +298,8 @@ fun SmartTrackerNavHost(navController: NavHostController) {
                     },
                     onShopDashboardClick = { shopId ->
                         navController.navigate(Screen.ShopInvestmentDashboard.createRoute(shopId))
-                    }
+                    },
+                    onDeleted = { navController.popBackStack() }
                 )
             }
             composable(

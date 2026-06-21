@@ -13,10 +13,13 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import android.widget.Toast
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.AssistChipDefaults
 import androidx.compose.material3.Card
@@ -28,6 +31,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -58,7 +62,8 @@ fun InvestorDetailScreen(
     isAdmin: Boolean = false,
     onEditClick: (Int) -> Unit,
     onAddShopInvestmentClick: (Int) -> Unit,
-    onShopDashboardClick: (shopId: Int) -> Unit = {}
+    onShopDashboardClick: (shopId: Int) -> Unit = {},
+    onDeleted: () -> Unit = {}
 ) {
     val viewModel: InvestorDetailViewModel = viewModel()
     val uiState by viewModel.uiState.collectAsState()
@@ -66,6 +71,39 @@ fun InvestorDetailScreen(
 
     LaunchedEffect(investorId) {
         viewModel.init(context, investorId)
+    }
+
+    // Show "can't delete" message as a toast, then clear it.
+    LaunchedEffect(uiState.deleteBlockedMessage) {
+        uiState.deleteBlockedMessage?.let {
+            Toast.makeText(context, it, Toast.LENGTH_LONG).show()
+            viewModel.dismissBlockedMessage()
+        }
+    }
+
+    // Confirm-delete dialog.
+    if (uiState.showDeleteDialog) {
+        AlertDialog(
+            onDismissRequest = { viewModel.dismissDeleteDialog() },
+            title = { Text("Delete investor?") },
+            text = {
+                Text(
+                    "This permanently removes \"${uiState.investor?.investorName ?: "this investor"}\" " +
+                    "from all devices. Investors with payment records can't be deleted."
+                )
+            },
+            confirmButton = {
+                TextButton(
+                    enabled = !uiState.isDeleting,
+                    onClick = { viewModel.confirmDelete(onDeleted) }
+                ) {
+                    Text("Delete", color = MaterialTheme.colorScheme.error)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { viewModel.dismissDeleteDialog() }) { Text("Cancel") }
+            }
+        )
     }
 
     Scaffold(
@@ -76,6 +114,17 @@ fun InvestorDetailScreen(
                     horizontalAlignment = Alignment.End,
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
+                    // Delete investor (blocked if they have payment records)
+                    FloatingActionButton(
+                        onClick = { viewModel.requestDelete() },
+                        containerColor = MaterialTheme.colorScheme.errorContainer,
+                        contentColor = MaterialTheme.colorScheme.onErrorContainer
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Delete,
+                            contentDescription = "Delete Investor"
+                        )
+                    }
                     // Secondary FAB: edit investor info
                     FloatingActionButton(
                         onClick = { onEditClick(investorId) },

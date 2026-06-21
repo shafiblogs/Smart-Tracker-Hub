@@ -14,5 +14,10 @@ data class InvestorDetailUiState(
     val totalPaidAllShops: Double = 0.0,
     val activeShopCount: Int = 0,
     val isLoading: Boolean = true,
-    val error: String? = null
+    val error: String? = null,
+    // Delete investor
+    val showDeleteDialog: Boolean = false,
+    val isDeleting: Boolean = false,
+    /** Non-null when delete was blocked (investor still has payments). */
+    val deleteBlockedMessage: String? = null
 )

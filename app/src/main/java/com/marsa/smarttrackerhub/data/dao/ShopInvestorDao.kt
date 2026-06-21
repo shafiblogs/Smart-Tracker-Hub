@@ -152,4 +152,8 @@ interface ShopInvestorDao {
     /** Look up by Firebase string ID — used after pull-insert to get the Room int PK. */
     @Query("SELECT * FROM shop_investor WHERE shopInvestorFirebaseId = :firebaseId LIMIT 1")
     suspend fun getShopInvestorByFirebaseId(firebaseId: String): ShopInvestor?
+
+    /** All links for an investor — used by investor delete to clean up Firestore link docs. */
+    @Query("SELECT * FROM shop_investor WHERE investorId = :investorId")
+    suspend fun getLinksForInvestor(investorId: Int): List<ShopInvestor>
 }

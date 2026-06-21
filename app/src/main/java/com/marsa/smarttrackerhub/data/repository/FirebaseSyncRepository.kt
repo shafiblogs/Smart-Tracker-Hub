@@ -439,6 +439,26 @@ class FirebaseSyncRepository(private val db: AppDatabase) {
     }
 
     /**
+     * Deletes an investor document and any of its (payment-free) shop-investor link docs.
+     * Investor delete is only allowed when there are no payments, so there are no
+     * transaction/settlement docs to cascade here.
+     */
+    suspend fun deleteInvestorWithLinks(
+        investorFirebaseId: String,
+        linkFirebaseIds: List<String>
+    ): Boolean {
+        if (!ensureSignedIn()) return false
+        var ok = true
+        linkFirebaseIds.filter { it.isNotBlank() }.forEach {
+            if (!firestoreDelete("shop_investors", it)) ok = false
+        }
+        if (investorFirebaseId.isNotBlank()) {
+            if (!firestoreDelete("investors", investorFirebaseId)) ok = false
+        }
+        return ok
+    }
+
+    /**
      * Deletes a settlement and all its entries from Firestore (explicit cascade —
      * Firestore has no FK cascade like Room does). Pass the entry IDs gathered from Room
      * BEFORE the local delete cascaded them away.
