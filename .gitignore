@@ -13,3 +13,15 @@
 .externalNativeBuild
 .cxx
 local.properties
+
+# IDE / tooling
+/.idea/
+/.kotlin/
+
+# Build outputs / release artifacts
+/app/build
+/app/release/
+
+# Claude Code local files
+/.claude/
+
