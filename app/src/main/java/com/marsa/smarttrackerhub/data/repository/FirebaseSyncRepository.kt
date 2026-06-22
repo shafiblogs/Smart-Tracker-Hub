@@ -101,9 +101,10 @@ class FirebaseSyncRepository(private val db: AppDatabase) {
     // ─────────────────────────────────────────────────────────────────────────
 
     suspend fun syncInvestor(entity: InvestorInfo): Boolean {
-        // Legacy rows have a blank investorId (column added blank by Migration2To3).
-        // Auto-assign a UUID and persist it so the investor can be pushed — mirrors syncEmployee.
-        val resolved = if (entity.investorId.isBlank()) {
+        // The investorId is used as the Firestore document id. If it's blank OR not a valid
+        // doc id (e.g. contains "/"), assign a UUID and persist it — otherwise the write
+        // throws and this investor (and all its children) never sync.
+        val resolved = if (!isValidDocId(entity.investorId)) {
             val updated = entity.copy(investorId = UUID.randomUUID().toString())
             db.investorDao().updateInvestor(updated)
             updated
@@ -376,6 +377,20 @@ class FirebaseSyncRepository(private val db: AppDatabase) {
      * Each failure is logged but does not stop processing the remaining records.
      */
     suspend fun syncAll() {
+        // Step 0: Ensure EVERY investor has a valid Firestore document id. A blank or
+        // invalid id (e.g. one containing "/") made the investor's own push fail AND
+        // blocked every child (link/transaction/settlement entry) from ever resolving it
+        // — so that investor's entire data silently never synced. Fix + re-queue here so
+        // children can always resolve a valid parent id.
+        db.investorDao().getAllInvestorsAsList().forEach { inv ->
+            if (!isValidDocId(inv.investorId)) {
+                Log.w(tag, "syncAll: investor id '${inv.investorId}' invalid — assigning a new id")
+                db.investorDao().updateInvestor(
+                    inv.copy(investorId = UUID.randomUUID().toString(), isSynced = false)
+                )
+            }
+        }
+
         // Step 1: Collect all pending records from Room (fast, local, no network)
         val shops       = db.shopDao().getUnsyncedShops()
         val investors   = db.investorDao().getUnsyncedInvestors()
@@ -393,17 +408,29 @@ class FirebaseSyncRepository(private val db: AppDatabase) {
             return
         }
 
-        // Step 3: Something to push — now connect and push in dependency order
+        // Step 3: Something to push — now connect and push in dependency order.
+        // Each record is wrapped so one failure NEVER aborts the rest of the batch.
         Log.d(tag, "syncAll() — $totalPending record(s) pending, connecting to Firebase")
-        shops.forEach { syncShop(it) }
-        investors.forEach { syncInvestor(it) }
-        employees.forEach { syncEmployee(it) }
-        shopInvs.forEach { syncShopInvestor(it) }
-        txns.forEach { syncTransaction(it) }
-        settlements.forEach { syncSettlement(it) }
-        entries.forEach { syncSettlementEntry(it) }
+        shops.forEach { runCatching { syncShop(it) }.onFailure { e -> Log.e(tag, "syncShop failed: ${e.message}") } }
+        investors.forEach { runCatching { syncInvestor(it) }.onFailure { e -> Log.e(tag, "syncInvestor failed: ${e.message}") } }
+        employees.forEach { runCatching { syncEmployee(it) }.onFailure { e -> Log.e(tag, "syncEmployee failed: ${e.message}") } }
+        shopInvs.forEach { runCatching { syncShopInvestor(it) }.onFailure { e -> Log.e(tag, "syncShopInvestor failed: ${e.message}") } }
+        txns.forEach { runCatching { syncTransaction(it) }.onFailure { e -> Log.e(tag, "syncTransaction failed: ${e.message}") } }
+        settlements.forEach { runCatching { syncSettlement(it) }.onFailure { e -> Log.e(tag, "syncSettlement failed: ${e.message}") } }
+        entries.forEach { runCatching { syncSettlementEntry(it) }.onFailure { e -> Log.e(tag, "syncSettlementEntry failed: ${e.message}") } }
         Log.d(tag, "syncAll() completed")
     }
+
+    /**
+     * A string is a usable Firestore document id only if it is non-blank, isn't "." or "..",
+     * contains no "/", isn't a reserved __…__ id, and is ≤ 1500 bytes.
+     */
+    private fun isValidDocId(id: String): Boolean =
+        id.isNotBlank() &&
+            id != "." && id != ".." &&
+            !id.contains("/") &&
+            !Regex("__.*__").matches(id) &&
+            id.toByteArray(Charsets.UTF_8).size <= 1500
 
     // ─────────────────────────────────────────────────────────────────────────
     // Internal helpers
@@ -414,17 +441,25 @@ class FirebaseSyncRepository(private val db: AppDatabase) {
         docId: String,
         data: Map<String, Any?>
     ): Boolean = suspendCoroutine { cont ->
-        firestore.collection(collection)
-            .document(docId)
-            .set(data, SetOptions.merge())
-            .addOnSuccessListener {
-                Log.d(tag, "Synced $collection/$docId")
-                cont.resume(true)
-            }
-            .addOnFailureListener { e ->
-                Log.e(tag, "Failed to sync $collection/$docId: ${e.message}")
-                cont.resume(false)
-            }
+        // Guard against an invalid document id (e.g. one containing "/"), which makes
+        // .document() throw SYNCHRONOUSLY — that would otherwise abort the whole syncAll
+        // batch and silently drop this record (and everything after it).
+        try {
+            firestore.collection(collection)
+                .document(docId)
+                .set(data, SetOptions.merge())
+                .addOnSuccessListener {
+                    Log.d(tag, "Synced $collection/$docId")
+                    cont.resume(true)
+                }
+                .addOnFailureListener { e ->
+                    Log.e(tag, "Failed to sync $collection/$docId: ${e.message}")
+                    cont.resume(false)
+                }
+        } catch (e: Exception) {
+            Log.e(tag, "Invalid write to $collection/'$docId': ${e.message}")
+            cont.resume(false)
+        }
     }
 
     // ─────────────────────────────────────────────────────────────────────────
