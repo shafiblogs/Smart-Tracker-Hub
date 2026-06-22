@@ -36,7 +36,11 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
+import androidx.work.WorkInfo
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalConfiguration
@@ -130,6 +134,19 @@ fun SmartTrackerNavHost(navController: NavHostController) {
     val context = LocalContext.current
     LaunchedEffect(Unit) {
         notificationsViewModel.initDatabase(context)
+    }
+
+    // Observe the "Sync Now" worker so we can toast when it actually finishes.
+    var syncWorkId by remember { mutableStateOf<java.util.UUID?>(null) }
+    LaunchedEffect(syncWorkId) {
+        val id = syncWorkId ?: return@LaunchedEffect
+        WorkManager.getInstance(context).getWorkInfoByIdFlow(id).collect { info ->
+            if (info != null && info.state.isFinished) {
+                val msg = if (info.state == WorkInfo.State.SUCCEEDED) "Sync completed" else "Sync finished"
+                Toast.makeText(context, msg, Toast.LENGTH_SHORT).show()
+                syncWorkId = null
+            }
+        }
     }
     val notificationUiState by notificationsViewModel.uiState.collectAsState()
     val notificationCount = notificationUiState.notifications.size
@@ -782,6 +799,7 @@ fun SmartTrackerNavHost(navController: NavHostController) {
                                         .setInputData(workDataOf(SyncWorker.KEY_FORCE_RESYNC to true))
                                         .build()
                                     WorkManager.getInstance(context).enqueue(syncRequest)
+                                    syncWorkId = syncRequest.id   // observe → toast on completion
                                     Toast.makeText(context, "Sync started", Toast.LENGTH_SHORT).show()
                                 },
                                 modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding)
