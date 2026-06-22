@@ -774,8 +774,12 @@ fun SmartTrackerNavHost(navController: NavHostController) {
                                     val constraints = Constraints.Builder()
                                         .setRequiredNetworkType(NetworkType.CONNECTED)
                                         .build()
+                                    // Force-resync: re-push EVERY local record (not just isSynced=0).
+                                    // Safe now that pull is additive — guarantees Firestore receives
+                                    // all local data even if rows were wrongly flagged synced before.
                                     val syncRequest = OneTimeWorkRequestBuilder<SyncWorker>()
                                         .setConstraints(constraints)
+                                        .setInputData(workDataOf(SyncWorker.KEY_FORCE_RESYNC to true))
                                         .build()
                                     WorkManager.getInstance(context).enqueue(syncRequest)
                                     Toast.makeText(context, "Sync started", Toast.LENGTH_SHORT).show()
