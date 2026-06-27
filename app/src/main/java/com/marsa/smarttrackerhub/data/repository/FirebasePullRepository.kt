@@ -417,20 +417,32 @@ class FirebasePullRepository(private val db: AppDatabase) {
         val docs = firestoreGetCollection("settlements")
         Log.d(tag, "pullSettlements: ${docs.size} document(s) from Firebase")
 
+        // Dedup by Firebase ID AND content (shop + settlementDate + periodStartDate), so
+        // duplicate cloud docs for the same settlement collapse to one row. Duplicate docs'
+        // Firebase IDs all map to the kept row's Room id, so their entries still resolve.
+        val existing = db.yearEndSettlementDao().getAllSettlementsList()
+        fun sKey(shopRoomId: Int, date: Long, periodStart: Long) = "$shopRoomId|$date|$periodStart"
+        val existingByContent = existing
+            .associateBy { sKey(it.shopId, it.settlementDate, it.periodStartDate) }
+        val handledContent = HashMap<String, Int>()  // content key → kept Room id
+
         val idMap = mutableMapOf<String, Int>()
         for (data in docs) {
             try {
                 val fbId       = data["settlementFirebaseId"] as? String ?: continue
                 val shopFbId   = data["shopFirebaseId"] as? String ?: ""
                 val shopRoomId = shopIdMap[shopFbId] ?: continue
+                val date        = data["settlementDate"] as? Long ?: 0L
+                val periodStart = data["periodStartDate"] as? Long ?: 0L
+                val key         = sKey(shopRoomId, date, periodStart)
 
-                // ADDITIVE-ONLY: if this settlement already exists locally, never overwrite —
-                // just map its id. Pull can only ADD.
-                val existing = db.yearEndSettlementDao().getSettlementByFirebaseId(fbId)
-                if (existing != null) {
-                    idMap[fbId] = existing.id
-                    continue
-                }
+                // ADDITIVE-ONLY + dedup: if it already exists (by Firebase ID or content) or a
+                // same-content settlement was handled this pass, map this fbId to the kept row.
+                val existingRow = db.yearEndSettlementDao().getSettlementByFirebaseId(fbId)
+                    ?: existingByContent[key]
+                if (existingRow != null) { idMap[fbId] = existingRow.id; continue }
+                val handledRoomId = handledContent[key]
+                if (handledRoomId != null) { idMap[fbId] = handledRoomId; continue }
 
                 val totalInvested = (data["totalInvested"] as? Double)
                     ?: (data["totalInvested"] as? Long)?.toDouble() ?: 0.0
@@ -438,8 +450,8 @@ class FirebasePullRepository(private val db: AppDatabase) {
                 val entity = YearEndSettlement(
                     id                   = 0,
                     shopId               = shopRoomId,
-                    settlementDate       = data["settlementDate"] as? Long ?: 0L,
-                    periodStartDate      = data["periodStartDate"] as? Long ?: 0L,
+                    settlementDate       = date,
+                    periodStartDate      = periodStart,
                     totalInvested        = totalInvested,
                     note                 = data["note"] as? String ?: "",
                     isCarriedForward     = data["isCarriedForward"] as? Boolean ?: true,
@@ -451,6 +463,7 @@ class FirebasePullRepository(private val db: AppDatabase) {
 
                 val roomId = db.yearEndSettlementDao().getSettlementByFirebaseId(fbId)?.id ?: continue
                 idMap[fbId] = roomId
+                handledContent[key] = roomId
             } catch (e: Exception) {
                 Log.e(tag, "pullSettlements: error processing document", e)
             }
@@ -470,11 +483,15 @@ class FirebasePullRepository(private val db: AppDatabase) {
         val docs = firestoreGetCollection("settlement_entries")
         Log.d(tag, "pullSettlementEntries: ${docs.size} document(s) from Firebase")
 
-        // Existing entries keyed by UUID Firebase ID — reuse Room PKs so re-pulls update in
-        // place and the row is never re-pushed under a new UUID (which would duplicate).
-        val existingByFbId = db.yearEndSettlementDao().getAllSettlementEntriesList()
+        // Dedup by Firebase ID AND content (settlement + investor: one entry per investor per
+        // settlement). Collapses duplicate cloud docs for the same entry into one local row.
+        val allEntries = db.yearEndSettlementDao().getAllSettlementEntriesList()
+        val existingByFbId = allEntries
             .filter { it.entryFirebaseId.isNotBlank() }
             .associateBy { it.entryFirebaseId }
+        val existingByContent = allEntries
+            .associateBy { "${it.settlementId}|${it.investorId}" }
+        val handledContent = HashSet<String>()
 
         var count = 0
         for (data in docs) {
@@ -487,9 +504,17 @@ class FirebasePullRepository(private val db: AppDatabase) {
 
                 val settlementRoomId = settlementIdMap[settlementFbId] ?: continue
                 val investorRoomId   = investorIdMap[investorFbId] ?: continue
+                val contentKey       = "$settlementRoomId|$investorRoomId"
 
-                // ADDITIVE-ONLY: skip entries that already exist locally (never overwrite).
-                if (existingByFbId[entryFbId] != null) continue
+                // ADDITIVE-ONLY + dedup: skip if it already exists (by Firebase ID or content)
+                // or a same-content entry was handled in this pass.
+                if (existingByFbId[entryFbId] != null ||
+                    existingByContent[contentKey] != null ||
+                    contentKey in handledContent
+                ) {
+                    handledContent.add(contentKey)
+                    continue
+                }
 
                 fun toDouble(key: String) =
                     (data[key] as? Double) ?: (data[key] as? Long)?.toDouble() ?: 0.0
