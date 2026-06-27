@@ -65,34 +65,38 @@ class FirebaseSyncRepository(private val db: AppDatabase) {
     // ─────────────────────────────────────────────────────────────────────────
 
     suspend fun syncShop(entity: ShopInfo): Boolean {
-        // Records with blank shopId are pre-v6 or invalid — mark as "handled" to stop retry loop
-        if (entity.shopId.isBlank()) {
-            db.shopDao().markShopSynced("")
-            return true
+        // Self-heal a blank/invalid shopId (used as the Firestore doc id) by assigning a
+        // UUID and persisting it — instead of silently marking it synced and never pushing.
+        val resolved = if (!isValidDocId(entity.shopId)) {
+            val updated = entity.copy(shopId = UUID.randomUUID().toString())
+            db.shopDao().updateShop(updated)
+            updated
+        } else {
+            entity
         }
         if (!ensureSignedIn()) {
-            Log.e(tag, "syncShop: auth failed for ${entity.shopId} — status '${entity.shopStatus}' NOT pushed")
+            Log.e(tag, "syncShop: auth failed for ${resolved.shopId} — status '${resolved.shopStatus}' NOT pushed")
             return false
         }
-        Log.d(tag, "syncShop: pushing ${entity.shopId} with status='${entity.shopStatus}'")
+        Log.d(tag, "syncShop: pushing ${resolved.shopId} with status='${resolved.shopStatus}'")
 
         val map = mapOf(
-            "shopId"           to entity.shopId,
-            "shopName"         to entity.shopName,
-            "shopAddress"      to entity.shopAddress,
-            "shopType"         to entity.shopType,
-            "shopStatus"       to entity.shopStatus,
-            "zakathStatus"     to entity.zakathStatus,
-            "licenseExpiryDate" to entity.licenseExpiryDate,
-            "shopOpeningDate"  to entity.shopOpeningDate,
-            "stockValue"       to entity.stockValue,
-            "stockTakenDate"   to entity.stockTakenDate,
-            "totalInvested"    to entity.totalInvested,
-            "shopRegion"       to entity.shopRegion
+            "shopId"           to resolved.shopId,
+            "shopName"         to resolved.shopName,
+            "shopAddress"      to resolved.shopAddress,
+            "shopType"         to resolved.shopType,
+            "shopStatus"       to resolved.shopStatus,
+            "zakathStatus"     to resolved.zakathStatus,
+            "licenseExpiryDate" to resolved.licenseExpiryDate,
+            "shopOpeningDate"  to resolved.shopOpeningDate,
+            "stockValue"       to resolved.stockValue,
+            "stockTakenDate"   to resolved.stockTakenDate,
+            "totalInvested"    to resolved.totalInvested,
+            "shopRegion"       to resolved.shopRegion
         )
 
-        val success = firestoreSet("shops", entity.shopId, map)
-        if (success) db.shopDao().markShopSynced(entity.shopId)
+        val success = firestoreSet("shops", resolved.shopId, map)
+        if (success) db.shopDao().markShopSynced(resolved.shopId)
         return success
     }
 

@@ -7,6 +7,8 @@ import androidx.work.WorkerParameters
 import com.marsa.smarttrackerhub.data.AppDatabase
 import com.marsa.smarttrackerhub.data.repository.FirebasePullRepository
 import com.marsa.smarttrackerhub.data.repository.FirebaseSyncRepository
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 
 /**
  * Standardised sync worker. Two knobs control what it does:
@@ -39,10 +41,15 @@ class SyncWorker(
         const val SCOPE_SHOPS = "shops"
         const val SCOPE_EMPLOYEES = "employees"
         const val SCOPE_INVESTORS = "investors"
+
+        /** Process-wide lock so the daily periodic sync and any manual sync never run
+         *  concurrently — prevents two pulls both passing the existence check and
+         *  double-inserting the same Firestore document. */
+        private val syncMutex = Mutex()
     }
 
-    override suspend fun doWork(): Result {
-        return try {
+    override suspend fun doWork(): Result = syncMutex.withLock {
+        try {
             val db = AppDatabase.getDatabase(applicationContext)
             val sync = FirebaseSyncRepository(db)
             val pull = FirebasePullRepository(db)
