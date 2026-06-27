@@ -40,11 +40,13 @@ class YearEndSettlementRepository(private val dao: YearEndSettlementDao) {
      * Converts the [SettlementEntryWithName] projection back to a [SettlementEntry]
      * entity and writes the paid amount + date.
      */
+    /** Records the paid amount/date and returns the updated entity (isSynced=false) so the
+     *  caller can push it to Firestore immediately. */
     suspend fun markEntrySettled(
         entry: SettlementEntryWithName,
         paidAmount: Double,
         paidDate: Long
-    ) {
+    ): SettlementEntry {
         val updated = SettlementEntry(
             id = entry.id,
             settlementId = entry.settlementId,
@@ -57,9 +59,11 @@ class YearEndSettlementRepository(private val dao: YearEndSettlementDao) {
             entryFirebaseId = entry.entryFirebaseId,
             investorFirebaseId = entry.investorFirebaseId,
             settlementFirebaseId = entry.settlementFirebaseId,
-            shopFirebaseId = entry.shopFirebaseId
+            shopFirebaseId = entry.shopFirebaseId,
+            isSynced = false   // re-queue so the change uploads
         )
         dao.updateSettlementEntry(updated)
+        return updated
     }
 
     suspend fun deleteSettlement(id: Int) =

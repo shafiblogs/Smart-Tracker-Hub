@@ -57,6 +57,7 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.navArgument
 import androidx.work.Constraints
 import androidx.work.NetworkType
+import androidx.work.ExistingWorkPolicy
 import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkManager
 import androidx.work.workDataOf
@@ -502,7 +503,11 @@ fun SmartTrackerNavHost(navController: NavHostController) {
                                         .setConstraints(constraints)
                                         .setInputData(workDataOf(SyncWorker.KEY_SCOPE to SyncWorker.SCOPE_SHOPS))
                                         .build()
-                                    WorkManager.getInstance(context).enqueue(syncRequest)
+                                    WorkManager.getInstance(context).enqueueUniqueWork(
+                                        "trackerhub_manual_sync",
+                                        ExistingWorkPolicy.APPEND_OR_REPLACE,
+                                        syncRequest
+                                    )
                                     syncWorkId = syncRequest.id
                                     Toast.makeText(context, "Syncing shops…", Toast.LENGTH_SHORT).show()
                                 }) {
@@ -546,7 +551,11 @@ fun SmartTrackerNavHost(navController: NavHostController) {
                                         .setConstraints(constraints)
                                         .setInputData(workDataOf(SyncWorker.KEY_SCOPE to SyncWorker.SCOPE_EMPLOYEES))
                                         .build()
-                                    WorkManager.getInstance(context).enqueue(syncRequest)
+                                    WorkManager.getInstance(context).enqueueUniqueWork(
+                                        "trackerhub_manual_sync",
+                                        ExistingWorkPolicy.APPEND_OR_REPLACE,
+                                        syncRequest
+                                    )
                                     syncWorkId = syncRequest.id
                                     Toast.makeText(context, "Syncing employees…", Toast.LENGTH_SHORT).show()
                                 }) {
@@ -652,7 +661,11 @@ fun SmartTrackerNavHost(navController: NavHostController) {
                                             .setConstraints(constraints)
                                             .setInputData(workDataOf(SyncWorker.KEY_SCOPE to SyncWorker.SCOPE_INVESTORS))
                                             .build()
-                                        WorkManager.getInstance(context).enqueue(syncRequest)
+                                        WorkManager.getInstance(context).enqueueUniqueWork(
+                                        "trackerhub_manual_sync",
+                                        ExistingWorkPolicy.APPEND_OR_REPLACE,
+                                        syncRequest
+                                    )
                                         syncWorkId = syncRequest.id
                                         Toast.makeText(context, "Syncing investors…", Toast.LENGTH_SHORT).show()
                                     }) {
@@ -827,7 +840,11 @@ fun SmartTrackerNavHost(navController: NavHostController) {
                                             )
                                         )
                                         .build()
-                                    WorkManager.getInstance(context).enqueue(syncRequest)
+                                    WorkManager.getInstance(context).enqueueUniqueWork(
+                                        "trackerhub_manual_sync",
+                                        ExistingWorkPolicy.APPEND_OR_REPLACE,
+                                        syncRequest
+                                    )
                                     syncWorkId = syncRequest.id   // observe → toast on completion
                                     Toast.makeText(context, "Backing up to cloud…", Toast.LENGTH_SHORT).show()
                                 },

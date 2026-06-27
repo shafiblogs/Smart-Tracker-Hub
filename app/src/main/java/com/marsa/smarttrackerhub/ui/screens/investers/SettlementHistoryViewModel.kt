@@ -210,7 +210,11 @@ class SettlementHistoryViewModel : ViewModel() {
     ) {
         viewModelScope.launch {
             try {
-                settlementRepo.markEntrySettled(entry, paidAmount, paidDate)
+                val updated = settlementRepo.markEntrySettled(entry, paidAmount, paidDate)
+                // Push the settled entry up immediately (best-effort; SyncWorker retries).
+                launch(Dispatchers.IO) {
+                    try { FirebaseSyncRepository(db).syncSettlementEntry(updated) } catch (_: Exception) {}
+                }
                 _uiState.value = _uiState.value.copy(dialogEntry = null)
                 // Refresh the expanded entries so the UI reflects the change immediately
                 val settlementId = entry.settlementId
