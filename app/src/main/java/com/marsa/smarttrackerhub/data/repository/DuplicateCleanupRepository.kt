@@ -149,7 +149,7 @@ class DuplicateCleanupRepository(private val db: AppDatabase) {
         // 7) Recompute each shop's cached total from the de-duped transactions.
         db.shopDao().getAllShopsAsList().forEach { shop ->
             val total = db.investmentTransactionDao().getTotalPaidForShop(shop.id)
-            db.shopDao().updateTotalInvested(shop.id, total)
+            db.shopDao().updateTotalInvested(shop.id, total, System.currentTimeMillis())
         }
 
         val result = Result(investorsRemoved, linksRemoved, transactionsRemoved, settlementsRemoved, entriesRemoved)

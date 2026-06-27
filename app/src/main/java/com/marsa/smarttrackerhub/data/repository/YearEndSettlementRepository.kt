@@ -26,14 +26,15 @@ class YearEndSettlementRepository(private val dao: YearEndSettlementDao) {
         settlement: YearEndSettlement,
         entries: List<SettlementEntry>
     ): Long {
-        val id = dao.insertSettlement(settlement)
-        val linkedEntries = entries.map { it.copy(settlementId = id.toInt()) }
+        val now = System.currentTimeMillis()
+        val id = dao.insertSettlement(settlement.copy(updatedAt = now))
+        val linkedEntries = entries.map { it.copy(settlementId = id.toInt(), updatedAt = now) }
         dao.insertSettlementEntries(linkedEntries)
         return id
     }
 
     suspend fun updateSettlementEntry(entry: SettlementEntry) =
-        dao.updateSettlementEntry(entry)
+        dao.updateSettlementEntry(entry.copy(updatedAt = System.currentTimeMillis()))
 
     /**
      * Marks an investor's settlement entry as paid.
@@ -60,7 +61,8 @@ class YearEndSettlementRepository(private val dao: YearEndSettlementDao) {
             investorFirebaseId = entry.investorFirebaseId,
             settlementFirebaseId = entry.settlementFirebaseId,
             shopFirebaseId = entry.shopFirebaseId,
-            isSynced = false   // re-queue so the change uploads
+            isSynced = false,  // re-queue so the change uploads
+            updatedAt = System.currentTimeMillis()   // newest-wins propagation
         )
         dao.updateSettlementEntry(updated)
         return updated

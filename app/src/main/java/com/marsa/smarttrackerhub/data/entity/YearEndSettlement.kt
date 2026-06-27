@@ -38,5 +38,6 @@ data class YearEndSettlement(
     val isCarriedForward: Boolean = true,   // Balances roll into next period
     val settlementFirebaseId: String = "",  // Firebase doc ID — UUID auto-generated on confirm
     val shopFirebaseId: String = "",        // Denormalized — Firestore path: /shops/{shopFirebaseId}
-    val isSynced: Boolean = false           // False until pushed to Firestore
+    val isSynced: Boolean = false,          // False until pushed to Firestore
+    val updatedAt: Long = 0L                // Last local-edit time; newest-wins on pull
 )

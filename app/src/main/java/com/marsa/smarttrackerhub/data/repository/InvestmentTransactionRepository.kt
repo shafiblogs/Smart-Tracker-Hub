@@ -37,10 +37,10 @@ class InvestmentTransactionRepository(private val dao: InvestmentTransactionDao)
         dao.getTotalPaidByInvestorForShopSince(shopId, investorId, fromDate)
 
     suspend fun insertTransaction(transaction: InvestmentTransaction): Long =
-        dao.insertTransaction(transaction)
+        dao.insertTransaction(transaction.copy(updatedAt = System.currentTimeMillis()))
 
     suspend fun updateTransaction(transaction: InvestmentTransaction) =
-        dao.updateTransaction(transaction)
+        dao.updateTransaction(transaction.copy(updatedAt = System.currentTimeMillis()))
 
     suspend fun deleteTransaction(transaction: InvestmentTransaction) =
         dao.deleteTransaction(transaction)

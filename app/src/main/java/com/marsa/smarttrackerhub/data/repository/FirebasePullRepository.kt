@@ -126,7 +126,7 @@ class FirebasePullRepository(private val db: AppDatabase) {
                 val computed = db.investmentTransactionDao().getTotalPaidForShop(roomId)
                 val current  = db.shopDao().getShopById(roomId)?.totalInvested ?: 0.0
                 if (kotlin.math.abs(computed - current) > 0.001) {
-                    db.shopDao().updateTotalInvested(roomId, computed)
+                    db.shopDao().updateTotalInvested(roomId, computed, System.currentTimeMillis())
                     Log.d(tag, "recomputeShopTotals: shop room#$roomId total $current → $computed")
                 }
             } catch (e: Exception) {
@@ -151,17 +151,11 @@ class FirebasePullRepository(private val db: AppDatabase) {
             try {
                 val shopId = data["shopId"] as? String ?: continue
                 if (shopId.isBlank()) continue
+                val incomingUpdatedAt = data["updatedAt"] as? Long ?: 0L
 
-                // ADDITIVE-ONLY: if the shop already exists locally, never overwrite it —
-                // just map its id so children resolve. Pull can only ADD, never change/remove.
                 val existing_ = existing[shopId]
-                if (existing_ != null) {
-                    idMap[shopId] = existing_.id
-                    continue
-                }
-
                 val entity = ShopInfo(
-                    id                = 0,
+                    id                = existing_?.id ?: 0,
                     shopId            = shopId,
                     shopName          = data["shopName"]     as? String ?: "",
                     shopAddress       = data["shopAddress"]  as? String ?: "",
@@ -176,8 +170,17 @@ class FirebasePullRepository(private val db: AppDatabase) {
                     stockTakenDate    = data["stockTakenDate"] as? Long ?: 0L,
                     totalInvested     = (data["totalInvested"] as? Double)
                         ?: (data["totalInvested"] as? Long)?.toDouble() ?: 0.0,
-                    isSynced          = true
+                    isSynced          = true,
+                    updatedAt         = incomingUpdatedAt
                 )
+
+                if (existing_ != null) {
+                    // NEWEST-WINS: overwrite in place only if the cloud copy is strictly newer;
+                    // otherwise keep local (it re-pushes). Never deletes.
+                    if (incomingUpdatedAt > existing_.updatedAt) db.shopDao().updateShop(entity)
+                    idMap[shopId] = existing_.id
+                    continue
+                }
                 db.shopDao().insertShop(entity)
 
                 val roomId = db.shopDao().getAllShops().first()
@@ -204,23 +207,25 @@ class FirebasePullRepository(private val db: AppDatabase) {
             try {
                 val investorFbId  = data["investorId"] as? String ?: continue
                 if (investorFbId.isBlank()) continue
+                val incomingUpdatedAt = data["updatedAt"] as? Long ?: 0L
 
-                // ADDITIVE-ONLY: if the investor already exists locally, never overwrite —
-                // just map its id. Pull can only ADD, never change/remove local data.
                 val existing = db.investorDao().getInvestorByInvestorId(investorFbId)
-                if (existing != null) {
-                    idMap[investorFbId] = existing.id
-                    continue
-                }
-
                 val entity = InvestorInfo(
-                    id            = 0,
+                    id            = existing?.id ?: 0,
                     investorId    = investorFbId,                                  // preserve identity
                     investorName  = data["investorName"]  as? String ?: "",
                     investorEmail = data["investorEmail"]  as? String ?: "",
                     investorPhone = data["investorPhone"]  as? String ?: "",
-                    isSynced      = true                                           // pulled → already in Firestore
+                    isSynced      = true,                                          // pulled → already in Firestore
+                    updatedAt     = incomingUpdatedAt
                 )
+
+                if (existing != null) {
+                    // NEWEST-WINS: overwrite only if the cloud copy is strictly newer.
+                    if (incomingUpdatedAt > existing.updatedAt) db.investorDao().updateInvestor(entity)
+                    idMap[investorFbId] = existing.id
+                    continue
+                }
                 db.investorDao().insertInvestor(entity)
 
                 val roomId = db.investorDao().getInvestorByInvestorId(investorFbId)?.id ?: continue
@@ -252,12 +257,11 @@ class FirebasePullRepository(private val db: AppDatabase) {
 
                 val shopFirebaseId = data["associatedShopFirebaseId"] as? String ?: ""
                 val shopRoomId     = shopIdMap[shopFirebaseId] ?: 0
+                val incomingUpdatedAt = data["updatedAt"] as? Long ?: 0L
 
-                // ADDITIVE-ONLY: skip employees that already exist locally (never overwrite).
-                if (existing[employeeId] != null) continue
-
+                val existing_ = existing[employeeId]
                 val entity = EmployeeInfo(
-                    id                      = 0,
+                    id                      = existing_?.id ?: 0,
                     employeeId              = employeeId,
                     employeeName            = data["employeeName"]   as? String ?: "",
                     employeePhone           = data["employeePhone"]  as? String ?: "",
@@ -269,8 +273,15 @@ class FirebasePullRepository(private val db: AppDatabase) {
                     visaExpiryDate          = data["visaExpiryDate"] as? Long ?: 0L,
                     isActive                = data["isActive"] as? Boolean ?: true,
                     terminationDate         = data["terminationDate"] as? Long,
-                    isSynced                = true   // pulled from Firebase → already synced
+                    isSynced                = true,  // pulled from Firebase → already synced
+                    updatedAt               = incomingUpdatedAt
                 )
+                if (existing_ != null) {
+                    // NEWEST-WINS: overwrite only if the cloud copy is strictly newer.
+                    if (incomingUpdatedAt > existing_.updatedAt) db.employeeDao().updateEmployee(entity)
+                    count++
+                    continue
+                }
                 db.employeeDao().insertEmployee(entity)
                 count++
             } catch (e: Exception) {
@@ -301,29 +312,33 @@ class FirebasePullRepository(private val db: AppDatabase) {
                 val shopRoomId     = shopIdMap[shopFbId] ?: continue
                 val investorRoomId = investorIdMap[investorFbId] ?: continue
 
-                // ADDITIVE-ONLY: if this link already exists locally (by Firebase ID or by
-                // shop+investor pair), never overwrite it — just map its id. Pull can only ADD.
-                val existing = db.shopInvestorDao().getShopInvestorByFirebaseId(fbId)
-                    ?: db.shopInvestorDao().getLinksForInvestor(investorRoomId)
-                        .firstOrNull { it.shopId == shopRoomId }
-                if (existing != null) {
-                    idMap[fbId] = existing.id
-                    continue
-                }
-
+                val incomingUpdatedAt = data["updatedAt"] as? Long ?: 0L
                 val sharePercentage = (data["sharePercentage"] as? Double)
                     ?: (data["sharePercentage"] as? Long)?.toDouble() ?: 0.0
 
+                // Match by Firebase ID, else by shop+investor pair.
+                val existing = db.shopInvestorDao().getShopInvestorByFirebaseId(fbId)
+                    ?: db.shopInvestorDao().getLinksForInvestor(investorRoomId)
+                        .firstOrNull { it.shopId == shopRoomId }
+
                 val entity = ShopInvestor(
-                    id                     = 0,
+                    id                     = existing?.id ?: 0,
                     shopId                 = shopRoomId,
                     investorId             = investorRoomId,
                     sharePercentage        = sharePercentage,
                     status                 = data["status"] as? String ?: "Active",
                     joinedDate             = data["joinedDate"] as? Long ?: System.currentTimeMillis(),
                     shopInvestorFirebaseId = fbId,            // preserve identity
-                    isSynced               = true             // pulled → already in Firestore
+                    isSynced               = true,            // pulled → already in Firestore
+                    updatedAt              = incomingUpdatedAt
                 )
+
+                if (existing != null) {
+                    // NEWEST-WINS: overwrite (share %, status/withdrawal) only if strictly newer.
+                    if (incomingUpdatedAt > existing.updatedAt) db.shopInvestorDao().updateShopInvestor(entity)
+                    idMap[fbId] = existing.id
+                    continue
+                }
                 db.shopInvestorDao().insertShopInvestor(entity)
 
                 val roomId = db.shopInvestorDao().getShopInvestorByFirebaseId(fbId)?.id
@@ -376,19 +391,14 @@ class FirebasePullRepository(private val db: AppDatabase) {
                 val date  = data["transactionDate"] as? Long ?: 0L
                 val phase = data["phase"] as? String ?: ""
                 val note  = data["note"] as? String ?: ""
+                val incomingUpdatedAt = data["updatedAt"] as? Long ?: 0L
                 val key   = contentKey(siRoomId, amount, date, phase, note)
 
-                // ADDITIVE-ONLY: if a local row already matches by Firebase ID OR by content,
-                // leave it untouched (never overwrite). Also skip extra same-content docs
-                // handled earlier in this pass. Pull can only ADD missing payments.
+                // Match by Firebase ID (catches edits — txFbId is stable across edits) or by
+                // content (collapses duplicate cloud docs).
                 val match = existingByFbId[txFbId] ?: existingByContent[key]
-                if (match != null || key in handledContent) {
-                    handledContent.add(key)
-                    continue
-                }
-
                 val entity = InvestmentTransaction(
-                    id                    = 0,
+                    id                    = match?.id ?: 0,
                     shopInvestorId        = siRoomId,
                     amount                = amount,
                     transactionDate       = date,
@@ -397,8 +407,16 @@ class FirebasePullRepository(private val db: AppDatabase) {
                     transactionFirebaseId = txFbId,            // preserve identity
                     shopFirebaseId        = shopFbId,
                     investorFirebaseId    = investorFbId,
-                    isSynced              = true               // pulled → already in Firestore
+                    isSynced              = true,              // pulled → already in Firestore
+                    updatedAt             = incomingUpdatedAt
                 )
+                if (match != null) {
+                    // NEWEST-WINS: overwrite the matched row only if the cloud copy is newer.
+                    if (incomingUpdatedAt > match.updatedAt) db.investmentTransactionDao().updateTransaction(entity)
+                    handledContent.add(key)
+                    continue
+                }
+                if (key in handledContent) continue   // duplicate same-content doc this pass
                 db.investmentTransactionDao().insertTransaction(entity)
                 handledContent.add(key)
                 count++
@@ -434,21 +452,16 @@ class FirebasePullRepository(private val db: AppDatabase) {
                 val shopRoomId = shopIdMap[shopFbId] ?: continue
                 val date        = data["settlementDate"] as? Long ?: 0L
                 val periodStart = data["periodStartDate"] as? Long ?: 0L
+                val incomingUpdatedAt = data["updatedAt"] as? Long ?: 0L
                 val key         = sKey(shopRoomId, date, periodStart)
-
-                // ADDITIVE-ONLY + dedup: if it already exists (by Firebase ID or content) or a
-                // same-content settlement was handled this pass, map this fbId to the kept row.
-                val existingRow = db.yearEndSettlementDao().getSettlementByFirebaseId(fbId)
-                    ?: existingByContent[key]
-                if (existingRow != null) { idMap[fbId] = existingRow.id; continue }
-                val handledRoomId = handledContent[key]
-                if (handledRoomId != null) { idMap[fbId] = handledRoomId; continue }
 
                 val totalInvested = (data["totalInvested"] as? Double)
                     ?: (data["totalInvested"] as? Long)?.toDouble() ?: 0.0
 
+                val existingRow = db.yearEndSettlementDao().getSettlementByFirebaseId(fbId)
+                    ?: existingByContent[key]
                 val entity = YearEndSettlement(
-                    id                   = 0,
+                    id                   = existingRow?.id ?: 0,
                     shopId               = shopRoomId,
                     settlementDate       = date,
                     periodStartDate      = periodStart,
@@ -457,8 +470,20 @@ class FirebasePullRepository(private val db: AppDatabase) {
                     isCarriedForward     = data["isCarriedForward"] as? Boolean ?: true,
                     settlementFirebaseId = fbId,                                  // preserve identity
                     shopFirebaseId       = shopFbId,
-                    isSynced             = true                                   // pulled → already in Firestore
+                    isSynced             = true,                                  // pulled → already in Firestore
+                    updatedAt            = incomingUpdatedAt
                 )
+
+                // NEWEST-WINS + dedup: existing (by Firebase ID or content) → overwrite only if
+                // newer, map this fbId to the kept row; same-content already handled → map too.
+                if (existingRow != null) {
+                    if (incomingUpdatedAt > existingRow.updatedAt) db.yearEndSettlementDao().updateSettlement(entity)
+                    idMap[fbId] = existingRow.id
+                    continue
+                }
+                val handledRoomId = handledContent[key]
+                if (handledRoomId != null) { idMap[fbId] = handledRoomId; continue }
+
                 db.yearEndSettlementDao().insertSettlement(entity)
 
                 val roomId = db.yearEndSettlementDao().getSettlementByFirebaseId(fbId)?.id ?: continue
@@ -504,23 +529,15 @@ class FirebasePullRepository(private val db: AppDatabase) {
 
                 val settlementRoomId = settlementIdMap[settlementFbId] ?: continue
                 val investorRoomId   = investorIdMap[investorFbId] ?: continue
+                val incomingUpdatedAt = data["updatedAt"] as? Long ?: 0L
                 val contentKey       = "$settlementRoomId|$investorRoomId"
-
-                // ADDITIVE-ONLY + dedup: skip if it already exists (by Firebase ID or content)
-                // or a same-content entry was handled in this pass.
-                if (existingByFbId[entryFbId] != null ||
-                    existingByContent[contentKey] != null ||
-                    contentKey in handledContent
-                ) {
-                    handledContent.add(contentKey)
-                    continue
-                }
 
                 fun toDouble(key: String) =
                     (data[key] as? Double) ?: (data[key] as? Long)?.toDouble() ?: 0.0
 
+                val match = existingByFbId[entryFbId] ?: existingByContent[contentKey]
                 val entity = SettlementEntry(
-                    id                   = 0,
+                    id                   = match?.id ?: 0,
                     settlementId         = settlementRoomId,
                     investorId           = investorRoomId,
                     fairShareAmount      = toDouble("fairShareAmount"),
@@ -532,9 +549,20 @@ class FirebasePullRepository(private val db: AppDatabase) {
                     investorFirebaseId   = investorFbId,
                     settlementFirebaseId = settlementFbId,
                     shopFirebaseId       = shopFbId,
-                    isSynced             = true                 // pulled → already in Firestore
+                    isSynced             = true,                // pulled → already in Firestore
+                    updatedAt            = incomingUpdatedAt
                 )
+
+                // NEWEST-WINS: existing (by Firebase ID or content) → overwrite the matched row
+                // (e.g. a "mark paid" edit) only if the cloud copy is newer; else keep.
+                if (match != null) {
+                    if (incomingUpdatedAt > match.updatedAt) db.yearEndSettlementDao().updateSettlementEntry(entity)
+                    handledContent.add(contentKey)
+                    continue
+                }
+                if (contentKey in handledContent) continue  // duplicate same-content doc this pass
                 db.yearEndSettlementDao().insertSettlementEntries(listOf(entity))
+                handledContent.add(contentKey)
                 count++
             } catch (e: Exception) {
                 Log.e(tag, "pullSettlementEntries: error processing document", e)

@@ -40,5 +40,6 @@ data class ShopInvestor(
     val status: String = "Active",                      // Active | Withdrawn
     val joinedDate: Long = System.currentTimeMillis(),
     val shopInvestorFirebaseId: String = "",            // Firebase doc ID: "{shop.shopId}_{investor.investorId}"
-    val isSynced: Boolean = false                       // False until pushed to Firestore
+    val isSynced: Boolean = false,                      // False until pushed to Firestore
+    val updatedAt: Long = 0L                            // Last local-edit time; newest-wins on pull
 )

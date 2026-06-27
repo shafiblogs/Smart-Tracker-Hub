@@ -51,5 +51,6 @@ data class SettlementEntry(
     val investorFirebaseId: String = "",        // Denormalized — Firestore path: .../investors/{investorFirebaseId}
     val settlementFirebaseId: String = "",      // Denormalized — parent settlement doc ID
     val shopFirebaseId: String = "",            // Denormalized — Firestore path: /shops/{shopFirebaseId}
-    val isSynced: Boolean = false               // False until pushed to Firestore
+    val isSynced: Boolean = false,              // False until pushed to Firestore
+    val updatedAt: Long = 0L                    // Last local-edit time; newest-wins on pull
 )

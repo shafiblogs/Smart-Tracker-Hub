@@ -18,5 +18,6 @@ data class ShopInfo(
     val shopStatus: String = "Initial", // Running | Initial | Closed
     val totalInvested: Double = 0.0,   // Cached total from investment_transaction
     val isSynced: Boolean = false,      // False until pushed to Firestore
-    val shopRegion: String = "UAE"      // UAE | KUWAIT | KSA — used for access-code filtering
+    val shopRegion: String = "UAE",     // UAE | KUWAIT | KSA — used for access-code filtering
+    val updatedAt: Long = 0L            // Last local-edit time; drives newest-wins on pull
 )

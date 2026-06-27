@@ -20,16 +20,18 @@ class EmployeeRepository(private val employeeDao: EmployeeInfoDao) {
     suspend fun getEmployeeById(id: Int): EmployeeInfo? = employeeDao.getEmployeeById(id)
 
     suspend fun terminateEmployee(id: Int) {
-        employeeDao.terminateEmployee(id, System.currentTimeMillis())
+        employeeDao.terminateEmployee(id, System.currentTimeMillis(), System.currentTimeMillis())
     }
 
     suspend fun reactivateEmployee(id: Int) {
-        employeeDao.reactivateEmployee(id)
+        employeeDao.reactivateEmployee(id, System.currentTimeMillis())
     }
 
-    suspend fun insertEmployee(employee: EmployeeInfo) = employeeDao.insertEmployee(employee)
+    suspend fun insertEmployee(employee: EmployeeInfo) =
+        employeeDao.insertEmployee(employee.copy(updatedAt = System.currentTimeMillis()))
 
-    suspend fun updateEmployee(employee: EmployeeInfo) = employeeDao.updateEmployee(employee)
+    suspend fun updateEmployee(employee: EmployeeInfo) =
+        employeeDao.updateEmployee(employee.copy(updatedAt = System.currentTimeMillis()))
 
     suspend fun deleteEmployee(employee: EmployeeInfo) = employeeDao.deleteEmployee(employee)
 

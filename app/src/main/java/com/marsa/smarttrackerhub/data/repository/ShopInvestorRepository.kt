@@ -48,10 +48,10 @@ class ShopInvestorRepository(private val shopInvestorDao: ShopInvestorDao) {
         shopInvestorDao.getActiveInvestorsAsOf(shopId, asOfDate)
 
     suspend fun insertShopInvestor(shopInvestor: ShopInvestor): Long =
-        shopInvestorDao.insertShopInvestor(shopInvestor)
+        shopInvestorDao.insertShopInvestor(shopInvestor.copy(updatedAt = System.currentTimeMillis()))
 
     suspend fun updateShopInvestor(shopInvestor: ShopInvestor) =
-        shopInvestorDao.updateShopInvestor(shopInvestor)
+        shopInvestorDao.updateShopInvestor(shopInvestor.copy(updatedAt = System.currentTimeMillis()))
 
     suspend fun deleteShopInvestor(shopInvestor: ShopInvestor) =
         shopInvestorDao.deleteShopInvestor(shopInvestor)

@@ -22,5 +22,6 @@ data class EmployeeInfo(
     val visaExpiryDate: Long,
     val isActive: Boolean = true, // true = active, false = terminated
     val terminationDate: Long? = null, // Optional: track when they left
-    val isSynced: Boolean = false  // False until pushed to Firestore
+    val isSynced: Boolean = false, // False until pushed to Firestore
+    val updatedAt: Long = 0L       // Last local-edit time; drives newest-wins on pull
 )

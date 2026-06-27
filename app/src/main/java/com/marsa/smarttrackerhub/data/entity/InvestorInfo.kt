@@ -16,5 +16,6 @@ data class InvestorInfo(
     val investorName: String,
     val investorEmail: String,
     val investorPhone: String,
-    val isSynced: Boolean = false  // False until pushed to Firestore
+    val isSynced: Boolean = false, // False until pushed to Firestore
+    val updatedAt: Long = 0L       // Last local-edit time; drives newest-wins on pull
 )

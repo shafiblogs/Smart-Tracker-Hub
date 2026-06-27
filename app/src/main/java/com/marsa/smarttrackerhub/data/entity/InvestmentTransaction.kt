@@ -35,5 +35,6 @@ data class InvestmentTransaction(
     val transactionFirebaseId: String = "",  // Firebase doc ID — UUID auto-generated on insert
     val shopFirebaseId: String = "",         // Denormalized — Firestore path: /shops/{shopFirebaseId}
     val investorFirebaseId: String = "",     // Denormalized — Firestore path: .../investors/{investorFirebaseId}
-    val isSynced: Boolean = false            // False until pushed to Firestore
+    val isSynced: Boolean = false,           // False until pushed to Firestore
+    val updatedAt: Long = 0L                 // Last local-edit time; newest-wins on pull
 )

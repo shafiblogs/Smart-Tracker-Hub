@@ -15,9 +15,11 @@ class InvestorRepository(private val investorDao: InvestorDao) {
 
     suspend fun getInvestorById(id: Int): InvestorInfo? = investorDao.getInvestorById(id)
 
-    suspend fun insertInvestor(investor: InvestorInfo) = investorDao.insertInvestor(investor)
+    suspend fun insertInvestor(investor: InvestorInfo) =
+        investorDao.insertInvestor(investor.copy(updatedAt = System.currentTimeMillis()))
 
-    suspend fun updateInvestor(investor: InvestorInfo) = investorDao.updateInvestor(investor)
+    suspend fun updateInvestor(investor: InvestorInfo) =
+        investorDao.updateInvestor(investor.copy(updatedAt = System.currentTimeMillis()))
 
     suspend fun deleteInvestor(investor: InvestorInfo) = investorDao.deleteInvestor(investor)
 

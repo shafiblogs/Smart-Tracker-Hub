@@ -10,14 +10,17 @@ class ShopRepository(private val shopDao: ShopDao) {
 
     suspend fun getShopById(id: Int): ShopInfo? = shopDao.getShopById(id)
 
-    suspend fun insertShop(shop: ShopInfo) = shopDao.insertShop(shop)
+    // Local writes stamp updatedAt = now so newest-wins pull can propagate the edit.
+    suspend fun insertShop(shop: ShopInfo) =
+        shopDao.insertShop(shop.copy(updatedAt = System.currentTimeMillis()))
 
-    suspend fun updateShop(shop: ShopInfo) = shopDao.updateShop(shop)
+    suspend fun updateShop(shop: ShopInfo) =
+        shopDao.updateShop(shop.copy(updatedAt = System.currentTimeMillis()))
 
     suspend fun deleteShop(shop: ShopInfo) = shopDao.deleteShop(shop)
 
     suspend fun updateTotalInvested(shopId: Int, totalInvested: Double) =
-        shopDao.updateTotalInvested(shopId, totalInvested)
+        shopDao.updateTotalInvested(shopId, totalInvested, System.currentTimeMillis())
 
     /** Returns true if [shopId] is already used by another shop (excludes current record on edits). */
     suspend fun isShopIdTaken(shopId: String, excludeId: Int = 0): Boolean =

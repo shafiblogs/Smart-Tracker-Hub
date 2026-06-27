@@ -92,7 +92,8 @@ class FirebaseSyncRepository(private val db: AppDatabase) {
             "stockValue"       to resolved.stockValue,
             "stockTakenDate"   to resolved.stockTakenDate,
             "totalInvested"    to resolved.totalInvested,
-            "shopRegion"       to resolved.shopRegion
+            "shopRegion"       to resolved.shopRegion,
+            "updatedAt"        to resolved.updatedAt
         )
 
         val success = firestoreSet("shops", resolved.shopId, map)
@@ -121,7 +122,8 @@ class FirebaseSyncRepository(private val db: AppDatabase) {
             "investorId"    to resolved.investorId,
             "investorName"  to resolved.investorName,
             "investorEmail" to resolved.investorEmail,
-            "investorPhone" to resolved.investorPhone
+            "investorPhone" to resolved.investorPhone,
+            "updatedAt"     to resolved.updatedAt
         )
 
         val success = firestoreSet("investors", resolved.investorId, map)
@@ -171,7 +173,8 @@ class FirebaseSyncRepository(private val db: AppDatabase) {
             "allowance"                to resolvedEntity.allowance,
             "associatedShopFirebaseId" to shopFirebaseId,
             "visaExpiryDate"           to resolvedEntity.visaExpiryDate,
-            "isActive"                 to resolvedEntity.isActive
+            "isActive"                 to resolvedEntity.isActive,
+            "updatedAt"                to resolvedEntity.updatedAt
         )
 
         val success = firestoreSet("employees", resolvedEntity.employeeId, map)
@@ -212,7 +215,8 @@ class FirebaseSyncRepository(private val db: AppDatabase) {
             "investorFirebaseId"     to investorFirebaseId,
             "sharePercentage"        to resolved.sharePercentage,
             "status"                 to resolved.status,
-            "joinedDate"             to resolved.joinedDate
+            "joinedDate"             to resolved.joinedDate,
+            "updatedAt"              to resolved.updatedAt
         )
 
         val success = firestoreSet("shop_investors", resolved.shopInvestorFirebaseId, map)
@@ -264,7 +268,8 @@ class FirebaseSyncRepository(private val db: AppDatabase) {
             "amount"                to resolved.amount,
             "transactionDate"       to resolved.transactionDate,
             "phase"                 to resolved.phase,
-            "note"                  to resolved.note
+            "note"                  to resolved.note,
+            "updatedAt"             to resolved.updatedAt
         )
 
         val success = firestoreSet("transactions", resolved.transactionFirebaseId, map)
@@ -306,7 +311,8 @@ class FirebaseSyncRepository(private val db: AppDatabase) {
             "periodStartDate"      to resolved.periodStartDate,
             "totalInvested"        to resolved.totalInvested,
             "note"                 to resolved.note,
-            "isCarriedForward"     to resolved.isCarriedForward
+            "isCarriedForward"     to resolved.isCarriedForward,
+            "updatedAt"            to resolved.updatedAt
         )
 
         val success = firestoreSet("settlements", resolved.settlementFirebaseId, map)
@@ -360,7 +366,8 @@ class FirebaseSyncRepository(private val db: AppDatabase) {
             "actualPaidAmount"     to resolved.actualPaidAmount,
             "balanceAmount"        to resolved.balanceAmount,
             "settlementPaidAmount" to resolved.settlementPaidAmount,
-            "settlementPaidDate"   to resolved.settlementPaidDate
+            "settlementPaidDate"   to resolved.settlementPaidDate,
+            "updatedAt"            to resolved.updatedAt
         )
 
         val success = firestoreSet("settlement_entries", resolved.entryFirebaseId, map)
