@@ -76,6 +76,45 @@ class FirebasePullRepository(private val db: AppDatabase) {
         return true
     }
 
+    // ── Scoped pulls (per-screen sync) ────────────────────────────────────────
+
+    /** Pull only shops. */
+    suspend fun pullShopsScoped(): Boolean {
+        if (!ensureSignedIn()) return false
+        pullShops()
+        return true
+    }
+
+    /** Pull only employees (uses local shops to resolve the shop FK). */
+    suspend fun pullEmployeesScoped(): Boolean {
+        if (!ensureSignedIn()) return false
+        pullEmployees(localShopIdMap())
+        return true
+    }
+
+    /**
+     * Pull the WHOLE investor domain: investors + shop-investor links + transactions +
+     * settlements + entries. Shops are assumed already present locally (resolved via
+     * [localShopIdMap]); this scope does not pull shops/employees.
+     */
+    suspend fun pullInvestorDomain(): Boolean {
+        if (!ensureSignedIn()) return false
+        val shopIdMap       = localShopIdMap()
+        val investorIdMap   = pullInvestors()
+        val siIdMap         = pullShopInvestors(shopIdMap, investorIdMap)
+        pullTransactions(siIdMap)
+        recomputeShopTotals(shopIdMap)
+        val settlementIdMap = pullSettlements(shopIdMap)
+        pullSettlementEntries(settlementIdMap, investorIdMap)
+        return true
+    }
+
+    /** shopId(Firebase) → Room id, from LOCAL shops (no network). */
+    private suspend fun localShopIdMap(): Map<String, Int> =
+        db.shopDao().getAllShopsAsList()
+            .filter { it.shopId.isNotBlank() }
+            .associate { it.shopId to it.id }
+
     /**
      * After transactions are pulled, recompute each shop's cached totalInvested from the
      * actual transaction rows. Keeps the shop card accurate on this device even if the

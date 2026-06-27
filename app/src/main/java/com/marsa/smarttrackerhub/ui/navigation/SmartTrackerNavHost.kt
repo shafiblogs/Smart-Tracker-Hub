@@ -500,12 +500,11 @@ fun SmartTrackerNavHost(navController: NavHostController) {
                                         .build()
                                     val syncRequest = OneTimeWorkRequestBuilder<SyncWorker>()
                                         .setConstraints(constraints)
-                                        .setInputData(
-                                            workDataOf(SyncWorker.KEY_FORCE_RESYNC to true)
-                                        )
+                                        .setInputData(workDataOf(SyncWorker.KEY_SCOPE to SyncWorker.SCOPE_SHOPS))
                                         .build()
                                     WorkManager.getInstance(context).enqueue(syncRequest)
-                                    Toast.makeText(context, "Sync started", Toast.LENGTH_SHORT).show()
+                                    syncWorkId = syncRequest.id
+                                    Toast.makeText(context, "Syncing shops…", Toast.LENGTH_SHORT).show()
                                 }) {
                                     Icon(
                                         Icons.Default.Refresh,
@@ -545,9 +544,11 @@ fun SmartTrackerNavHost(navController: NavHostController) {
                                         .build()
                                     val syncRequest = OneTimeWorkRequestBuilder<SyncWorker>()
                                         .setConstraints(constraints)
+                                        .setInputData(workDataOf(SyncWorker.KEY_SCOPE to SyncWorker.SCOPE_EMPLOYEES))
                                         .build()
                                     WorkManager.getInstance(context).enqueue(syncRequest)
-                                    Toast.makeText(context, "Sync started", Toast.LENGTH_SHORT).show()
+                                    syncWorkId = syncRequest.id
+                                    Toast.makeText(context, "Syncing employees…", Toast.LENGTH_SHORT).show()
                                 }) {
                                     Icon(
                                         Icons.Default.Refresh,
@@ -637,6 +638,30 @@ fun SmartTrackerNavHost(navController: NavHostController) {
                                         contentDescription = "Back",
                                         tint = MaterialTheme.colorScheme.onSurface
                                     )
+                                }
+                            },
+                            actions = {
+                                // Investors screen: two-way sync of the whole investor domain
+                                // (investors + links + payments + settlements + entries).
+                                if (currentRoute == Screen.Investors.route) {
+                                    IconButton(onClick = {
+                                        val constraints = Constraints.Builder()
+                                            .setRequiredNetworkType(NetworkType.CONNECTED)
+                                            .build()
+                                        val syncRequest = OneTimeWorkRequestBuilder<SyncWorker>()
+                                            .setConstraints(constraints)
+                                            .setInputData(workDataOf(SyncWorker.KEY_SCOPE to SyncWorker.SCOPE_INVESTORS))
+                                            .build()
+                                        WorkManager.getInstance(context).enqueue(syncRequest)
+                                        syncWorkId = syncRequest.id
+                                        Toast.makeText(context, "Syncing investors…", Toast.LENGTH_SHORT).show()
+                                    }) {
+                                        Icon(
+                                            Icons.Default.Refresh,
+                                            contentDescription = "Sync Investors",
+                                            tint = MaterialTheme.colorScheme.onSurface
+                                        )
+                                    }
                                 }
                             },
                             colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent)
@@ -791,16 +816,20 @@ fun SmartTrackerNavHost(navController: NavHostController) {
                                     val constraints = Constraints.Builder()
                                         .setRequiredNetworkType(NetworkType.CONNECTED)
                                         .build()
-                                    // Force-resync: re-push EVERY local record (not just isSynced=0).
-                                    // Safe now that pull is additive — guarantees Firestore receives
-                                    // all local data even if rows were wrongly flagged synced before.
+                                    // PUSH-ONLY backup: upload all unpushed local changes to
+                                    // Firestore, never pull. Cannot alter/remove local data.
                                     val syncRequest = OneTimeWorkRequestBuilder<SyncWorker>()
                                         .setConstraints(constraints)
-                                        .setInputData(workDataOf(SyncWorker.KEY_FORCE_RESYNC to true))
+                                        .setInputData(
+                                            workDataOf(
+                                                SyncWorker.KEY_SCOPE to SyncWorker.SCOPE_ALL,
+                                                SyncWorker.KEY_PUSH_ONLY to true
+                                            )
+                                        )
                                         .build()
                                     WorkManager.getInstance(context).enqueue(syncRequest)
                                     syncWorkId = syncRequest.id   // observe → toast on completion
-                                    Toast.makeText(context, "Sync started", Toast.LENGTH_SHORT).show()
+                                    Toast.makeText(context, "Backing up to cloud…", Toast.LENGTH_SHORT).show()
                                 },
                                 modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding)
                             )

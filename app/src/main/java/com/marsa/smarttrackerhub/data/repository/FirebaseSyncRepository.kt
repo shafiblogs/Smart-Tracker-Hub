@@ -377,48 +377,63 @@ class FirebaseSyncRepository(private val db: AppDatabase) {
      * Each failure is logged but does not stop processing the remaining records.
      */
     suspend fun syncAll() {
-        // Step 0: Ensure EVERY investor has a valid Firestore document id. A blank or
-        // invalid id (e.g. one containing "/") made the investor's own push fail AND
-        // blocked every child (link/transaction/settlement entry) from ever resolving it
-        // — so that investor's entire data silently never synced. Fix + re-queue here so
-        // children can always resolve a valid parent id.
+        // Full push, scope by scope. Order matters for FK resolution: shops → investors →
+        // employees → investor children.
+        pushShops()
+        pushInvestorDomain()   // investors + links + transactions + settlements + entries
+        pushEmployees()
+        Log.d(tag, "syncAll() completed")
+    }
+
+    /** Push only unsynced SHOP records. */
+    suspend fun pushShops() {
+        db.shopDao().getUnsyncedShops().forEach {
+            runCatching { syncShop(it) }.onFailure { e -> Log.e(tag, "syncShop failed: ${e.message}") }
+        }
+    }
+
+    /** Push only unsynced EMPLOYEE records. */
+    suspend fun pushEmployees() {
+        db.employeeDao().getUnsyncedEmployees().forEach {
+            runCatching { syncEmployee(it) }.onFailure { e -> Log.e(tag, "syncEmployee failed: ${e.message}") }
+        }
+    }
+
+    /** Push only unsynced INVESTOR records (with the invalid-id self-heal prep pass). */
+    suspend fun pushInvestors() {
+        // Ensure EVERY investor has a valid Firestore document id before pushing (a blank/
+        // invalid id like one containing "/" would fail the write and block its children).
         db.investorDao().getAllInvestorsAsList().forEach { inv ->
             if (!isValidDocId(inv.investorId)) {
-                Log.w(tag, "syncAll: investor id '${inv.investorId}' invalid — assigning a new id")
+                Log.w(tag, "pushInvestors: investor id '${inv.investorId}' invalid — assigning a new id")
                 db.investorDao().updateInvestor(
                     inv.copy(investorId = UUID.randomUUID().toString(), isSynced = false)
                 )
             }
         }
-
-        // Step 1: Collect all pending records from Room (fast, local, no network)
-        val shops       = db.shopDao().getUnsyncedShops()
-        val investors   = db.investorDao().getUnsyncedInvestors()
-        val employees   = db.employeeDao().getUnsyncedEmployees()
-        val shopInvs    = db.shopInvestorDao().getUnsyncedShopInvestors()
-        val txns        = db.investmentTransactionDao().getUnsyncedTransactions()
-        val settlements = db.yearEndSettlementDao().getUnsyncedSettlements()
-        val entries     = db.yearEndSettlementDao().getUnsyncedSettlementEntries()
-
-        // Step 2: Nothing pending — skip Firebase entirely (no auth, no connection)
-        val totalPending = shops.size + investors.size + employees.size +
-                shopInvs.size + txns.size + settlements.size + entries.size
-        if (totalPending == 0) {
-            Log.d(tag, "syncAll() — nothing pending, skipping Firebase connection")
-            return
+        db.investorDao().getUnsyncedInvestors().forEach {
+            runCatching { syncInvestor(it) }.onFailure { e -> Log.e(tag, "syncInvestor failed: ${e.message}") }
         }
+    }
 
-        // Step 3: Something to push — now connect and push in dependency order.
-        // Each record is wrapped so one failure NEVER aborts the rest of the batch.
-        Log.d(tag, "syncAll() — $totalPending record(s) pending, connecting to Firebase")
-        shops.forEach { runCatching { syncShop(it) }.onFailure { e -> Log.e(tag, "syncShop failed: ${e.message}") } }
-        investors.forEach { runCatching { syncInvestor(it) }.onFailure { e -> Log.e(tag, "syncInvestor failed: ${e.message}") } }
-        employees.forEach { runCatching { syncEmployee(it) }.onFailure { e -> Log.e(tag, "syncEmployee failed: ${e.message}") } }
-        shopInvs.forEach { runCatching { syncShopInvestor(it) }.onFailure { e -> Log.e(tag, "syncShopInvestor failed: ${e.message}") } }
-        txns.forEach { runCatching { syncTransaction(it) }.onFailure { e -> Log.e(tag, "syncTransaction failed: ${e.message}") } }
-        settlements.forEach { runCatching { syncSettlement(it) }.onFailure { e -> Log.e(tag, "syncSettlement failed: ${e.message}") } }
-        entries.forEach { runCatching { syncSettlementEntry(it) }.onFailure { e -> Log.e(tag, "syncSettlementEntry failed: ${e.message}") } }
-        Log.d(tag, "syncAll() completed")
+    /**
+     * Push the WHOLE investor domain (investors + shop-investor links + transactions +
+     * settlements + entries) — the connected unit the Investors screen syncs.
+     */
+    suspend fun pushInvestorDomain() {
+        pushInvestors()
+        db.shopInvestorDao().getUnsyncedShopInvestors().forEach {
+            runCatching { syncShopInvestor(it) }.onFailure { e -> Log.e(tag, "syncShopInvestor failed: ${e.message}") }
+        }
+        db.investmentTransactionDao().getUnsyncedTransactions().forEach {
+            runCatching { syncTransaction(it) }.onFailure { e -> Log.e(tag, "syncTransaction failed: ${e.message}") }
+        }
+        db.yearEndSettlementDao().getUnsyncedSettlements().forEach {
+            runCatching { syncSettlement(it) }.onFailure { e -> Log.e(tag, "syncSettlement failed: ${e.message}") }
+        }
+        db.yearEndSettlementDao().getUnsyncedSettlementEntries().forEach {
+            runCatching { syncSettlementEntry(it) }.onFailure { e -> Log.e(tag, "syncSettlementEntry failed: ${e.message}") }
+        }
     }
 
     /**
