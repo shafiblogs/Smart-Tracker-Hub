@@ -179,12 +179,17 @@ class FirebasePullRepository(private val db: AppDatabase) {
 
         // Build existing map (shopId string → Room entity) to reuse Room int PKs on update
         val existing = db.shopDao().getAllShops().first().associateBy { it.shopId }
+        // Defensive within-pass guard: if Firestore ever returns two docs with the same id
+        // (the existing map is built once, so the 2nd would otherwise insert a duplicate),
+        // process only the first and skip repeats.
+        val seen = HashSet<String>()
 
         val idMap = mutableMapOf<String, Int>()
         for (data in docs) {
             try {
                 val shopId = data["shopId"] as? String ?: continue
                 if (shopId.isBlank()) continue
+                if (!seen.add(shopId)) continue
                 val incomingUpdatedAt = data["updatedAt"] as? Long ?: 0L
 
                 val existing_ = existing[shopId]
@@ -209,9 +214,12 @@ class FirebasePullRepository(private val db: AppDatabase) {
                 )
 
                 if (existing_ != null) {
-                    // NEWEST-WINS: overwrite in place only if the cloud copy is strictly newer;
-                    // otherwise keep local (it re-pushes). Never deletes.
-                    if (incomingUpdatedAt > existing_.updatedAt) db.shopDao().updateShop(entity)
+                    // NEWEST-WINS: overwrite if the cloud copy is strictly newer, or — on an
+                    // equal-timestamp tie — if its content differs (deterministic: every device
+                    // reads the same remote value, so all converge; identical content = no write).
+                    if (incomingUpdatedAt > existing_.updatedAt ||
+                        (incomingUpdatedAt == existing_.updatedAt && entity != existing_)
+                    ) db.shopDao().updateShop(entity)
                     idMap[shopId] = existing_.id
                     continue
                 }
@@ -255,8 +263,10 @@ class FirebasePullRepository(private val db: AppDatabase) {
                 )
 
                 if (existing != null) {
-                    // NEWEST-WINS: overwrite only if the cloud copy is strictly newer.
-                    if (incomingUpdatedAt > existing.updatedAt) db.investorDao().updateInvestor(entity)
+                    // NEWEST-WINS (+ equal-timestamp content tiebreaker → deterministic convergence).
+                    if (incomingUpdatedAt > existing.updatedAt ||
+                        (incomingUpdatedAt == existing.updatedAt && entity != existing)
+                    ) db.investorDao().updateInvestor(entity)
                     idMap[investorFbId] = existing.id
                     continue
                 }
@@ -282,12 +292,15 @@ class FirebasePullRepository(private val db: AppDatabase) {
 
         // Build existing map (employeeId string → entity) to reuse Room int PKs on update
         val existing = db.employeeDao().getAllEmployeesAsList().associateBy { it.employeeId }
+        // Defensive within-pass guard against duplicate-id docs (see pullShops).
+        val seen = HashSet<String>()
 
         var count = 0
         for (data in docs) {
             try {
                 val employeeId = data["employeeId"] as? String ?: continue
                 if (employeeId.isBlank()) continue
+                if (!seen.add(employeeId)) continue
 
                 val shopFirebaseId = data["associatedShopFirebaseId"] as? String ?: ""
                 val shopRoomId     = shopIdMap[shopFirebaseId] ?: 0
@@ -311,8 +324,10 @@ class FirebasePullRepository(private val db: AppDatabase) {
                     updatedAt               = incomingUpdatedAt
                 )
                 if (existing_ != null) {
-                    // NEWEST-WINS: overwrite only if the cloud copy is strictly newer.
-                    if (incomingUpdatedAt > existing_.updatedAt) db.employeeDao().updateEmployee(entity)
+                    // NEWEST-WINS (+ equal-timestamp content tiebreaker → deterministic convergence).
+                    if (incomingUpdatedAt > existing_.updatedAt ||
+                        (incomingUpdatedAt == existing_.updatedAt && entity != existing_)
+                    ) db.employeeDao().updateEmployee(entity)
                     count++
                     continue
                 }
@@ -368,8 +383,10 @@ class FirebasePullRepository(private val db: AppDatabase) {
                 )
 
                 if (existing != null) {
-                    // NEWEST-WINS: overwrite (share %, status/withdrawal) only if strictly newer.
-                    if (incomingUpdatedAt > existing.updatedAt) db.shopInvestorDao().updateShopInvestor(entity)
+                    // NEWEST-WINS (+ equal-timestamp content tiebreaker → deterministic convergence).
+                    if (incomingUpdatedAt > existing.updatedAt ||
+                        (incomingUpdatedAt == existing.updatedAt && entity != existing)
+                    ) db.shopInvestorDao().updateShopInvestor(entity)
                     idMap[fbId] = existing.id
                     continue
                 }
@@ -445,8 +462,10 @@ class FirebasePullRepository(private val db: AppDatabase) {
                     updatedAt             = incomingUpdatedAt
                 )
                 if (match != null) {
-                    // NEWEST-WINS: overwrite the matched row only if the cloud copy is newer.
-                    if (incomingUpdatedAt > match.updatedAt) db.investmentTransactionDao().updateTransaction(entity)
+                    // NEWEST-WINS (+ equal-timestamp content tiebreaker → deterministic convergence).
+                    if (incomingUpdatedAt > match.updatedAt ||
+                        (incomingUpdatedAt == match.updatedAt && entity != match)
+                    ) db.investmentTransactionDao().updateTransaction(entity)
                     handledContent.add(key)
                     continue
                 }
@@ -511,7 +530,9 @@ class FirebasePullRepository(private val db: AppDatabase) {
                 // NEWEST-WINS + dedup: existing (by Firebase ID or content) → overwrite only if
                 // newer, map this fbId to the kept row; same-content already handled → map too.
                 if (existingRow != null) {
-                    if (incomingUpdatedAt > existingRow.updatedAt) db.yearEndSettlementDao().updateSettlement(entity)
+                    if (incomingUpdatedAt > existingRow.updatedAt ||
+                        (incomingUpdatedAt == existingRow.updatedAt && entity != existingRow)
+                    ) db.yearEndSettlementDao().updateSettlement(entity)
                     idMap[fbId] = existingRow.id
                     continue
                 }
@@ -590,7 +611,9 @@ class FirebasePullRepository(private val db: AppDatabase) {
                 // NEWEST-WINS: existing (by Firebase ID or content) → overwrite the matched row
                 // (e.g. a "mark paid" edit) only if the cloud copy is newer; else keep.
                 if (match != null) {
-                    if (incomingUpdatedAt > match.updatedAt) db.yearEndSettlementDao().updateSettlementEntry(entity)
+                    if (incomingUpdatedAt > match.updatedAt ||
+                        (incomingUpdatedAt == match.updatedAt && entity != match)
+                    ) db.yearEndSettlementDao().updateSettlementEntry(entity)
                     handledContent.add(contentKey)
                     continue
                 }
