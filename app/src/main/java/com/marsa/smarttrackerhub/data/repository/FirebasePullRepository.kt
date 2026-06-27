@@ -123,14 +123,18 @@ class FirebasePullRepository(private val db: AppDatabase) {
                 val collection = data["collection"] as? String ?: continue
                 val firebaseId = data["firebaseId"] as? String ?: continue
                 if (firebaseId.isBlank()) continue
+                // Only delete a local row that is NOT newer than the tombstone. A row that was
+                // legitimately re-created (reusing the same id) after this deletion has a larger
+                // updatedAt and survives — so an old tombstone can't resurrect-delete it.
+                val deletedAt = (data["deletedAt"] as? Long) ?: Long.MAX_VALUE
                 when (collection) {
-                    "shops"              -> db.shopDao().deleteByFirebaseId(firebaseId)
-                    "employees"          -> db.employeeDao().deleteByFirebaseId(firebaseId)
-                    "investors"          -> db.investorDao().deleteByFirebaseId(firebaseId)
-                    "shop_investors"     -> db.shopInvestorDao().deleteByFirebaseId(firebaseId)
-                    "transactions"       -> db.investmentTransactionDao().deleteByFirebaseId(firebaseId)
-                    "settlements"        -> db.yearEndSettlementDao().deleteSettlementByFirebaseId(firebaseId)
-                    "settlement_entries" -> db.yearEndSettlementDao().deleteEntryByFirebaseId(firebaseId)
+                    "shops"              -> db.shopDao().deleteByFirebaseId(firebaseId, deletedAt)
+                    "employees"          -> db.employeeDao().deleteByFirebaseId(firebaseId, deletedAt)
+                    "investors"          -> db.investorDao().deleteByFirebaseId(firebaseId, deletedAt)
+                    "shop_investors"     -> db.shopInvestorDao().deleteByFirebaseId(firebaseId, deletedAt)
+                    "transactions"       -> db.investmentTransactionDao().deleteByFirebaseId(firebaseId, deletedAt)
+                    "settlements"        -> db.yearEndSettlementDao().deleteSettlementByFirebaseId(firebaseId, deletedAt)
+                    "settlement_entries" -> db.yearEndSettlementDao().deleteEntryByFirebaseId(firebaseId, deletedAt)
                 }
             } catch (e: Exception) {
                 Log.e(tag, "pullDeletions: error processing tombstone", e)

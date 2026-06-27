@@ -160,6 +160,6 @@ interface InvestmentTransactionDao {
     suspend fun getAllTransactionsList(): List<InvestmentTransaction>
 
     /** Delete by Firebase id — used by pulled tombstones. */
-    @Query("DELETE FROM investment_transaction WHERE transactionFirebaseId = :firebaseId")
-    suspend fun deleteByFirebaseId(firebaseId: String)
+    @Query("DELETE FROM investment_transaction WHERE transactionFirebaseId = :firebaseId AND updatedAt <= :deletedAt")
+    suspend fun deleteByFirebaseId(firebaseId: String, deletedAt: Long)
 }

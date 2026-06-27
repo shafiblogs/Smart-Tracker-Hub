@@ -63,8 +63,8 @@ interface EmployeeInfoDao {
     suspend fun markEmployeeSynced(employeeId: String)
 
     /** Delete by Firebase id — used by pulled tombstones. */
-    @Query("DELETE FROM employee_info WHERE employeeId = :employeeId")
-    suspend fun deleteByFirebaseId(employeeId: String)
+    @Query("DELETE FROM employee_info WHERE employeeId = :employeeId AND updatedAt <= :deletedAt")
+    suspend fun deleteByFirebaseId(employeeId: String, deletedAt: Long)
 
     // ── Pull support ───────────────────────────────────────────────────────────
 

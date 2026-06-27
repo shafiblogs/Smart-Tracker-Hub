@@ -62,6 +62,6 @@ interface InvestorDao {
     suspend fun getInvestorByInvestorId(investorId: String): InvestorInfo?
 
     /** Delete by Firebase id — used by pulled tombstones (cascades to links/entries). */
-    @Query("DELETE FROM investor_info WHERE investorId = :investorId")
-    suspend fun deleteByFirebaseId(investorId: String)
+    @Query("DELETE FROM investor_info WHERE investorId = :investorId AND updatedAt <= :deletedAt")
+    suspend fun deleteByFirebaseId(investorId: String, deletedAt: Long)
 }

@@ -112,11 +112,11 @@ interface YearEndSettlementDao {
     suspend fun insertSettlementEntry(entry: SettlementEntry): Long
 
     /** Delete by Firebase id — used by pulled tombstones. */
-    @Query("DELETE FROM year_end_settlement WHERE settlementFirebaseId = :firebaseId")
-    suspend fun deleteSettlementByFirebaseId(firebaseId: String)
+    @Query("DELETE FROM year_end_settlement WHERE settlementFirebaseId = :firebaseId AND updatedAt <= :deletedAt")
+    suspend fun deleteSettlementByFirebaseId(firebaseId: String, deletedAt: Long)
 
-    @Query("DELETE FROM settlement_entry WHERE entryFirebaseId = :firebaseId")
-    suspend fun deleteEntryByFirebaseId(firebaseId: String)
+    @Query("DELETE FROM settlement_entry WHERE entryFirebaseId = :firebaseId AND updatedAt <= :deletedAt")
+    suspend fun deleteEntryByFirebaseId(firebaseId: String, deletedAt: Long)
 }
 
 /** Projection joining settlement_entry with investor name — used for history display. */

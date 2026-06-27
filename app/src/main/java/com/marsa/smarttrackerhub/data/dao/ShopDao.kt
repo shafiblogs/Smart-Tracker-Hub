@@ -56,8 +56,8 @@ interface ShopDao {
     suspend fun markShopSynced(shopId: String)
 
     /** Delete by Firebase id — used by pulled tombstones (cascades to children). */
-    @Query("DELETE FROM shop_info WHERE shopId = :shopId")
-    suspend fun deleteByFirebaseId(shopId: String)
+    @Query("DELETE FROM shop_info WHERE shopId = :shopId AND updatedAt <= :deletedAt")
+    suspend fun deleteByFirebaseId(shopId: String, deletedAt: Long)
 
     /** Marks ALL shops as unsynced so they are re-pushed to Firestore on the next sync.
      *  Use this after correcting shop data locally to force Firestore to receive the latest values. */

@@ -230,9 +230,14 @@ class AddShopViewModel(
             _isSaved.value = true
             onSuccess()
 
-            // Best-effort inline sync — WorkManager will retry if this fails
+            // Best-effort inline sync — WorkManager will retry if this fails.
+            // Stamp updatedAt so the pushed doc wins newest-wins on other devices
+            // (the form-built `shop` defaults updatedAt=0; the repo stamped only the DB copy).
             launch(Dispatchers.IO) {
-                try { FirebaseSyncRepository(db).syncShop(shop) } catch (_: Exception) {}
+                try {
+                    FirebaseSyncRepository(db)
+                        .syncShop(shop.copy(updatedAt = System.currentTimeMillis()))
+                } catch (_: Exception) {}
             }
         } catch (e: Exception) {
             onFail("Failed to save shop: ${e.localizedMessage}")
