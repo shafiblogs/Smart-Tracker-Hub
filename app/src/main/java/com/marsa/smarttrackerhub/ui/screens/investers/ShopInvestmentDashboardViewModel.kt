@@ -161,7 +161,10 @@ class ShopInvestmentDashboardViewModel(
             try {
                 val repo = shopInvestorRepo ?: return@launch
                 val raw = repo.getShopInvestorById(investor.shopInvestorId) ?: return@launch
-                val updated = raw.copy(status = "Withdrawn", isSynced = false)
+                val updated = raw.copy(
+                    status = "Withdrawn", isSynced = false,
+                    updatedAt = System.currentTimeMillis()
+                )
                 repo.updateShopInvestor(updated)
                 syncShopInvestor(updated)
                 _uiState.value = _uiState.value.copy(
@@ -245,7 +248,8 @@ class ShopInvestmentDashboardViewModel(
                     amount = amount,
                     phase = phase,
                     note = _uiState.value.editTxNote.trim(),
-                    isSynced = false
+                    isSynced = false,
+                    updatedAt = System.currentTimeMillis()
                 )
                 txRepo?.updateTransaction(updated)
                 syncTransaction(updated)
@@ -357,7 +361,10 @@ class ShopInvestmentDashboardViewModel(
             try {
                 val repo = shopInvestorRepo ?: return@launch
                 val raw = repo.getShopInvestorById(investor.shopInvestorId) ?: return@launch
-                val updated = raw.copy(sharePercentage = newShare, isSynced = false)
+                val updated = raw.copy(
+                    sharePercentage = newShare, isSynced = false,
+                    updatedAt = System.currentTimeMillis()
+                )
                 repo.updateShopInvestor(updated)
                 syncShopInvestor(updated)
                 _uiState.value = _uiState.value.copy(

@@ -371,12 +371,18 @@ class AddShopInvestmentViewModel(
                         val lastShare = 100.0 - share - sumAllButLast
 
                         allButLast.forEach { (si, s) ->
-                            val u = si.copy(sharePercentage = s, isSynced = false)
+                            val u = si.copy(
+                                sharePercentage = s, isSynced = false,
+                                updatedAt = System.currentTimeMillis()
+                            )
                             shopInvestorRepo.updateShopInvestor(u)
                             redistributed += u
                         }
                         scaled.last().let { (si, _) ->
-                            val u = si.copy(sharePercentage = lastShare, isSynced = false)
+                            val u = si.copy(
+                                sharePercentage = lastShare, isSynced = false,
+                                updatedAt = System.currentTimeMillis()
+                            )
                             shopInvestorRepo.updateShopInvestor(u)
                             redistributed += u
                         }
@@ -403,7 +409,10 @@ class AddShopInvestmentViewModel(
                             }
                             return@launch
                         }
-                        val u = donor.copy(sharePercentage = newDonorShare, isSynced = false)
+                        val u = donor.copy(
+                            sharePercentage = newDonorShare, isSynced = false,
+                            updatedAt = System.currentTimeMillis()
+                        )
                         shopInvestorRepo.updateShopInvestor(u)
                         redistributed += u
                     }
