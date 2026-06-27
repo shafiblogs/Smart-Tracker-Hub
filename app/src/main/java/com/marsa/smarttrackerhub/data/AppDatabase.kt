@@ -35,7 +35,6 @@ import com.marsa.smarttrackerhub.data.migrations.MIGRATION_2_3
 import com.marsa.smarttrackerhub.data.migrations.MIGRATION_3_4
 import com.marsa.smarttrackerhub.data.migrations.MIGRATION_4_5
 import com.marsa.smarttrackerhub.data.migrations.MIGRATION_5_6
-import com.marsa.smarttrackerhub.data.migrations.MIGRATION_6_7
 
 
 /**
@@ -78,7 +77,7 @@ import com.marsa.smarttrackerhub.data.migrations.MIGRATION_6_7
         PurchaseEntity::class,
         Tombstone::class
     ],
-    version = 7
+    version = 6
 )
 @TypeConverters(Converters::class)
 abstract class AppDatabase : RoomDatabase() {
@@ -105,7 +104,7 @@ abstract class AppDatabase : RoomDatabase() {
                     AppDatabase::class.java,
                     "tracker_hub_db"
                 )
-                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7)
+                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6)
                     .fallbackToDestructiveMigrationOnDowngrade()
                     .addCallback(object : Callback() {
                         override fun onCreate(db: SupportSQLiteDatabase) {
