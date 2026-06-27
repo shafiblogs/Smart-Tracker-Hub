@@ -19,7 +19,10 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
@@ -59,7 +62,8 @@ import java.util.Locale
 fun AddEmployeeScreen(
     employeeId: Int? = null,
     isAdmin: Boolean = false,
-    onEmployeeCreated: () -> Unit
+    onEmployeeCreated: () -> Unit,
+    onDeleted: () -> Unit = {}
 ) {
     val viewModel: EmployeeViewModel = viewModel()
     val state by viewModel.formState.collectAsState()
@@ -72,6 +76,7 @@ fun AddEmployeeScreen(
 
     // Edit mode state - disabled by default when loading existing employee
     var isEditEnabled by remember { mutableStateOf(employeeId == null) }
+    var showDeleteDialog by remember { mutableStateOf(false) }
 
     LaunchedEffect(Unit) {
         viewModel.initDatabase(context)
@@ -337,9 +342,66 @@ fun AddEmployeeScreen(
                     }
                 }
 
+                // Delete Employee - admin only, existing employee in edit mode
+                if (isEditEnabled && isLoaded && isAdmin) {
+                    Spacer(modifier = Modifier.height(12.dp))
+                    OutlinedButton(
+                        onClick = { showDeleteDialog = true },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(56.dp),
+                        shape = MaterialTheme.shapes.medium,
+                        colors = ButtonDefaults.outlinedButtonColors(
+                            contentColor = MaterialTheme.colorScheme.error
+                        )
+                    ) {
+                        Text(
+                            text = "Delete Employee",
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.Medium
+                        )
+                    }
+                }
+
                 Spacer(modifier = Modifier.height(16.dp))
             }
         }
+    }
+
+    if (showDeleteDialog) {
+        AlertDialog(
+            onDismissRequest = { showDeleteDialog = false },
+            title = { Text("Delete Employee") },
+            text = {
+                Text(
+                    "This permanently deletes \"${state.employeeName}\" on this device and " +
+                        "removes it from all synced devices. This cannot be undone. Continue?"
+                )
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        showDeleteDialog = false
+                        viewModel.deleteEmployee(
+                            onDeleted = {
+                                Toast.makeText(
+                                    context, "Employee deleted", Toast.LENGTH_SHORT
+                                ).show()
+                                onDeleted()
+                            },
+                            onFail = { msg ->
+                                Toast.makeText(context, msg, Toast.LENGTH_SHORT).show()
+                            }
+                        )
+                    }
+                ) {
+                    Text("Delete", color = MaterialTheme.colorScheme.error)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDeleteDialog = false }) { Text("Cancel") }
+            }
+        )
     }
 }
 

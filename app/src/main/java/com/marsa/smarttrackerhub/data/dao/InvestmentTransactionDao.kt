@@ -158,4 +158,8 @@ interface InvestmentTransactionDao {
     /** One-shot list used by pull to build a Firebase-id → Room-id map. */
     @Query("SELECT * FROM investment_transaction")
     suspend fun getAllTransactionsList(): List<InvestmentTransaction>
+
+    /** Delete by Firebase id — used by pulled tombstones. */
+    @Query("DELETE FROM investment_transaction WHERE transactionFirebaseId = :firebaseId")
+    suspend fun deleteByFirebaseId(firebaseId: String)
 }

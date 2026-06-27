@@ -62,6 +62,10 @@ interface EmployeeInfoDao {
     @Query("UPDATE employee_info SET isSynced = 1 WHERE employeeId = :employeeId")
     suspend fun markEmployeeSynced(employeeId: String)
 
+    /** Delete by Firebase id — used by pulled tombstones. */
+    @Query("DELETE FROM employee_info WHERE employeeId = :employeeId")
+    suspend fun deleteByFirebaseId(employeeId: String)
+
     // ── Pull support ───────────────────────────────────────────────────────────
 
     /** One-shot list used by pull to build a Firebase-id → Room-id map. */

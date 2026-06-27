@@ -262,6 +262,30 @@ class EmployeeViewModel : ViewModel() {
             }
         }
 
+    /**
+     * Hard-deletes the currently-edited employee + records a tombstone so the delete
+     * propagates to other devices on next sync. (No Hub child records reference an employee.)
+     */
+    fun deleteEmployee(onDeleted: () -> Unit = {}, onFail: (String) -> Unit = {}) =
+        viewModelScope.launch {
+            val id = editingEmployeeId ?: return@launch
+            try {
+                val emp = employeeRepository.getEmployeeById(id) ?: return@launch
+                if (emp.employeeId.isNotBlank()) {
+                    db.tombstoneDao().insert(
+                        com.marsa.smarttrackerhub.data.entity.Tombstone(
+                            collection = "employees", firebaseId = emp.employeeId,
+                            deletedAt = System.currentTimeMillis()
+                        )
+                    )
+                }
+                employeeRepository.deleteEmployee(emp)
+                onDeleted()
+            } catch (e: Exception) {
+                onFail("Failed to delete employee: ${e.localizedMessage}")
+            }
+        }
+
     fun resetSaveState() {
         _isSaved.value = false
     }

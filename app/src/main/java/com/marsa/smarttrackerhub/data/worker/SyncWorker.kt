@@ -70,12 +70,14 @@ class SyncWorker(
                 else            -> pull.pullAll()
             }
 
-            // 1. Push local changes for this scope.
+            // 1. Push local changes for this scope, plus any pending deletion tombstones.
             push()
+            sync.pushDeletions()
             Log.d("SyncWorker", "Push completed (scope=$scope, pushOnly=$pushOnly)")
 
             if (!pushOnly) {
-                // 2. Pull this scope (additive — never removes local data).
+                // 2. Apply remote deletions, then pull this scope (additive/newest-wins).
+                pull.pullDeletions()
                 pull()
                 Log.d("SyncWorker", "Pull completed (scope=$scope)")
                 // 3. Push again to flush anything resolved during pull.

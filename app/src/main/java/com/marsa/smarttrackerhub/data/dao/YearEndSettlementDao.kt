@@ -110,6 +110,13 @@ interface YearEndSettlementDao {
     /** Single-entry insert — used by pull (bulk insert with list also works). */
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertSettlementEntry(entry: SettlementEntry): Long
+
+    /** Delete by Firebase id — used by pulled tombstones. */
+    @Query("DELETE FROM year_end_settlement WHERE settlementFirebaseId = :firebaseId")
+    suspend fun deleteSettlementByFirebaseId(firebaseId: String)
+
+    @Query("DELETE FROM settlement_entry WHERE entryFirebaseId = :firebaseId")
+    suspend fun deleteEntryByFirebaseId(firebaseId: String)
 }
 
 /** Projection joining settlement_entry with investor name — used for history display. */

@@ -492,6 +492,32 @@ class FirebaseSyncRepository(private val db: AppDatabase) {
     // Deletes — propagate local deletions to Firestore so other devices drop them
     // ─────────────────────────────────────────────────────────────────────────
 
+    /**
+     * Pushes pending deletion tombstones: removes each main Firestore doc and writes a
+     * `/deletions/{collection}_{id}` marker so other devices drop their local copy on pull.
+     * Marked synced only on success → retried by the worker if offline.
+     */
+    suspend fun pushDeletions() {
+        val pending = db.tombstoneDao().getUnsynced()
+        if (pending.isEmpty()) return
+        if (!ensureSignedIn()) return
+        pending.forEach { t ->
+            runCatching {
+                firestoreDelete(t.collection, t.firebaseId)   // remove the main doc (idempotent)
+                val markerOk = firestoreSet(
+                    "deletions",
+                    "${t.collection}_${t.firebaseId}",
+                    mapOf(
+                        "collection" to t.collection,
+                        "firebaseId" to t.firebaseId,
+                        "deletedAt"  to t.deletedAt
+                    )
+                )
+                if (markerOk) db.tombstoneDao().markSynced(t.collection, t.firebaseId)
+            }.onFailure { Log.e(tag, "pushDeletions failed for ${t.collection}/${t.firebaseId}: ${it.message}") }
+        }
+    }
+
     /** Deletes a shop document. No-op if its Firebase ID is blank. */
     suspend fun deleteShopDoc(shopFirebaseId: String): Boolean {
         if (shopFirebaseId.isBlank()) return true

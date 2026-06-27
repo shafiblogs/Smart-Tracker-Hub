@@ -273,19 +273,20 @@ class ShopInvestmentDashboardViewModel(
         _uiState.value = _uiState.value.copy(isSavingTransaction = true)
         viewModelScope.launch {
             try {
-                // Capture the Firestore doc ID BEFORE the local delete, then remove the doc
-                // so other devices drop it on next pull.
+                // Record a deletion tombstone (BEFORE deleting) so the delete reliably
+                // propagates to other devices on the next sync; then hard-delete locally.
                 val existing = database?.investmentTransactionDao()?.getTransactionById(tx.transactionId)
-                txRepo?.deleteTransactionById(tx.transactionId)
-                refreshTotalInvested()
                 val fbId = existing?.transactionFirebaseId
                 if (!fbId.isNullOrBlank()) {
-                    database?.let { d ->
-                        launch(Dispatchers.IO) {
-                            try { FirebaseSyncRepository(d).deleteTransactionDoc(fbId) } catch (_: Exception) {}
-                        }
-                    }
+                    database?.tombstoneDao()?.insert(
+                        com.marsa.smarttrackerhub.data.entity.Tombstone(
+                            collection = "transactions", firebaseId = fbId,
+                            deletedAt = System.currentTimeMillis()
+                        )
+                    )
                 }
+                txRepo?.deleteTransactionById(tx.transactionId)
+                refreshTotalInvested()
                 _uiState.value = _uiState.value.copy(
                     editingTransaction = null,
                     editTxAmount = "",

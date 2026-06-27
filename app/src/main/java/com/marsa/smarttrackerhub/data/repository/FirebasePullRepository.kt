@@ -109,6 +109,36 @@ class FirebasePullRepository(private val db: AppDatabase) {
         return true
     }
 
+    /**
+     * Apply deletion tombstones from `/deletions`: hard-delete the matching local row by
+     * Firebase id (idempotent — no-op if already gone). Parent deletes cascade to children
+     * via Room FKs. Makes deletes propagate to every device.
+     */
+    suspend fun pullDeletions(): Boolean {
+        if (!ensureSignedIn()) return false
+        val docs = firestoreGetCollection("deletions")
+        Log.d(tag, "pullDeletions: ${docs.size} tombstone(s) from Firebase")
+        for (data in docs) {
+            try {
+                val collection = data["collection"] as? String ?: continue
+                val firebaseId = data["firebaseId"] as? String ?: continue
+                if (firebaseId.isBlank()) continue
+                when (collection) {
+                    "shops"              -> db.shopDao().deleteByFirebaseId(firebaseId)
+                    "employees"          -> db.employeeDao().deleteByFirebaseId(firebaseId)
+                    "investors"          -> db.investorDao().deleteByFirebaseId(firebaseId)
+                    "shop_investors"     -> db.shopInvestorDao().deleteByFirebaseId(firebaseId)
+                    "transactions"       -> db.investmentTransactionDao().deleteByFirebaseId(firebaseId)
+                    "settlements"        -> db.yearEndSettlementDao().deleteSettlementByFirebaseId(firebaseId)
+                    "settlement_entries" -> db.yearEndSettlementDao().deleteEntryByFirebaseId(firebaseId)
+                }
+            } catch (e: Exception) {
+                Log.e(tag, "pullDeletions: error processing tombstone", e)
+            }
+        }
+        return true
+    }
+
     /** shopId(Firebase) → Room id, from LOCAL shops (no network). */
     private suspend fun localShopIdMap(): Map<String, Int> =
         db.shopDao().getAllShopsAsList()

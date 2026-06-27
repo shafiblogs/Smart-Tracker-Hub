@@ -14,6 +14,7 @@ import com.marsa.smarttrackerhub.data.dao.PurchaseDao
 import com.marsa.smarttrackerhub.data.dao.ShopDao
 import com.marsa.smarttrackerhub.data.dao.ShopInvestorDao
 import com.marsa.smarttrackerhub.data.dao.SummaryDao
+import com.marsa.smarttrackerhub.data.dao.TombstoneDao
 import com.marsa.smarttrackerhub.data.dao.UserAccountDao
 import com.marsa.smarttrackerhub.data.dao.YearEndSettlementDao
 import com.marsa.smarttrackerhub.data.entity.AccountSummaryEntity
@@ -25,6 +26,7 @@ import com.marsa.smarttrackerhub.data.entity.SettlementEntry
 import com.marsa.smarttrackerhub.data.entity.ShopInfo
 import com.marsa.smarttrackerhub.data.entity.ShopInvestor
 import com.marsa.smarttrackerhub.data.entity.SummaryEntity
+import com.marsa.smarttrackerhub.data.entity.Tombstone
 import com.marsa.smarttrackerhub.data.entity.UserAccount
 import com.marsa.smarttrackerhub.data.entity.YearEndSettlement
 import com.marsa.smarttrackerhub.data.helper.Converters
@@ -73,7 +75,8 @@ import com.marsa.smarttrackerhub.data.migrations.MIGRATION_6_7
         InvestmentTransaction::class,
         YearEndSettlement::class,
         SettlementEntry::class,
-        PurchaseEntity::class
+        PurchaseEntity::class,
+        Tombstone::class
     ],
     version = 7
 )
@@ -89,6 +92,7 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun investmentTransactionDao(): InvestmentTransactionDao
     abstract fun yearEndSettlementDao(): YearEndSettlementDao
     abstract fun purchaseDao(): PurchaseDao
+    abstract fun tombstoneDao(): TombstoneDao
 
     companion object {
         @Volatile

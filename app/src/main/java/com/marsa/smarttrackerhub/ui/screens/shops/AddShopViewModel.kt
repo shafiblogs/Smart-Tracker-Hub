@@ -279,10 +279,16 @@ class AddShopViewModel(
                     return@launch
                 }
 
-                ShopRepository(db.shopDao()).deleteShop(shop)
-                kotlinx.coroutines.withContext(Dispatchers.IO) {
-                    try { FirebaseSyncRepository(db).deleteShopDoc(shop.shopId) } catch (_: Exception) {}
+                // Tombstone (reliable, retried) → propagate the delete on next sync.
+                if (shop.shopId.isNotBlank()) {
+                    db.tombstoneDao().insert(
+                        com.marsa.smarttrackerhub.data.entity.Tombstone(
+                            collection = "shops", firebaseId = shop.shopId,
+                            deletedAt = System.currentTimeMillis()
+                        )
+                    )
                 }
+                ShopRepository(db.shopDao()).deleteShop(shop)
                 _isDeleting.value = false
                 _showDeleteDialog.value = false
                 onDeleted()

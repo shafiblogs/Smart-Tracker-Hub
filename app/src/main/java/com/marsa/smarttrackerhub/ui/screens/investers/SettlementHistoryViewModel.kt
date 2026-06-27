@@ -135,23 +135,29 @@ class SettlementHistoryViewModel : ViewModel() {
         _uiState.value = _uiState.value.copy(isDeleting = true)
         viewModelScope.launch {
             try {
-                // Gather Firestore doc IDs BEFORE the local delete cascades the entries away.
+                // Record deletion tombstones (settlement + its entries) BEFORE the local
+                // cascade removes them, so the delete reliably propagates on next sync.
+                val now = System.currentTimeMillis()
                 val entryFbIds = db.yearEndSettlementDao()
                     .getSettlementEntriesList(settlement.id)
                     .map { it.entryFirebaseId }
-                val settlementFbId = settlement.settlementFirebaseId
+                if (settlement.settlementFirebaseId.isNotBlank()) {
+                    db.tombstoneDao().insert(
+                        com.marsa.smarttrackerhub.data.entity.Tombstone(
+                            collection = "settlements",
+                            firebaseId = settlement.settlementFirebaseId, deletedAt = now
+                        )
+                    )
+                }
+                entryFbIds.filter { it.isNotBlank() }.forEach { fb ->
+                    db.tombstoneDao().insert(
+                        com.marsa.smarttrackerhub.data.entity.Tombstone(
+                            collection = "settlement_entries", firebaseId = fb, deletedAt = now
+                        )
+                    )
+                }
 
                 settlementRepo.deleteSettlement(settlement.id)
-
-                // Propagate the delete (settlement + its entries) to Firestore.
-                if (settlementFbId.isNotBlank() || entryFbIds.any { it.isNotBlank() }) {
-                    launch(Dispatchers.IO) {
-                        try {
-                            FirebaseSyncRepository(db)
-                                .deleteSettlementWithEntries(settlementFbId, entryFbIds)
-                        } catch (_: Exception) {}
-                    }
-                }
                 _uiState.value = _uiState.value.copy(
                     deletingSettlement = null,
                     isDeleting = false,

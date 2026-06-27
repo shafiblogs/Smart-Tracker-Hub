@@ -112,19 +112,28 @@ class InvestorDetailViewModel(
                     return@launch
                 }
 
-                // Gather payment-free link doc IDs before the local delete cascades them away.
+                // Record deletion tombstones (investor + payment-free links) BEFORE the local
+                // cascade, so the delete reliably propagates to other devices on next sync.
+                val now = System.currentTimeMillis()
                 val linkFbIds = db.shopInvestorDao()
                     .getLinksForInvestor(currentInvestorId)
                     .map { it.shopInvestorFirebaseId }
+                if (investor.investorId.isNotBlank()) {
+                    db.tombstoneDao().insert(
+                        com.marsa.smarttrackerhub.data.entity.Tombstone(
+                            collection = "investors", firebaseId = investor.investorId, deletedAt = now
+                        )
+                    )
+                }
+                linkFbIds.filter { it.isNotBlank() }.forEach { fb ->
+                    db.tombstoneDao().insert(
+                        com.marsa.smarttrackerhub.data.entity.Tombstone(
+                            collection = "shop_investors", firebaseId = fb, deletedAt = now
+                        )
+                    )
+                }
 
                 investorRepo?.deleteInvestor(investor)
-
-                withContext(Dispatchers.IO) {
-                    try {
-                        FirebaseSyncRepository(db)
-                            .deleteInvestorWithLinks(investor.investorId, linkFbIds)
-                    } catch (_: Exception) {}
-                }
 
                 _uiState.update { it.copy(isDeleting = false, showDeleteDialog = false) }
                 onDeleted()

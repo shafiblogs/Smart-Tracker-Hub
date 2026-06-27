@@ -60,4 +60,8 @@ interface InvestorDao {
     /** Look up an investor by Firebase string ID — used after pull-insert to get the Room int PK. */
     @Query("SELECT * FROM investor_info WHERE investorId = :investorId LIMIT 1")
     suspend fun getInvestorByInvestorId(investorId: String): InvestorInfo?
+
+    /** Delete by Firebase id — used by pulled tombstones (cascades to links/entries). */
+    @Query("DELETE FROM investor_info WHERE investorId = :investorId")
+    suspend fun deleteByFirebaseId(investorId: String)
 }

@@ -157,6 +157,10 @@ interface ShopInvestorDao {
     @Query("SELECT * FROM shop_investor WHERE investorId = :investorId")
     suspend fun getLinksForInvestor(investorId: Int): List<ShopInvestor>
 
+    /** Delete by Firebase id — used by pulled tombstones (cascades to transactions). */
+    @Query("DELETE FROM shop_investor WHERE shopInvestorFirebaseId = :firebaseId")
+    suspend fun deleteByFirebaseId(firebaseId: String)
+
     /** Duplicate cleanup: move links from a duplicate investor row onto the kept one. */
     @Query("UPDATE shop_investor SET investorId = :keepId WHERE investorId = :dupId")
     suspend fun repointInvestor(dupId: Int, keepId: Int)

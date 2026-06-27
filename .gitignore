@@ -25,3 +25,7 @@ local.properties
 # Claude Code local files
 /.claude/
 
+
+# local debug DB recovery artifacts
+recovered.sql
+tracker_hub_db.db

@@ -265,6 +265,9 @@ fun SmartTrackerNavHost(navController: NavHostController) {
                     isAdmin = isAdmin,
                     onEmployeeCreated = {
                         navController.popBackStack()
+                    },
+                    onDeleted = {
+                        navController.popBackStack()
                     }
                 )
             }

@@ -22,5 +22,21 @@ val MIGRATION_6_7 = object : Migration(6, 7) {
         ).forEach { table ->
             database.execSQL("ALTER TABLE `$table` ADD COLUMN `updatedAt` INTEGER NOT NULL DEFAULT 0")
         }
+
+        // Tombstones for cross-device delete propagation.
+        database.execSQL(
+            """
+            CREATE TABLE IF NOT EXISTS `deletions` (
+                `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                `collection` TEXT NOT NULL,
+                `firebaseId` TEXT NOT NULL,
+                `deletedAt` INTEGER NOT NULL,
+                `isSynced` INTEGER NOT NULL DEFAULT 0
+            )
+            """.trimIndent()
+        )
+        database.execSQL(
+            "CREATE UNIQUE INDEX IF NOT EXISTS `index_deletions_collection_firebaseId` ON `deletions` (`collection`, `firebaseId`)"
+        )
     }
 }
