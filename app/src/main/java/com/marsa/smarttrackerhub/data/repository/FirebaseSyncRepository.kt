@@ -64,6 +64,14 @@ class FirebaseSyncRepository(private val db: AppDatabase) {
     // Shop
     // ─────────────────────────────────────────────────────────────────────────
 
+    /**
+     * Never push `updatedAt = 0`. The bulk worker path reads DB rows that already carry a real
+     * stamp (>0), but inline ViewModel syncs pass un-stamped in-memory entities (updatedAt=0).
+     * A 0 would tie/lose newest-wins on other devices, silently dropping the edit — so coalesce
+     * it to "now" at push time. (The worker's later DB-read re-push remains the source of truth.)
+     */
+    private fun Long.orNow(): Long = if (this > 0L) this else System.currentTimeMillis()
+
     suspend fun syncShop(entity: ShopInfo): Boolean {
         // Self-heal a blank/invalid shopId (used as the Firestore doc id) by assigning a
         // UUID and persisting it — instead of silently marking it synced and never pushing.
@@ -93,7 +101,7 @@ class FirebaseSyncRepository(private val db: AppDatabase) {
             "stockTakenDate"   to resolved.stockTakenDate,
             "totalInvested"    to resolved.totalInvested,
             "shopRegion"       to resolved.shopRegion,
-            "updatedAt"        to resolved.updatedAt
+            "updatedAt"        to resolved.updatedAt.orNow()
         )
 
         val success = firestoreSet("shops", resolved.shopId, map)
@@ -123,7 +131,7 @@ class FirebaseSyncRepository(private val db: AppDatabase) {
             "investorName"  to resolved.investorName,
             "investorEmail" to resolved.investorEmail,
             "investorPhone" to resolved.investorPhone,
-            "updatedAt"     to resolved.updatedAt
+            "updatedAt"     to resolved.updatedAt.orNow()
         )
 
         val success = firestoreSet("investors", resolved.investorId, map)
@@ -174,7 +182,7 @@ class FirebaseSyncRepository(private val db: AppDatabase) {
             "associatedShopFirebaseId" to shopFirebaseId,
             "visaExpiryDate"           to resolvedEntity.visaExpiryDate,
             "isActive"                 to resolvedEntity.isActive,
-            "updatedAt"                to resolvedEntity.updatedAt
+            "updatedAt"                to resolvedEntity.updatedAt.orNow()
         )
 
         val success = firestoreSet("employees", resolvedEntity.employeeId, map)
@@ -216,7 +224,7 @@ class FirebaseSyncRepository(private val db: AppDatabase) {
             "sharePercentage"        to resolved.sharePercentage,
             "status"                 to resolved.status,
             "joinedDate"             to resolved.joinedDate,
-            "updatedAt"              to resolved.updatedAt
+            "updatedAt"              to resolved.updatedAt.orNow()
         )
 
         val success = firestoreSet("shop_investors", resolved.shopInvestorFirebaseId, map)
@@ -269,7 +277,7 @@ class FirebaseSyncRepository(private val db: AppDatabase) {
             "transactionDate"       to resolved.transactionDate,
             "phase"                 to resolved.phase,
             "note"                  to resolved.note,
-            "updatedAt"             to resolved.updatedAt
+            "updatedAt"             to resolved.updatedAt.orNow()
         )
 
         val success = firestoreSet("transactions", resolved.transactionFirebaseId, map)
@@ -312,7 +320,7 @@ class FirebaseSyncRepository(private val db: AppDatabase) {
             "totalInvested"        to resolved.totalInvested,
             "note"                 to resolved.note,
             "isCarriedForward"     to resolved.isCarriedForward,
-            "updatedAt"            to resolved.updatedAt
+            "updatedAt"            to resolved.updatedAt.orNow()
         )
 
         val success = firestoreSet("settlements", resolved.settlementFirebaseId, map)
@@ -367,7 +375,7 @@ class FirebaseSyncRepository(private val db: AppDatabase) {
             "balanceAmount"        to resolved.balanceAmount,
             "settlementPaidAmount" to resolved.settlementPaidAmount,
             "settlementPaidDate"   to resolved.settlementPaidDate,
-            "updatedAt"            to resolved.updatedAt
+            "updatedAt"            to resolved.updatedAt.orNow()
         )
 
         val success = firestoreSet("settlement_entries", resolved.entryFirebaseId, map)
