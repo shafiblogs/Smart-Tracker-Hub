@@ -209,6 +209,9 @@ class SaleScreenViewModel(
                                         lastUpdated = System.currentTimeMillis()
                                     )
                                 }
+                                // Delete the month's existing rows first so we don't append
+                                // duplicate copies on every Firestore load.
+                                purchaseDao.deletePurchasesForMonth(shopId, monthId)
                                 purchaseDao.insertPurchases(purchaseEntities)
                                 Log.d("SaleScreenViewModel", "Saved ${purchaseEntities.size} purchase items for $shopId - $monthId")
                             }

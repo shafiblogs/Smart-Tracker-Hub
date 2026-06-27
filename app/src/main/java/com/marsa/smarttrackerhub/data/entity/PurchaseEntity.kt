@@ -11,7 +11,13 @@ import androidx.room.PrimaryKey
 @Entity(
     tableName = "purchase_items",
     indices = [
-        Index(name = "idx_purchase_items_shopId_monthId", value = ["shopId", "monthId"])
+        // UNIQUE on the business key so REPLACE de-dups per category — prevents the
+        // append-duplicate bug regardless of which writer inserts.
+        Index(
+            name = "index_purchase_items_shopId_monthId_categoryId",
+            value = ["shopId", "monthId", "categoryId"],
+            unique = true
+        )
     ]
 )
 data class PurchaseEntity(
