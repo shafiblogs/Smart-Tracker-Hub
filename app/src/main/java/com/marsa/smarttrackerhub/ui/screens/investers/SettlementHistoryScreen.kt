@@ -4,6 +4,7 @@ import android.app.DatePickerDialog
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.shrinkVertically
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -15,6 +16,8 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.text.KeyboardOptions
@@ -213,18 +216,36 @@ private fun SettlementHistoryCard(
     Card(
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
     ) {
         Column(modifier = Modifier.fillMaxWidth()) {
-            // Header row — always visible
+            // ── Header — tap anywhere to expand/collapse ──
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
                     .clickable(onClick = onToggle)
                     .padding(16.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
+                // Leading calendar badge
+                Surface(
+                    shape = CircleShape,
+                    color = MaterialTheme.colorScheme.primaryContainer,
+                    modifier = Modifier.size(40.dp)
+                ) {
+                    Box(contentAlignment = Alignment.Center) {
+                        Icon(
+                            imageVector = Icons.Default.DateRange,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
+                }
+                Spacer(Modifier.width(12.dp))
+
+                // Date + period
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
                         text = dateFormat.format(Date(settlement.settlementDate)),
@@ -236,12 +257,16 @@ private fun SettlementHistoryCard(
                         "Beginning"
                     else
                         dateFormat.format(Date(settlement.periodStartDate))
+                    Spacer(Modifier.height(2.dp))
                     Text(
-                        text = "Period: $periodStart → ${dateFormat.format(Date(settlement.settlementDate))}",
+                        text = "$periodStart → ${dateFormat.format(Date(settlement.settlementDate))}",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
+                Spacer(Modifier.width(8.dp))
+
+                // Total invested
                 Column(horizontalAlignment = Alignment.End) {
                     Text(
                         text = "Đ${String.format("%,.2f", settlement.totalInvested)}",
@@ -255,32 +280,20 @@ private fun SettlementHistoryCard(
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
-                // Reverse / delete icon — admin only
-                if (isAdmin) {
-                    IconButton(
-                        onClick = onReverseSettlement,
-                        modifier = Modifier.size(32.dp)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Delete,
-                            contentDescription = "Reverse settlement",
-                            modifier = Modifier.size(18.dp),
-                            tint = MaterialTheme.colorScheme.error
-                        )
-                    }
-                }
+
+                // Expand/collapse chevron — the only header control now
                 Icon(
                     imageVector = if (isExpanded) Icons.Default.KeyboardArrowUp
                     else Icons.Default.KeyboardArrowDown,
                     contentDescription = if (isExpanded) "Collapse" else "Expand",
                     modifier = Modifier
-                        .padding(start = 4.dp)
-                        .size(20.dp),
+                        .padding(start = 8.dp)
+                        .size(22.dp),
                     tint = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
 
-            // Expandable entries
+            // ── Expandable detail ──
             AnimatedVisibility(
                 visible = isExpanded,
                 enter = expandVertically(),
@@ -321,6 +334,27 @@ private fun SettlementHistoryCard(
                                 onMarkPaid = { onMarkPaid(entry) }
                             )
                             Spacer(Modifier.height(8.dp))
+                        }
+                    }
+
+                    // Reverse settlement — admin only, moved out of the cramped header
+                    if (isAdmin) {
+                        Spacer(Modifier.height(4.dp))
+                        OutlinedButton(
+                            onClick = onReverseSettlement,
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = androidx.compose.material3.ButtonDefaults.outlinedButtonColors(
+                                contentColor = MaterialTheme.colorScheme.error
+                            ),
+                            border = BorderStroke(1.dp, MaterialTheme.colorScheme.error.copy(alpha = 0.5f))
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Delete,
+                                contentDescription = null,
+                                modifier = Modifier.size(18.dp)
+                            )
+                            Spacer(Modifier.width(8.dp))
+                            Text("Reverse Settlement")
                         }
                     }
                 }

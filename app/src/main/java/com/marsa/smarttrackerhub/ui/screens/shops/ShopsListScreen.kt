@@ -32,7 +32,8 @@ import com.marsa.smarttrackerhub.utils.ShareUtil
 fun ShopsListScreen(
     isAdmin: Boolean = false,
     onAddClick: () -> Unit,
-    onEditClick: (Int) -> Unit
+    onEditClick: (Int) -> Unit,
+    onSettlementHistoryClick: (Int) -> Unit = {}
 ) {
     val viewModel: ShopListViewModel = viewModel()
     val uiState by viewModel.uiState.collectAsState()
@@ -88,6 +89,7 @@ fun ShopsListScreen(
                                         ShopCard(
                                             shop = shop,
                                             onCardClick = { onEditClick(shop.id) },
+                                            onSettlementHistoryClick = { onSettlementHistoryClick(shop.id) },
                                             onShareClick = {
                                                 cardViewRefs[shop.id]?.let { view ->
                                                     ShareUtil.shareViewAsImage(
@@ -108,6 +110,7 @@ fun ShopsListScreen(
                                     ShopCard(
                                         shop = shop,
                                         onCardClick = { onEditClick(shop.id) },
+                                        onSettlementHistoryClick = { onSettlementHistoryClick(shop.id) },
                                         onShareClick = {
                                             ShareUtil.shareViewAsImage(
                                                 view = view,

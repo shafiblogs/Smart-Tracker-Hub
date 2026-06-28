@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.outlined.Warning
@@ -49,7 +50,8 @@ import java.util.Locale
 fun ShopCard(
     shop: ShopInfo,
     onCardClick: () -> Unit,
-    onShareClick: () -> Unit
+    onShareClick: () -> Unit,
+    onSettlementHistoryClick: () -> Unit = {}
 ) {
     val dateFormat = SimpleDateFormat("dd MMM yyyy", Locale.ENGLISH)
     val expiryStatus = shop.licenseExpiryDate.getExpiryStatus()
@@ -116,17 +118,32 @@ fun ShopCard(
                     )
                 }
 
-                // Share button
-                IconButton(
-                    onClick = onShareClick,
-                    modifier = Modifier.size(40.dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Share,
-                        contentDescription = "Share Shop",
-                        tint = MaterialTheme.colorScheme.secondary,
-                        modifier = Modifier.size(20.dp)
-                    )
+                // Trailing actions: Settlement History + Share
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    // Settlement History button
+                    IconButton(
+                        onClick = onSettlementHistoryClick,
+                        modifier = Modifier.size(40.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.DateRange,
+                            contentDescription = "Settlement History",
+                            tint = MaterialTheme.colorScheme.secondary,
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
+                    // Share button
+                    IconButton(
+                        onClick = onShareClick,
+                        modifier = Modifier.size(40.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Share,
+                            contentDescription = "Share Shop",
+                            tint = MaterialTheme.colorScheme.secondary,
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
                 }
             }
 

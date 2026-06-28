@@ -279,6 +279,9 @@ fun SmartTrackerNavHost(navController: NavHostController) {
                     },
                     onAddClick = {
                         navController.navigate(Screen.AddShop.createRoute())
+                    },
+                    onSettlementHistoryClick = { shopId ->
+                        navController.navigate(Screen.SettlementHistory.createRoute(shopId))
                     }
                 )
             }
@@ -854,32 +857,12 @@ fun SmartTrackerNavHost(navController: NavHostController) {
                                 modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding)
                             )
 
-                            // Remove Duplicates — LOCAL ONLY, does not touch Firestore.
-                            NavigationDrawerItem(
-                                label = { Text("Remove Duplicates") },
-                                icon = { Icon(Icons.Default.Delete, contentDescription = "Remove Duplicates") },
-                                selected = false,
-                                onClick = {
-                                    scope.launch { drawerState.close() }
-                                    scope.launch {
-                                        Toast.makeText(context, "Cleaning duplicates…", Toast.LENGTH_SHORT).show()
-                                        val r = withContext(Dispatchers.IO) {
-                                            com.marsa.smarttrackerhub.data.repository
-                                                .DuplicateCleanupRepository(
-                                                    com.marsa.smarttrackerhub.data.AppDatabase.getDatabase(context)
-                                                ).removeDuplicates()
-                                        }
-                                        Toast.makeText(
-                                            context,
-                                            "Removed ${r.investorsRemoved} investor, ${r.linksRemoved} link, " +
-                                                "${r.transactionsRemoved} payment, ${r.settlementsRemoved} settlement, " +
-                                                "${r.entriesRemoved} entry duplicates (local only)",
-                                            Toast.LENGTH_LONG
-                                        ).show()
-                                    }
-                                },
-                                modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding)
-                            )
+                            // "Remove Duplicates" was a manual recovery tool from the duplication
+                            // crisis. The sync now de-dups on pull (by Firebase id + content),
+                            // serializes via a Mutex, and guards resurrect-deletes — so duplicates
+                            // are prevented at the source. Removed from the UI to avoid accidental
+                            // over-merging of clean data. DuplicateCleanupRepository is kept dormant
+                            // for a future break-glass re-wire if ever needed.
                         }
                     }
                 }

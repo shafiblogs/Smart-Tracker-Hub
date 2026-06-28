@@ -193,7 +193,7 @@ class SettlementHistoryViewModel : ViewModel() {
                 entriesBySettlement[s.id] = entries
             }
 
-            InvestorReportExporter.shareSettlementReport(
+            SettlementPdfExporter.generateAndShareSettlementPdf(
                 context = context,
                 shopName = _uiState.value.shopName,
                 settlements = settlements,
