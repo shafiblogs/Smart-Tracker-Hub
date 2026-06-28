@@ -111,7 +111,7 @@ fun SettlementHistoryScreen(shopId: Int, isAdmin: Boolean = false) {
                 ExtendedFloatingActionButton(
                     onClick = { viewModel.exportReport(context) },
                     icon = { Icon(Icons.Default.Share, contentDescription = null) },
-                    text = { Text("Export Report") },
+                    text = { Text("Export PDF") },
                     containerColor = MaterialTheme.colorScheme.secondaryContainer,
                     contentColor = MaterialTheme.colorScheme.onSecondaryContainer
                 )
