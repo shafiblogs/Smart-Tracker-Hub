@@ -4,6 +4,7 @@ import android.content.Context
 import android.content.Intent
 import androidx.core.content.FileProvider
 import com.itextpdf.io.font.constants.StandardFonts
+import com.itextpdf.kernel.colors.DeviceRgb
 import com.itextpdf.kernel.font.PdfFont
 import com.itextpdf.kernel.font.PdfFontFactory
 import com.itextpdf.kernel.geom.PageSize
@@ -73,8 +74,9 @@ object PdfExportUtil {
                 .setFont(font)
                 .setFontSize(12f)
                 .setTextAlignment(TextAlignment.CENTER)
-                .setMarginBottom(16f)
+                .setMarginBottom(2f)
             document.add(monthParagraph)
+            document.add(generatedParagraph(font))
 
             // Stats section
             if (monthSummary != null) {
@@ -103,7 +105,7 @@ object PdfExportUtil {
             addTableCell(logsTable, "Date", font, 10f, true)
             addTableCell(logsTable, "Open", font, 10f, true)
             addTableCell(logsTable, "Close", font, 10f, true)
-            addTableCell(logsTable, "Dur", font, 10f, true)
+            addTableCell(logsTable, "Duration", font, 10f, true)
             addTableCell(logsTable, "Total", font, 10f, true)
 
             // Table data
@@ -185,8 +187,10 @@ object PdfExportUtil {
         hasBottomBorder: Boolean = true,
         isFirstSessionOfDay: Boolean = true
     ) {
+        val para = Paragraph(text).setFont(font).setFontSize(fontSize)
+        if (isHeader) para.setFontColor(DeviceRgb(255, 255, 255))   // white text on the header band
         val cell = Cell()
-            .add(Paragraph(text).setFont(font).setFontSize(fontSize))
+            .add(para)
             .setTextAlignment(TextAlignment.CENTER)
             .setPadding(8f)
 
@@ -203,6 +207,7 @@ object PdfExportUtil {
 
         if (isHeader) {
             cell.setBold()
+            cell.setBackgroundColor(DeviceRgb(15, 64, 36))          // dark-green header band
         }
 
         table.addCell(cell)
@@ -255,8 +260,9 @@ object PdfExportUtil {
                 .setFont(font)
                 .setFontSize(12f)
                 .setTextAlignment(TextAlignment.CENTER)
-                .setMarginBottom(16f)
+                .setMarginBottom(2f)
             document.add(infoParagraph)
+            document.add(generatedParagraph(font))
 
             // Stats section
             if (monthSummary != null) {
@@ -285,7 +291,7 @@ object PdfExportUtil {
             addTableCell(logsTable, "Date", font, 10f, true)
             addTableCell(logsTable, "In", font, 10f, true)
             addTableCell(logsTable, "Out", font, 10f, true)
-            addTableCell(logsTable, "Dur", font, 10f, true)
+            addTableCell(logsTable, "Duration", font, 10f, true)
             addTableCell(logsTable, "Total", font, 10f, true)
 
             // Table data
@@ -357,6 +363,18 @@ object PdfExportUtil {
             e.printStackTrace()
         }
     }
+
+    /** Standard "Generated: <date>" subtitle used on both reports. */
+    private fun generatedParagraph(font: PdfFont): Paragraph =
+        Paragraph(
+            "Generated: " + java.text.SimpleDateFormat("dd MMM yyyy", java.util.Locale.ENGLISH)
+                .format(java.util.Date())
+        )
+            .setFont(font)
+            .setFontSize(9f)
+            .setFontColor(DeviceRgb(110, 110, 110))
+            .setTextAlignment(TextAlignment.CENTER)
+            .setMarginBottom(16f)
 
     private fun formatLogTime(timestamp: Long): String {
         val dateFormat = java.text.SimpleDateFormat("HH:mm", java.util.Locale.getDefault())
