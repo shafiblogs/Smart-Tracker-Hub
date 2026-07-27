@@ -41,10 +41,11 @@ fun PurchaseStatisticsCard(
 ) {
     val colors = MaterialTheme.colorScheme
 
+    // Thresholds lowered by 10 points (was 100 / 85) — same green/amber/red behavior.
     fun achievementColor(pct: Double): Color = when {
-        pct >= 100 -> Color(0xFF22C55E) // SuccessGreen
-        pct >= 85  -> Color(0xFFF59E0B) // WarningAmber
-        else       -> colors.error
+        pct >= 90 -> Color(0xFF22C55E) // SuccessGreen
+        pct >= 75 -> Color(0xFFF59E0B) // WarningAmber
+        else      -> colors.error
     }
 
     Card(

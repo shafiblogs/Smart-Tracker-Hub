@@ -11,7 +11,7 @@ plugins {
 
 android {
     namespace = "com.marsa.smarttrackerhub"
-    compileSdk = 35
+    compileSdk = 36
 
     buildFeatures {
         buildConfig = true
@@ -20,9 +20,9 @@ android {
     defaultConfig {
         applicationId = "com.marsa.smarttrackerhub"
         minSdk = 29
-        targetSdk = 35
-        versionCode = 19
-        versionName = "2.5"
+        targetSdk = 36
+        versionCode = 20
+        versionName = "2.6"
 
         val localProperties = Properties()
         localProperties.load(FileInputStream(rootProject.file("local.properties")))

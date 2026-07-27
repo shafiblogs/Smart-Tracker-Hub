@@ -33,9 +33,9 @@ import androidx.compose.ui.unit.sp
  *   [Category name] [████░░░░] [actual / target]
  *
  * Colour rules (purchases — higher is better, more purchase → more sale):
- *   ≥ 100 % of target  → SuccessGreen  (hit or exceeded target)
- *   85–100 %           → WarningAmber  (close but under)
- *   < 85 %             → ErrorRed      (significantly under target)
+ *   ≥ 90 % of target   → SuccessGreen  (hit or near target)
+ *   75–90 %            → WarningAmber  (close but under)
+ *   < 75 %             → ErrorRed      (significantly under target)
  *
  * Created by Muhammed Shafi on 24/03/2026.
  * Moro Hub
@@ -275,15 +275,16 @@ private fun PurchaseCategoryRow(category: PurchaseCategoryChartData) {
 
 /**
  * Returns a purchase-appropriate colour.
- * More purchase = more sale, so exceeding the target is good:
- *   ≥ 100% → SuccessGreen  (on or above target)
- *   85–100% → WarningAmber (close but under)
- *   < 85%  → ErrorRed      (significantly under)
+ * More purchase = more sale, so exceeding the target is good.
+ * Thresholds lowered by 10 points (was 100 / 85):
+ *   ≥ 90% → SuccessGreen  (on or above target)
+ *   75–90% → WarningAmber (close but under)
+ *   < 75%  → ErrorRed      (significantly under)
  */
 private fun purchaseColor(percentage: Double, errorColor: Color): Color = when {
-    percentage >= 100.0 -> Color(0xFF22C55E)
-    percentage >= 85.0  -> Color(0xFFF59E0B)
-    else                -> errorColor
+    percentage >= 90.0 -> Color(0xFF22C55E)
+    percentage >= 75.0 -> Color(0xFFF59E0B)
+    else               -> errorColor
 }
 
 private fun formatPurchaseAmount(amount: Double): String = when {
