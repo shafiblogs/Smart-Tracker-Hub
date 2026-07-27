@@ -41,17 +41,13 @@ fun PurchaseStatisticsCard(
 ) {
     val colors = MaterialTheme.colorScheme
 
-    // Thresholds lowered by 10 points (was 100 / 85) — same green/amber/red behavior.
-    fun achievementColor(pct: Double): Color = when {
-        pct >= 90 -> Color(0xFF22C55E) // SuccessGreen
-        pct >= 75 -> Color(0xFFF59E0B) // WarningAmber
-        else      -> colors.error
-    }
+    // Shared purchase achievement palette (90 / 75 thresholds).
+    fun achievementColor(pct: Double): Color = purchaseAchievementColor(pct, colors.error)
 
     Card(
         modifier = modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(containerColor = colors.surface),
-        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
         Box {
             Column {
@@ -133,7 +129,7 @@ fun PurchaseStatisticsCard(
                         label = "On Target",
                         value = "${statistics.categoriesOnTarget} / ${statistics.totalCategories}",
                         valueColor = if (statistics.categoriesOnTarget == statistics.totalCategories)
-                            Color(0xFF22C55E)
+                            ChartSuccessGreen
                         else
                             colors.error
                     )

@@ -39,6 +39,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.marsa.smarttracker.ui.theme.semanticStatusColors
 import com.marsa.smarttrackerhub.data.entity.EmployeeInfo
 import com.marsa.smarttrackerhub.utils.getExpiryStatus
 import java.text.SimpleDateFormat
@@ -69,7 +70,7 @@ fun EmployeeCard(
         modifier = Modifier
             .fillMaxWidth()
             .clickable(onClick = onCardClick),
-        shape = RoundedCornerShape(12.dp),
+        shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
@@ -116,7 +117,8 @@ fun EmployeeCard(
 
                         // Firebase sync status dot
                         Spacer(modifier = Modifier.width(8.dp))
-                        val syncDotColor = if (employee.isSynced) Color(0xFF22C55E) else Color(0xFFF97316)
+                        val statusColors = semanticStatusColors()
+                        val syncDotColor = if (employee.isSynced) statusColors.success else statusColors.warning
                         Surface(
                             shape = CircleShape,
                             color = syncDotColor,
@@ -193,7 +195,7 @@ fun EmployeeCard(
                                             Icon(
                                                 imageVector = Icons.Default.Add,
                                                 contentDescription = null,
-                                                tint = Color(0xFF22C55E)  // SuccessGreen
+                                                tint = semanticStatusColors().success
                                             )
                                         }
                                     )

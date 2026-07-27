@@ -369,13 +369,9 @@ fun DrawScope.drawSingleMonthLegend(
         paint
     )
 
-    // Average legend with achievement-based color
+    // Average legend with achievement-based color — shared palette
     val avgStart = startX + boxSize + 5f + targetWidth + spacing
-    val avgColor = when {
-        achievementPercentage >= 100 -> Color(0xFF22C55E) // SuccessGreen
-        achievementPercentage >= 90  -> Color(0xFFF59E0B) // WarningAmber
-        else                         -> colors.error       // ErrorRed — from theme
-    }
+    val avgColor = salesAchievementColor(achievementPercentage, colors.error)
 
     drawRect(
         color = avgColor,

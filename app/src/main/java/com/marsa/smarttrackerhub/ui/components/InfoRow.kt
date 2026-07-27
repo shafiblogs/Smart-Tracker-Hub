@@ -11,6 +11,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.marsa.smarttrackerhub.utils.formatMoney
 
 
 /**
@@ -37,7 +38,7 @@ fun InfoRow(label: String, amount: Double, color: Color = MaterialTheme.colorSch
                 )
             } else {
                 Text(
-                    text = "Đ%.2f".format(amount),
+                    text = formatMoney(amount),
                     style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Medium),
                     color = color
                 )

@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.DateRange
@@ -33,6 +34,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.marsa.smarttracker.ui.theme.semanticStatusColors
 import com.marsa.smarttrackerhub.data.entity.ShopInfo
 import com.marsa.smarttrackerhub.ui.screens.enums.ShopStatus
 import com.marsa.smarttrackerhub.utils.HijriDateUtils
@@ -73,6 +75,7 @@ fun ShopCard(
         modifier = Modifier
             .fillMaxWidth()
             .clickable(onClick = onCardClick),
+        shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
@@ -102,7 +105,8 @@ fun ShopCard(
                         )
                         Spacer(modifier = Modifier.width(8.dp))
                         // Firebase sync status dot
-                        val syncDotColor = if (shop.isSynced) Color(0xFF22C55E) else Color(0xFFF97316)
+                        val statusColors = semanticStatusColors()
+                        val syncDotColor = if (shop.isSynced) statusColors.success else statusColors.warning
                         Surface(
                             shape = CircleShape,
                             color = syncDotColor,

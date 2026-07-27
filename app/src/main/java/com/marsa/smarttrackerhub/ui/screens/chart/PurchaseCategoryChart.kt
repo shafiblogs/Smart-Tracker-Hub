@@ -81,8 +81,8 @@ fun PurchaseCategoryChart(
             else 0.0
 
             val onTargetColor = when {
-                onTargetPercentage >= 80 -> Color(0xFF22C55E)    // SuccessGreen (good)
-                onTargetPercentage >= 50 -> Color(0xFFF59E0B)    // WarningAmber (warning)
+                onTargetPercentage >= 80 -> ChartSuccessGreen    // SuccessGreen (good)
+                onTargetPercentage >= 50 -> ChartWarningAmber    // WarningAmber (warning)
                 else                     -> colors.error          // ErrorRed (poor)
             }
 
@@ -281,11 +281,8 @@ private fun PurchaseCategoryRow(category: PurchaseCategoryChartData) {
  *   75–90% → WarningAmber (close but under)
  *   < 75%  → ErrorRed      (significantly under)
  */
-private fun purchaseColor(percentage: Double, errorColor: Color): Color = when {
-    percentage >= 90.0 -> Color(0xFF22C55E)
-    percentage >= 75.0 -> Color(0xFFF59E0B)
-    else               -> errorColor
-}
+private fun purchaseColor(percentage: Double, errorColor: Color): Color =
+    purchaseAchievementColor(percentage, errorColor)
 
 private fun formatPurchaseAmount(amount: Double): String = when {
     amount >= 1_000_000 -> String.format("%.1fM", amount / 1_000_000)

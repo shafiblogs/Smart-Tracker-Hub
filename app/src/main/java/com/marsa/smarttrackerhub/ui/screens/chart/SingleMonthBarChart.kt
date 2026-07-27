@@ -35,14 +35,9 @@ fun SingleMonthBarChart(
         // Calculate achievement percentage
         val achievementPercentage = (data.averageSale / data.targetSale) * 100
 
-        // Achievement color using brand palette
-        fun getAchievementColor(percentage: Double): Color {
-            return when {
-                percentage >= 100 -> Color(0xFF22C55E) // SuccessGreen
-                percentage >= 90  -> Color(0xFFF59E0B) // WarningAmber
-                else              -> colors.error       // ErrorRed — from theme
-            }
-        }
+        // Achievement color — shared palette
+        fun getAchievementColor(percentage: Double): Color =
+            salesAchievementColor(percentage, colors.error)
 
         // Draw grid and Y-axis
         drawGridAndYAxis(

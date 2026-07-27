@@ -37,14 +37,9 @@ fun StatisticsCard(
     val colors = MaterialTheme.colorScheme
     val isTargetAchieved = statistics.averageAchievementPercentage >= 100
 
-    // Achievement color using brand palette
-    fun getAchievementColor(percentage: Double): Color {
-        return when {
-            percentage >= 100 -> Color(0xFF22C55E) // SuccessGreen
-            percentage >= 90  -> Color(0xFFF59E0B) // WarningAmber
-            else              -> colors.error       // ErrorRed — from theme
-        }
-    }
+    // Achievement color — shared palette
+    fun getAchievementColor(percentage: Double): Color =
+        salesAchievementColor(percentage, colors.error)
 
     Card(
         modifier = modifier.fillMaxWidth(),
@@ -133,10 +128,7 @@ fun StatisticsCard(
                     StatItem(
                         label = "Difference",
                         value = "$icon ${String.format("%.0f", abs(difference))}",
-                        valueColor = if (difference >= 0)
-                            Color(0xFF22C55E)  // SuccessGreen
-                        else
-                            colors.error       // ErrorRed
+                        valueColor = if (difference >= 0) ChartSuccessGreen else colors.error
                     )
                 }
             }

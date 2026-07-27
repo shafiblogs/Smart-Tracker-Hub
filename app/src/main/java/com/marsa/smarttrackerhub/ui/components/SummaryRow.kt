@@ -13,6 +13,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.marsa.smarttrackerhub.utils.formatMoney
 
 
 /**
@@ -30,6 +31,6 @@ fun SummaryRow(label: String, amount: Double, color: Color) {
         verticalAlignment = Alignment.CenterVertically
     ) {
         Text(text = label, fontSize = 16.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        Text(text = "Đ${"%.2f".format(amount)}", fontSize = 16.sp, fontWeight = FontWeight.SemiBold, color = color)
+        Text(text = formatMoney(amount), fontSize = 16.sp, fontWeight = FontWeight.SemiBold, color = color)
     }
 }

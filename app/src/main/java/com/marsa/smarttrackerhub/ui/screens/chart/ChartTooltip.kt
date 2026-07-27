@@ -102,7 +102,7 @@ fun ChartTooltip(
                     ) {
                         Canvas(modifier = Modifier.fillMaxSize()) {
                             drawCircle(
-                                color = if (touchInfo.isTargetMet) Color(0xFF22C55E)   // SuccessGreen
+                                color = if (touchInfo.isTargetMet) ChartSuccessGreen   // SuccessGreen
                                         else errorColor                                  // ErrorRed
                             )
                         }
@@ -118,7 +118,7 @@ fun ChartTooltip(
                     text = "Đ${String.format("%.2f", touchInfo.averageSale)}",
                     style = MaterialTheme.typography.bodyLarge,
                     fontWeight = FontWeight.SemiBold,
-                    color = if (touchInfo.isTargetMet) Color(0xFF22C55E) else errorColor
+                    color = if (touchInfo.isTargetMet) ChartSuccessGreen else errorColor
                 )
             }
 
@@ -140,7 +140,7 @@ fun ChartTooltip(
                     text = String.format("%.1f%%", touchInfo.achievementPercentage),
                     style = MaterialTheme.typography.bodyLarge,
                     fontWeight = FontWeight.Bold,
-                    color = if (touchInfo.isTargetMet) Color(0xFF22C55E) else errorColor
+                    color = if (touchInfo.isTargetMet) ChartSuccessGreen else errorColor
                 )
             }
 
@@ -159,7 +159,7 @@ fun ChartTooltip(
 
                 val icon = if (touchInfo.difference >= 0) "↑" else "↓"
                 val diffColor =
-                    if (touchInfo.difference >= 0) Color(0xFF22C55E) else errorColor
+                    if (touchInfo.difference >= 0) ChartSuccessGreen else errorColor
 
                 Text(
                     text = "$icon Đ${String.format("%.2f", abs(touchInfo.difference))}",

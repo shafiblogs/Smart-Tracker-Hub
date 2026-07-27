@@ -146,12 +146,8 @@ fun MonthlySalesChart(
                         // Calculate achievement percentage for this month
                         val monthAchievementPercentage = (monthData.averageSale / monthData.targetSale) * 100
 
-                        // Achievement-based color using brand palette
-                        val avgColor = when {
-                            monthAchievementPercentage >= 100 -> Color(0xFF22C55E) // SuccessGreen
-                            monthAchievementPercentage >= 90  -> Color(0xFFF59E0B) // WarningAmber
-                            else                              -> colors.error       // ErrorRed
-                        }
+                        // Achievement-based color — shared palette
+                        val avgColor = salesAchievementColor(monthAchievementPercentage, colors.error)
 
                         val avgY =
                             chartHeight - bottomPadding - (monthData.averageSale * yScale).toFloat()

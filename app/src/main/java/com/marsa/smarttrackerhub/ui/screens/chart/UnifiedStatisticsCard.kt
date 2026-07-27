@@ -48,26 +48,14 @@ fun UnifiedStatisticsCard(
 ) {
     val colors = MaterialTheme.colorScheme
 
-    fun getAchievementColor(percentage: Double): Color {
-        return when {
-            percentage >= 100 -> Color(0xFF22C55E) // SuccessGreen
-            percentage >= 90  -> Color(0xFFF59E0B) // WarningAmber
-            else              -> colors.error
-        }
-    }
+    fun getAchievementColor(percentage: Double): Color = salesAchievementColor(percentage, colors.error)
 
-    fun getPurchaseAchievementColor(percentage: Double): Color {
-        return when {
-            percentage >= 100 -> Color(0xFF22C55E) // SuccessGreen
-            percentage >= 85  -> Color(0xFFF59E0B) // WarningAmber
-            else              -> colors.error
-        }
-    }
+    fun getPurchaseAchievementColor(percentage: Double): Color = purchaseAchievementColor(percentage, colors.error)
 
     Card(
         modifier = modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(containerColor = colors.surface),
-        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
         Column {
             // ── Header: Shop + Period + Share Button ──────────────────────────
@@ -188,8 +176,8 @@ fun UnifiedStatisticsCard(
                             label = "Margin",
                             value = String.format("%.0f%%", salesMargin),
                             valueColor = when {
-                                salesMargin >= 30 -> Color(0xFF22C55E)    // SuccessGreen (good)
-                                salesMargin >= 10 -> Color(0xFFF59E0B)    // WarningAmber (warning)
+                                salesMargin >= 30 -> ChartSuccessGreen    // SuccessGreen (good)
+                                salesMargin >= 10 -> ChartWarningAmber    // WarningAmber (warning)
                                 else              -> colors.error          // ErrorRed (poor)
                             },
                             modifier = Modifier.weight(1f)
@@ -271,8 +259,8 @@ fun UnifiedStatisticsCard(
                             label = "On Target",
                             value = "${purchaseStatistics.categoriesOnTarget} / ${purchaseStatistics.totalCategories}",
                             valueColor = when {
-                                onTargetPercentage >= 80 -> Color(0xFF22C55E)    // SuccessGreen (good)
-                                onTargetPercentage >= 50 -> Color(0xFFF59E0B)    // WarningAmber (warning)
+                                onTargetPercentage >= 80 -> ChartSuccessGreen    // SuccessGreen (good)
+                                onTargetPercentage >= 50 -> ChartWarningAmber    // WarningAmber (warning)
                                 else                     -> colors.error          // ErrorRed (poor)
                             },
                             modifier = Modifier.weight(1f)

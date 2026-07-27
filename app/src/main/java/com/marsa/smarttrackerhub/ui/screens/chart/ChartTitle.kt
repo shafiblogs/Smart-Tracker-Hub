@@ -29,12 +29,8 @@ fun ChartTitle(
 
     val colors = MaterialTheme.colorScheme
 
-    // Indicator color using brand palette
-    val indicatorColor = when {
-        achievementPercentage >= 100 -> Color(0xFF22C55E) // SuccessGreen
-        achievementPercentage >= 90  -> Color(0xFFF59E0B) // WarningAmber
-        else                         -> colors.error       // ErrorRed — from theme
-    }
+    // Indicator color — shared achievement palette
+    val indicatorColor = salesAchievementColor(achievementPercentage, colors.error)
 
     Row(
         verticalAlignment = Alignment.CenterVertically,
