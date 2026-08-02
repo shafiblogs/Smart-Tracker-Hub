@@ -11,11 +11,26 @@ sealed class Screen(val route: String) {
     data object Login : Screen("login")
     data object AccountSetup : Screen("AccountSetup")
     data object Sale : Screen("sale")
-    data object Purchase : Screen("purchase")
     data object Home : Screen("home")
     data object Summary : Screen("Summary")
+
+    /** Sales month detail (sales + purchase sections). monthId/shopName carry spaces → query args. */
+    object SalesDetail : Screen("sales_detail/{shopId}?monthId={monthId}&shopName={shopName}") {
+        fun createRoute(shopId: String, monthId: String, shopName: String) =
+            "sales_detail/$shopId?monthId=${android.net.Uri.encode(monthId)}&shopName=${android.net.Uri.encode(shopName)}"
+    }
+
+    /** Account month detail (balances + profit). */
+    object AccountDetail : Screen("account_detail/{shopId}?monthId={monthId}&shopName={shopName}") {
+        fun createRoute(shopId: String, monthId: String, shopName: String) =
+            "account_detail/$shopId?monthId=${android.net.Uri.encode(monthId)}&shopName=${android.net.Uri.encode(shopName)}"
+    }
+
     data object Statement : Screen("Statement")
     data object Notifications : Screen("Notifications")
+
+    /** Investments dashboard — shop-first portfolio overview (bottom tab). */
+    data object Investments : Screen("investments")
 
     object ShopList : Screen("shop_list")
     object AddShop : Screen("add_shop/{shopId}") {
