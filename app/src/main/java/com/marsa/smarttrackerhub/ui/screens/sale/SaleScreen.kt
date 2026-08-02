@@ -24,20 +24,20 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.google.firebase.FirebaseApp
 import com.marsa.smarttrackerhub.domain.AccessCode
-import com.marsa.smarttrackerhub.utils.ShareUtil
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun SaleScreen(userAccessCode: AccessCode) {
+fun SaleScreen(
+    userAccessCode: AccessCode,
+    onMonthClick: (shopId: String, monthId: String, shopName: String) -> Unit
+) {
     val context = LocalContext.current
     val firebaseApp = FirebaseApp.getInstance("SmartTrackerApp")
     val viewModel: SaleScreenViewModel = viewModel(
@@ -54,20 +54,14 @@ fun SaleScreen(userAccessCode: AccessCode) {
     val shops by viewModel.shops.collectAsState()
     val availableMonths by viewModel.availableMonths.collectAsState()
     val selectedShop by viewModel.selectedShop.collectAsState()
-    val selectedMonthId by viewModel.selectedMonthId.collectAsState()
-    val summariesCache by viewModel.summariesCache.collectAsState()
     val expanded by viewModel.expanded.collectAsState()
-    val isLoadingMonth by viewModel.isLoadingMonth.collectAsState()
-
-    // Store view references for each month card
-    val cardViewRefs = remember { mutableMapOf<String, android.view.View>() }
 
     Column(
         modifier = Modifier
             .fillMaxSize()
             .padding(horizontal = 16.dp, vertical = 12.dp)
     ) {
-        // Shop Dropdown
+        // Shop dropdown
         ExposedDropdownMenuBox(
             expanded = expanded,
             onExpandedChange = { viewModel.setExpanded(!expanded) }
@@ -84,7 +78,6 @@ fun SaleScreen(userAccessCode: AccessCode) {
                     .menuAnchor()
                     .fillMaxWidth()
             )
-
             ExposedDropdownMenu(
                 expanded = expanded,
                 onDismissRequest = { viewModel.setExpanded(false) },
@@ -115,125 +108,38 @@ fun SaleScreen(userAccessCode: AccessCode) {
 
         Spacer(modifier = Modifier.height(12.dp))
 
-        // Display content based on state
         when {
-            selectedShop == null -> {
-                Box(
-                    modifier = Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        text = "Select a shop to view sales",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-            }
-
-            availableMonths.isEmpty() -> {
-                Box(
-                    modifier = Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        text = "No summaries available for ${selectedShop?.name}",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-            }
-
+            selectedShop == null -> CenterText("Select a shop to view sales")
+            availableMonths.isEmpty() -> CenterText("No summaries available for ${selectedShop?.name}")
             else -> {
                 LazyColumn(
                     modifier = Modifier.fillMaxSize(),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
                     items(availableMonths) { monthItem ->
-                        val isSelected = selectedMonthId == monthItem.id
-                        val summary = summariesCache[monthItem.id]
-
-                        // Wrap in AndroidView to get view reference
-                        AndroidView(
-                            factory = { context ->
-                                androidx.compose.ui.platform.ComposeView(context).apply {
-                                    setContent {
-                                        MonthCard(
-                                            monthItem = monthItem,
-                                            isSelected = isSelected,
-                                            summary = summary,
-                                            isLoading = isSelected && isLoadingMonth,
-                                            shopAddress = selectedShop?.name ?: "",
-                                            onClick = { viewModel.selectMonth(monthItem.id) },
-                                            onRefresh = { viewModel.refreshMonth(monthItem.id) },
-                                            onShare = if (summary != null && isSelected) {
-                                                {
-                                                    cardViewRefs[monthItem.id]?.let { view ->
-                                                        ShareUtil.shareViewAsImage(
-                                                            view = view,
-                                                            context = context,
-                                                            fileName = "sales_summary_${
-                                                                selectedShop?.name?.replace(
-                                                                    " ",
-                                                                    "_"
-                                                                )
-                                                            }_${
-                                                                monthItem.displayName.replace(
-                                                                    " ",
-                                                                    "_"
-                                                                )
-                                                            }.png",
-                                                            shareTitle = "Share Sales Summary"
-                                                        )
-                                                    }
-                                                }
-                                            } else null
-                                        )
-                                    }
-                                }
-                            },
-                            update = { view ->
-                                // Store view reference
-                                if (isSelected) {
-                                    cardViewRefs[monthItem.id] = view
-                                }
-
-                                view.setContent {
-                                    MonthCard(
-                                        monthItem = monthItem,
-                                        isSelected = isSelected,
-                                        summary = summary,
-                                        isLoading = isSelected && isLoadingMonth,
-                                        shopAddress = selectedShop?.name ?: "",
-                                        onClick = { viewModel.selectMonth(monthItem.id) },
-                                        onRefresh = { viewModel.refreshMonth(monthItem.id) },
-                                        onShare = if (summary != null && isSelected) {
-                                            {
-                                                ShareUtil.shareViewAsImage(
-                                                    view = view,
-                                                    context = context,
-                                                    fileName = "sales_summary_${
-                                                        selectedShop?.name?.replace(
-                                                            " ",
-                                                            "_"
-                                                        )
-                                                    }_${
-                                                        monthItem.displayName.replace(
-                                                            " ",
-                                                            "_"
-                                                        )
-                                                    }.png",
-                                                    shareTitle = "Share Sales Summary"
-                                                )
-                                            }
-                                        } else null
-                                    )
-                                }
-                            },
-                            modifier = Modifier.fillMaxWidth()
+                        MonthListCard(
+                            monthLabel = monthItem.displayName,
+                            shopName = selectedShop?.name ?: "",
+                            onClick = {
+                                val sid = selectedShop?.shopId ?: return@MonthListCard
+                                onMonthClick(sid, monthItem.id, selectedShop?.name ?: "")
+                            }
                         )
                     }
+                    item { Spacer(modifier = Modifier.height(24.dp)) }
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun CenterText(text: String) {
+    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+        Text(
+            text = text,
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
     }
 }
