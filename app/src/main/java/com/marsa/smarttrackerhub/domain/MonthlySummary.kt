@@ -24,6 +24,7 @@ data class MonthlySummary(
     val totalCashOut: Double = 0.0,
     val totalCreditSale: Double = 0.0,
     val averageSale: Double? = 0.0,
+    val targetSale: Double = 0.0,   // history-derived target for averageSale (not in Firestore; from Room)
     val updatedDate: String = "",
     val lastUpdated: Long = 0L
 )
