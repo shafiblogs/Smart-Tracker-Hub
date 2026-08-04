@@ -16,6 +16,8 @@ import com.marsa.smarttrackerhub.data.entity.toDomain
 import com.marsa.smarttrackerhub.data.entity.toEntity
 import com.marsa.smarttrackerhub.domain.MonthlySummary
 import com.marsa.smarttrackerhub.ui.components.percentChange
+import com.marsa.smarttrackerhub.ui.screens.chart.PurchaseCategoryChartData
+import com.marsa.smarttrackerhub.ui.screens.chart.PurchaseChartStatistics
 import com.marsa.smarttrackerhub.ui.screens.purchase.PurchaseItem
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -24,6 +26,11 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlin.coroutines.resume
 import kotlin.coroutines.suspendCoroutine
+
+// Purchase budget floors — mirror HomeScreenViewModel so the detail's actual/target
+// comparison matches the home screen exactly.
+private const val MIN_PURCHASE_CATEGORY_TARGET = 500.0
+private const val MIN_TOTAL_PURCHASE_TARGET = 10000.0
 
 /**
  * Loads one shop's month list + a single month's Sales summary AND purchase breakdown from the
@@ -62,6 +69,13 @@ class SalesDetailViewModel(
     private val _comparison = MutableStateFlow<SalesComparison?>(null)
     val comparison: StateFlow<SalesComparison?> = _comparison
 
+    /** Per-category purchase actual-vs-target (target = prev month × 1.10), like the home screen. */
+    private val _purchaseChart = MutableStateFlow<List<PurchaseCategoryChartData>>(emptyList())
+    val purchaseChart: StateFlow<List<PurchaseCategoryChartData>> = _purchaseChart
+
+    private val _purchaseStats = MutableStateFlow<PurchaseChartStatistics?>(null)
+    val purchaseStats: StateFlow<PurchaseChartStatistics?> = _purchaseStats
+
     init {
         viewModelScope.launch {
             val ok = suspendCoroutine<Boolean> { cont ->
@@ -87,6 +101,7 @@ class SalesDetailViewModel(
                     .orEmpty()
                     .sortedByDescending { it.timestamp }
                 updateComparison()
+                updatePurchaseChart()
             }
     }
 
@@ -129,6 +144,7 @@ class SalesDetailViewModel(
                 _purchaseItems.value = loadPurchasesRoom(monthId)
                 _isLoading.value = false
                 updateComparison()
+                updatePurchaseChart()
             } else {
                 loadFromFirestore(monthId)
             }
@@ -175,6 +191,7 @@ class SalesDetailViewModel(
                             _purchaseItems.value = entities
                                 .map { PurchaseItem(it.categoryId, it.categoryName, it.totalAmount) }
                                 .sortedByDescending { it.totalAmount }
+                            updatePurchaseChart()
                         } catch (e: Exception) {
                             Log.e("SalesDetailVM", "save error", e)
                         }
@@ -215,6 +232,70 @@ class SalesDetailViewModel(
                 .collection("months").document(monthId).get()
                 .addOnSuccessListener { cont.resume(it.toObject(MonthlySummary::class.java)) }
                 .addOnFailureListener { cont.resume(null) }
+        }
+    }
+
+    /**
+     * Recompute per-category purchase actual-vs-target for the selected month.
+     * Target = previous month's category amount × 1.10 (floored), matching the home screen.
+     */
+    private fun updatePurchaseChart() {
+        val current = _purchaseItems.value
+        if (current.isEmpty()) {
+            _purchaseChart.value = emptyList()
+            _purchaseStats.value = null
+            return
+        }
+        val months = _availableMonths.value
+        val idx = months.indexOfFirst { it.id == _selectedMonthId.value }
+        val prevId = months.getOrNull(idx + 1)?.id
+        viewModelScope.launch(Dispatchers.IO) {
+            val prevByCat = (prevId?.let { fetchPurchaseItems(it) } ?: emptyList())
+                .associate { it.categoryId to it.totalAmount }
+            val chart = current.sortedByDescending { it.totalAmount }.map { item ->
+                val prev = prevByCat[item.categoryId]
+                PurchaseCategoryChartData(
+                    categoryId = item.categoryId,
+                    categoryName = item.categoryName,
+                    actual = item.totalAmount,
+                    target = if (prev != null && prev > 0)
+                        maxOf(prev * 1.10, MIN_PURCHASE_CATEGORY_TARGET)
+                    else
+                        MIN_PURCHASE_CATEGORY_TARGET
+                )
+            }
+            _purchaseChart.value = chart
+            _purchaseStats.value = PurchaseChartStatistics(
+                totalActual = chart.sumOf { it.actual },
+                totalTarget = maxOf(chart.sumOf { it.target }, MIN_TOTAL_PURCHASE_TARGET),
+                monthLabel = _selectedMonthId.value,
+                categoriesOnTarget = chart.count { !it.hasTarget || it.actual >= it.target },
+                totalCategories = chart.size
+            )
+        }
+    }
+
+    /** Room-first, Firestore-fallback fetch of one month's purchase breakdown. */
+    private suspend fun fetchPurchaseItems(monthId: String): List<PurchaseItem> {
+        val cached = purchaseDao.getPurchasesForMonth(shopId, monthId)
+        if (cached.isNotEmpty()) {
+            return cached.map { PurchaseItem(it.categoryId, it.categoryName, it.totalAmount) }
+        }
+        @Suppress("UNCHECKED_CAST")
+        return suspendCoroutine { cont ->
+            firestore.collection("summary").document(shopId)
+                .collection("months").document(monthId).get()
+                .addOnSuccessListener { doc ->
+                    val raw = doc.get("purchaseBreakdown") as? List<Map<String, Any>> ?: emptyList()
+                    cont.resume(raw.map { m ->
+                        PurchaseItem(
+                            categoryId = (m["categoryId"] as? Long)?.toInt() ?: 0,
+                            categoryName = (m["categoryName"] as? String) ?: "Uncategorised",
+                            totalAmount = parseAmount(m["totalAmount"])
+                        )
+                    })
+                }
+                .addOnFailureListener { cont.resume(emptyList()) }
         }
     }
 

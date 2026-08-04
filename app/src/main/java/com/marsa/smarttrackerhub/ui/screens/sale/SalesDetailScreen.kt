@@ -5,26 +5,26 @@ import androidx.activity.ComponentActivity
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.KeyboardArrowLeft
-import androidx.compose.material.icons.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -49,8 +49,11 @@ import com.google.firebase.FirebaseApp
 import com.marsa.smarttracker.ui.theme.SmartTrackerTheme
 import com.marsa.smarttrackerhub.domain.MonthlySummary
 import com.marsa.smarttrackerhub.ui.components.DeltaChip
+import com.marsa.smarttrackerhub.ui.components.DropdownField
+import com.marsa.smarttrackerhub.ui.screens.chart.PurchaseCategoryChartData
+import com.marsa.smarttrackerhub.ui.screens.chart.PurchaseChartStatistics
 import com.marsa.smarttrackerhub.ui.screens.purchase.PurchaseBreakdownSection
-import com.marsa.smarttrackerhub.ui.screens.purchase.PurchaseItem
+import com.marsa.smarttrackerhub.utils.ShareUtil
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -71,34 +74,26 @@ fun SalesDetailScreen(
     val availableMonths by viewModel.availableMonths.collectAsState()
     val selectedMonthId by viewModel.selectedMonthId.collectAsState()
     val summary by viewModel.summary.collectAsState()
-    val purchaseItems by viewModel.purchaseItems.collectAsState()
+    val purchaseChart by viewModel.purchaseChart.collectAsState()
+    val purchaseStats by viewModel.purchaseStats.collectAsState()
     val isLoading by viewModel.isLoading.collectAsState()
     val comparison by viewModel.comparison.collectAsState()
-
-    val idx = availableMonths.indexOfFirst { it.id == selectedMonthId }
-    val canGoOlder = idx in 0 until (availableMonths.size - 1)
-    val canGoNewer = idx > 0
 
     val density = LocalDensity.current
     val widthPx = with(density) { LocalConfiguration.current.screenWidthDp.dp.roundToPx() }
 
     Scaffold(
+        // The NavHost's outer Scaffold already offsets content below the status bar, so
+        // this inner Scaffold/TopAppBar must NOT add the inset again (avoids a tall app bar
+        // with empty space on top).
+        contentWindowInsets = WindowInsets(0, 0, 0, 0),
         topBar = {
             TopAppBar(
                 title = {
-                    Column {
-                        Text(
-                            text = selectedMonthId,
-                            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)
-                        )
-                        if (shopName.isNotBlank()) {
-                            Text(
-                                text = shopName,
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-                    }
+                    Text(
+                        text = shopName.ifBlank { "Sales" },
+                        style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold)
+                    )
                 },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
@@ -109,44 +104,27 @@ fun SalesDetailScreen(
                     IconButton(onClick = { viewModel.refresh() }) {
                         Icon(Icons.Default.Refresh, contentDescription = "Refresh")
                     }
-                    IconButton(
-                        enabled = summary != null,
-                        onClick = {
-                            val activity = context as? ComponentActivity ?: return@IconButton
-                            val currentSummary = summary ?: return@IconButton
-                            val items = purchaseItems
-                            com.marsa.smarttrackerhub.utils.ShareUtil.shareComposableAsImage(
-                                activity = activity,
-                                widthPx = widthPx,
-                                fileName = "sales_${shopName.replace(" ", "_")}_${selectedMonthId.replace(" ", "_")}.png",
-                                shareTitle = "Share Sales Detail"
-                            ) {
-                                SmartTrackerTheme {
-                                    Surface {
-                                        Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
-                                            SalesSectionCard(currentSummary)
-                                            PurchaseSectionCard(items)
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    ) {
-                        Icon(Icons.Default.Share, contentDescription = "Share")
-                    }
                 },
+                windowInsets = WindowInsets(0, 0, 0, 0),
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent)
             )
         }
     ) { padding ->
         Column(modifier = Modifier.fillMaxSize().padding(padding)) {
-            MonthSwitcher(
-                monthLabel = selectedMonthId,
-                canGoOlder = canGoOlder,
-                canGoNewer = canGoNewer,
-                onOlder = { viewModel.goOlder() },
-                onNewer = { viewModel.goNewer() }
+            // Common month selector (matches the shop/region dropdown style).
+            DropdownField(
+                label = "Month",
+                selectedValue = selectedMonthId,
+                options = availableMonths.map { it.displayName },
+                onOptionSelected = { name ->
+                    availableMonths.firstOrNull { it.displayName == name }
+                        ?.let { viewModel.selectMonth(it.id) }
+                },
+                enabled = availableMonths.isNotEmpty(),
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
             )
+
+            Spacer(modifier = Modifier.height(12.dp))
 
             when {
                 isLoading && summary == null -> {
@@ -156,6 +134,7 @@ fun SalesDetailScreen(
                 }
 
                 summary != null -> {
+                    val currentSummary = summary!!
                     Column(
                         modifier = Modifier
                             .fillMaxSize()
@@ -163,8 +142,30 @@ fun SalesDetailScreen(
                             .padding(horizontal = 16.dp),
                         verticalArrangement = Arrangement.spacedBy(14.dp)
                     ) {
-                        SalesSectionCard(summary!!, comparison)
-                        PurchaseSectionCard(purchaseItems)
+                        SalesSectionCard(
+                            summary = currentSummary,
+                            comparison = comparison,
+                            onShare = {
+                                shareCard(
+                                    context = context,
+                                    widthPx = widthPx,
+                                    fileName = "sales_${shopName.replace(" ", "_")}_${selectedMonthId.replace(" ", "_")}.png",
+                                    shareTitle = "Share Sales"
+                                ) { SalesSectionCard(currentSummary, comparison) }
+                            }
+                        )
+                        PurchaseSectionCard(
+                            categories = purchaseChart,
+                            statistics = purchaseStats,
+                            onShare = {
+                                shareCard(
+                                    context = context,
+                                    widthPx = widthPx,
+                                    fileName = "purchase_${shopName.replace(" ", "_")}_${selectedMonthId.replace(" ", "_")}.png",
+                                    shareTitle = "Share Purchase"
+                                ) { PurchaseSectionCard(purchaseChart, purchaseStats) }
+                            }
+                        )
                         Spacer(modifier = Modifier.height(24.dp))
                     }
                 }
@@ -183,41 +184,38 @@ fun SalesDetailScreen(
     }
 }
 
-@Composable
-private fun MonthSwitcher(
-    monthLabel: String,
-    canGoOlder: Boolean,
-    canGoNewer: Boolean,
-    onOlder: () -> Unit,
-    onNewer: () -> Unit
+/** Renders [content] off-screen (themed) and shares it as an image. */
+private fun shareCard(
+    context: android.content.Context,
+    widthPx: Int,
+    fileName: String,
+    shareTitle: String,
+    content: @Composable () -> Unit
 ) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 8.dp, vertical = 4.dp),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically
+    val activity = context as? ComponentActivity ?: return
+    ShareUtil.shareComposableAsImage(
+        activity = activity,
+        widthPx = widthPx,
+        fileName = fileName,
+        shareTitle = shareTitle
     ) {
-        IconButton(onClick = onOlder, enabled = canGoOlder) {
-            Icon(
-                Icons.Default.KeyboardArrowLeft, contentDescription = "Older month",
-                tint = if (canGoOlder) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.outlineVariant
-            )
-        }
-        Text(monthLabel, style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold))
-        IconButton(onClick = onNewer, enabled = canGoNewer) {
-            Icon(
-                Icons.Default.KeyboardArrowRight, contentDescription = "Newer month",
-                tint = if (canGoNewer) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.outlineVariant
-            )
+        SmartTrackerTheme {
+            Surface {
+                Box(modifier = Modifier.padding(16.dp)) { content() }
+            }
         }
     }
 }
 
 @Composable
-private fun SalesSectionCard(summary: MonthlySummary, comparison: SalesComparison? = null) {
+private fun SalesSectionCard(
+    summary: MonthlySummary,
+    comparison: SalesComparison? = null,
+    onShare: (() -> Unit)? = null
+) {
     SectionShell(
         title = "Sales",
+        onShare = onShare,
         trailing = {
             val delta = comparison?.totalSalesDeltaPct
             if (delta != null) {
@@ -236,37 +234,59 @@ private fun SalesSectionCard(summary: MonthlySummary, comparison: SalesCompariso
 }
 
 @Composable
-private fun PurchaseSectionCard(items: List<PurchaseItem>) {
-    SectionShell("Purchase") { PurchaseBreakdownSection(purchases = items) }
+private fun PurchaseSectionCard(
+    categories: List<PurchaseCategoryChartData>,
+    statistics: PurchaseChartStatistics?,
+    onShare: (() -> Unit)? = null
+) {
+    SectionShell(title = "Purchase", onShare = onShare) {
+        PurchaseBreakdownSection(categories = categories, statistics = statistics)
+    }
 }
 
 @Composable
 private fun SectionShell(
     title: String,
+    onShare: (() -> Unit)? = null,
     trailing: (@Composable () -> Unit)? = null,
     content: @Composable () -> Unit
 ) {
+    val colors = MaterialTheme.colorScheme
+    // Chrome matches the home cards: header row (16dp) → full-width divider → padded content.
     Card(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        colors = CardDefaults.cardColors(containerColor = colors.surface),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
-        Column(modifier = Modifier.padding(16.dp)) {
+        Column {
             Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
+                modifier = Modifier.fillMaxWidth().padding(16.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
                     text = title,
-                    style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
-                    color = MaterialTheme.colorScheme.onSurface
+                    style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold),
+                    color = colors.onSurface,
+                    modifier = Modifier.weight(1f)
                 )
                 trailing?.invoke()
+                if (onShare != null) {
+                    Spacer(modifier = Modifier.width(4.dp))
+                    IconButton(onClick = onShare) {
+                        Icon(
+                            imageVector = Icons.Default.Share,
+                            contentDescription = "Share $title",
+                            tint = colors.primary,
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
+                }
             }
-            Spacer(modifier = Modifier.height(10.dp))
-            content()
+            HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp), color = colors.outlineVariant)
+            Spacer(modifier = Modifier.height(12.dp))
+            Column(modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 16.dp)) {
+                content()
+            }
         }
     }
 }

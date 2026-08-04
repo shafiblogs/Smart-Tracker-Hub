@@ -4,12 +4,15 @@ import android.app.Application
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -26,11 +29,17 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.google.firebase.FirebaseApp
 import com.marsa.smarttrackerhub.domain.AccessCode
+import com.marsa.smarttracker.ui.theme.semanticStatusColors
+import com.marsa.smarttrackerhub.domain.MonthlySummary
+import com.marsa.smarttrackerhub.ui.screens.chart.salesMarginColor
+import com.marsa.smarttrackerhub.utils.formatMoney
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -55,6 +64,7 @@ fun SaleScreen(
     val availableMonths by viewModel.availableMonths.collectAsState()
     val selectedShop by viewModel.selectedShop.collectAsState()
     val expanded by viewModel.expanded.collectAsState()
+    val summariesCache by viewModel.summariesCache.collectAsState()
 
     Column(
         modifier = Modifier
@@ -123,13 +133,73 @@ fun SaleScreen(
                             onClick = {
                                 val sid = selectedShop?.shopId ?: return@MonthListCard
                                 onMonthClick(sid, monthItem.id, selectedShop?.name ?: "")
-                            }
+                            },
+                            details = { SaleMonthMetrics(summariesCache[monthItem.id]) }
                         )
                     }
                     item { Spacer(modifier = Modifier.height(24.dp)) }
                 }
             }
         }
+    }
+}
+
+/**
+ * Per-month sale row detail — an aligned two-column grid:
+ *   Sale  Đx        Purchase  Đy     (raw amounts, neutral)
+ *   GP    Đz        Margin    w%     (GP colored by sign; margin by salesMarginColor)
+ * Shows a placeholder while the summary is still loading.
+ */
+@Composable
+private fun SaleMonthMetrics(summary: MonthlySummary?) {
+    val colors = MaterialTheme.colorScheme
+    if (summary == null) {
+        Text(
+            text = "—",
+            style = MaterialTheme.typography.bodySmall,
+            color = colors.onSurfaceVariant
+        )
+        return
+    }
+
+    val totalSales = summary.totalSales
+    val hasSales = totalSales > 0.0
+    val grossProfit = totalSales - summary.totalPurchases
+    val marginPct = if (hasSales) grossProfit / totalSales * 100 else 0.0
+    val marginColor = if (hasSales) salesMarginColor(marginPct, colors.error) else colors.onSurfaceVariant
+    val status = semanticStatusColors()
+    val gpColor = if (grossProfit >= 0) status.success else status.danger
+
+    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        Row(modifier = Modifier.fillMaxWidth()) {
+            MetricCell("Sale", formatMoney(totalSales, 0), colors.onSurface)
+            MetricCell("Purchase", formatMoney(summary.totalPurchases, 0), colors.onSurface)
+        }
+        Row(modifier = Modifier.fillMaxWidth()) {
+            MetricCell("GP", formatMoney(grossProfit, 0), gpColor)
+            MetricCell("Margin", if (hasSales) "${"%.0f".format(marginPct)}%" else "—", marginColor)
+        }
+    }
+}
+
+/** One label+value pair, taking equal width so the two columns line up across rows. */
+@Composable
+private fun RowScope.MetricCell(label: String, value: String, valueColor: Color) {
+    Row(
+        modifier = Modifier.weight(1f),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(
+            text = label,
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        Spacer(modifier = Modifier.width(6.dp))
+        Text(
+            text = value,
+            style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold),
+            color = valueColor
+        )
     }
 }
 

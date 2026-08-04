@@ -24,3 +24,10 @@ fun purchaseAchievementColor(percentage: Double, error: Color): Color = when {
     percentage >= 75 -> ChartWarningAmber
     else -> error
 }
+
+/** Sales margin health (matches home UnifiedStatisticsCard): >=30 green, 10-30 amber, else error. */
+fun salesMarginColor(percentage: Double, error: Color): Color = when {
+    percentage >= 30 -> ChartSuccessGreen
+    percentage >= 10 -> ChartWarningAmber
+    else -> error
+}

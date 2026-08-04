@@ -31,7 +31,8 @@ fun MonthListCard(
     monthLabel: String,
     shopName: String,
     onClick: () -> Unit,
-    subtitle: String? = null
+    subtitle: String? = null,
+    details: (@Composable () -> Unit)? = null
 ) {
     Card(
         modifier = Modifier
@@ -53,14 +54,19 @@ fun MonthListCard(
                     style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
                     color = MaterialTheme.colorScheme.primary
                 )
-                val sub = subtitle ?: shopName
-                if (sub.isNotBlank()) {
-                    Spacer(modifier = Modifier.height(2.dp))
-                    Text(
-                        text = sub,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
+                if (details != null) {
+                    Spacer(modifier = Modifier.height(6.dp))
+                    details()
+                } else {
+                    val sub = subtitle ?: shopName
+                    if (sub.isNotBlank()) {
+                        Spacer(modifier = Modifier.height(2.dp))
+                        Text(
+                            text = sub,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
                 }
             }
             Icon(

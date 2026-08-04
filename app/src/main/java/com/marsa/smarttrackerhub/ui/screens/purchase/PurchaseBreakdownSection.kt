@@ -20,18 +20,26 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.marsa.smarttrackerhub.ui.screens.chart.PurchaseCategoryChartData
+import com.marsa.smarttrackerhub.ui.screens.chart.PurchaseChartStatistics
+import com.marsa.smarttrackerhub.ui.screens.chart.purchaseAchievementColor
 import com.marsa.smarttrackerhub.utils.formatMoney
 import kotlin.math.roundToInt
 
 /**
- * Category-wise purchase breakdown as a share-of-total visual: headline tiles (Total Purchase,
- * Categories) then one row per category with amount + a proportion bar + % of month spend.
- * Reused by the Sales month-detail screen (purchase section).
+ * Category-wise purchase breakdown as an actual-vs-target comparison (same model as the home
+ * screen): headline tiles (Total Purchase, Budget, Achieved%), an overall progress bar, then one
+ * row per category with `actual / target`, a progress bar (fraction = actual/target) and the
+ * achievement %. Colour follows `purchaseAchievementColor` (green ≥90 / amber ≥75 / red).
+ * Target = previous month's category amount × 1.10 (floored); primary/neutral when no target.
  */
 @Composable
-fun PurchaseBreakdownSection(purchases: List<PurchaseItem>) {
+fun PurchaseBreakdownSection(
+    categories: List<PurchaseCategoryChartData>,
+    statistics: PurchaseChartStatistics?
+) {
     val colors = MaterialTheme.colorScheme
-    if (purchases.isEmpty()) {
+    if (categories.isEmpty()) {
         Text(
             text = "No purchase data for this month",
             style = MaterialTheme.typography.bodyMedium,
@@ -41,21 +49,41 @@ fun PurchaseBreakdownSection(purchases: List<PurchaseItem>) {
         return
     }
 
-    val total = purchases.sumOf { it.totalAmount }
-    val rows = purchases.sortedByDescending { it.totalAmount }
+    val totalActual = statistics?.totalActual ?: categories.sumOf { it.actual }
+    val totalTarget = statistics?.totalTarget ?: 0.0
+    val hasBudget = totalTarget > 0.0
+    val overallPct = statistics?.achievementPercentage ?: 0.0
+    val overallColor = if (hasBudget) purchaseAchievementColor(overallPct, colors.error) else colors.onSurface
 
     Column {
+        // ── Headline tiles ────────────────────────────────────────────────
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            PurchaseTile("Total Purchase", formatMoney(total, 0), colors.onSurface, Modifier.weight(1f))
-            PurchaseTile("Categories", purchases.size.toString(), colors.onSurface, Modifier.weight(1f))
+            PurchaseTile("Total Purchase", formatMoney(totalActual, 0), colors.onSurface, Modifier.weight(1f))
+            PurchaseTile("Budget", formatMoney(totalTarget, 0), colors.onSurface, Modifier.weight(1f))
+            PurchaseTile(
+                "Achieved",
+                if (hasBudget) "${overallPct.roundToInt()}%" else "—",
+                overallColor,
+                Modifier.weight(1f)
+            )
+        }
+
+        // ── Overall vs-budget progress ────────────────────────────────────
+        if (hasBudget) {
+            Spacer(modifier = Modifier.height(10.dp))
+            ProgressBar((totalActual / totalTarget).toFloat(), overallColor, modifier = Modifier.fillMaxWidth())
         }
 
         Spacer(modifier = Modifier.height(12.dp))
         HorizontalDivider(color = colors.outlineVariant.copy(alpha = 0.6f))
         Spacer(modifier = Modifier.height(6.dp))
 
-        rows.forEach { item ->
-            val fraction = if (total > 0) (item.totalAmount / total).toFloat().coerceIn(0f, 1f) else 0f
+        // ── Per-category actual vs target ─────────────────────────────────
+        categories.forEach { c ->
+            val barColor = if (!c.hasTarget) colors.primary
+            else purchaseAchievementColor(c.achievementPercentage, colors.error)
+            val fraction = if (c.hasTarget && c.target > 0) (c.actual / c.target).toFloat() else 1f
+
             Column(modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp)) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -63,41 +91,45 @@ fun PurchaseBreakdownSection(purchases: List<PurchaseItem>) {
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        text = item.categoryName,
+                        text = c.categoryName,
                         style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Medium),
                         color = colors.onSurface,
                         modifier = Modifier.weight(1f)
                     )
                     Text(
-                        text = formatMoney(item.totalAmount, 0),
-                        style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold),
-                        color = colors.onSurface
+                        text = "${formatMoney(c.actual, 0)} / ${formatMoney(c.target, 0)}",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = colors.onSurfaceVariant
                     )
                 }
                 Spacer(modifier = Modifier.height(6.dp))
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Box(
-                        modifier = Modifier
-                            .weight(1f)
-                            .height(6.dp)
-                            .background(colors.outlineVariant.copy(alpha = 0.4f), RoundedCornerShape(3.dp))
-                    ) {
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth(fraction)
-                                .height(6.dp)
-                                .background(colors.primary, RoundedCornerShape(3.dp))
-                        )
-                    }
+                    ProgressBar(fraction, barColor, modifier = Modifier.weight(1f))
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(
-                        text = "${(fraction * 100).roundToInt()}%",
+                        text = if (c.hasTarget) "${c.achievementPercentage.roundToInt()}%" else "—",
                         style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.SemiBold),
-                        color = colors.onSurfaceVariant
+                        color = barColor
                     )
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun ProgressBar(fraction: Float, color: Color, modifier: Modifier = Modifier) {
+    Box(
+        modifier = modifier
+            .height(6.dp)
+            .background(MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f), RoundedCornerShape(3.dp))
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth(fraction.coerceIn(0f, 1f))
+                .height(6.dp)
+                .background(color, RoundedCornerShape(3.dp))
+        )
     }
 }
 

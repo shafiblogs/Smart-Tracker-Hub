@@ -140,11 +140,53 @@ class SaleScreenViewModel(
                     .sortedByDescending { it.timestamp }
 
                 _availableMonths.value = monthsList
+                if (monthsList.isNotEmpty()) {
+                    loadAllSummaries(shopId, monthsList.map { it.id })
+                }
                 if (_selectedMonthId.value == null && monthsList.isNotEmpty()) {
                     selectMonth(monthsList.first().id)
                 }
                 Log.d("SaleScreenViewModel", "Loaded ${monthsList.size} month IDs for $shopId")
             }
+    }
+
+    /**
+     * Bulk-load every listed month's summary so the list can show per-month metrics
+     * (total sale + achievement). Room-first; Firestore fetch only for months not yet cached.
+     * Recomputes targets once over the full history, then publishes the complete cache map.
+     */
+    private fun loadAllSummaries(shopId: String, monthIds: List<String>) {
+        if (monthIds.isEmpty()) return
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                val cachedIds = summaryDao.getAllSummariesForShop(shopId).map { it.monthId }.toSet()
+                monthIds.filterNot { it in cachedIds }.forEach { monthId ->
+                    runCatching { fetchAndCacheSummaryDoc(shopId, monthId) }
+                        .onFailure { Log.e("SaleScreenViewModel", "bulk fetch failed: $monthId", it) }
+                }
+                recalculateTargetSales(shopId)
+                val all = summaryDao.getAllSummariesForShop(shopId)
+                _summariesCache.value = all.associate { it.monthId to it.toDomain() }
+            } catch (e: Exception) {
+                Log.e("SaleScreenViewModel", "Error bulk-loading summaries for $shopId", e)
+            }
+        }
+    }
+
+    /** One-shot Firestore fetch of a single month's summary doc, persisted to Room. */
+    private suspend fun fetchAndCacheSummaryDoc(shopId: String, monthId: String) {
+        val summary = suspendCoroutine<MonthlySummary?> { cont ->
+            trackerFireStore.collection("summary").document(shopId)
+                .collection("months").document(monthId).get()
+                .addOnSuccessListener { doc ->
+                    cont.resume(
+                        doc.toObject(MonthlySummary::class.java)
+                            ?.let { if (it.lastUpdated == 0L) it.copy(lastUpdated = System.currentTimeMillis()) else it }
+                    )
+                }
+                .addOnFailureListener { cont.resume(null) }
+        }
+        if (summary != null) summaryDao.insertSummary(summary.toEntity(shopId, monthId))
     }
 
     private fun loadSummaryForMonth(shopId: String, monthId: String) {
