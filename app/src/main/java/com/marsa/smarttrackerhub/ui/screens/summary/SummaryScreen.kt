@@ -144,8 +144,12 @@ fun SummaryScreen(
 /**
  * Per-month account row detail — an aligned two-column grid (parity with the Sales list).
  * Accounts are a cash-flow view:
- *   In Đx   Out Đy   (in = collection; out = purchase + expense)
- *   GP Đz        Net Đw        (gross + net profit, sign-coloured)
+ *   In Đx   Out Đy   (in = collection; out = actual cash disbursed)
+ *   GP Đz   Net Đw   (gross + net profit, sign-coloured)
+ *
+ * Out is derived from the cash-balance identity — Out = openingCash + In − closingCash — so it
+ * reflects the *real* cash that left (excludes credit purchases, includes outstanding settlements)
+ * and `In − Out` always equals the month's cash-balance movement.
  * Shows a placeholder while the summary is still loading.
  */
 @Composable
@@ -157,7 +161,7 @@ private fun AccountMonthMetrics(summary: AccountSummary?) {
     }
     val status = semanticStatusColors()
     val cashIn = summary.totalCollection
-    val cashOut = summary.totalPurchases + summary.totalExpenses
+    val cashOut = summary.openingCashBalance + summary.totalCollection - summary.cashBalance
     val gpColor = if (summary.grossProfit >= 0) status.success else status.danger
     val netColor = if (summary.netProfit >= 0) status.success else status.danger
 
