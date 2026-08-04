@@ -49,6 +49,7 @@ import com.google.firebase.FirebaseApp
 import com.marsa.smarttracker.ui.theme.SmartTrackerTheme
 import com.marsa.smarttrackerhub.domain.MonthlySummary
 import com.marsa.smarttrackerhub.ui.components.DeltaChip
+import com.marsa.smarttrackerhub.ui.components.DetailSectionCard
 import com.marsa.smarttrackerhub.ui.components.DropdownField
 import com.marsa.smarttrackerhub.ui.screens.chart.PurchaseCategoryChartData
 import com.marsa.smarttrackerhub.ui.screens.chart.PurchaseChartStatistics
@@ -213,7 +214,7 @@ private fun SalesSectionCard(
     comparison: SalesComparison? = null,
     onShare: (() -> Unit)? = null
 ) {
-    SectionShell(
+    DetailSectionCard(
         title = "Sales",
         onShare = onShare,
         trailing = {
@@ -239,54 +240,7 @@ private fun PurchaseSectionCard(
     statistics: PurchaseChartStatistics?,
     onShare: (() -> Unit)? = null
 ) {
-    SectionShell(title = "Purchase", onShare = onShare) {
+    DetailSectionCard(title = "Purchase", onShare = onShare) {
         PurchaseBreakdownSection(categories = categories, statistics = statistics)
-    }
-}
-
-@Composable
-private fun SectionShell(
-    title: String,
-    onShare: (() -> Unit)? = null,
-    trailing: (@Composable () -> Unit)? = null,
-    content: @Composable () -> Unit
-) {
-    val colors = MaterialTheme.colorScheme
-    // Chrome matches the home cards: header row (16dp) → full-width divider → padded content.
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(containerColor = colors.surface),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-    ) {
-        Column {
-            Row(
-                modifier = Modifier.fillMaxWidth().padding(16.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = title,
-                    style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold),
-                    color = colors.onSurface,
-                    modifier = Modifier.weight(1f)
-                )
-                trailing?.invoke()
-                if (onShare != null) {
-                    Spacer(modifier = Modifier.width(4.dp))
-                    IconButton(onClick = onShare) {
-                        Icon(
-                            imageVector = Icons.Default.Share,
-                            contentDescription = "Share $title",
-                            tint = colors.primary,
-                            modifier = Modifier.size(20.dp)
-                        )
-                    }
-                }
-            }
-            HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp), color = colors.outlineVariant)
-            Spacer(modifier = Modifier.height(12.dp))
-            Column(modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 16.dp)) {
-                content()
-            }
-        }
     }
 }

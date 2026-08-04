@@ -14,16 +14,10 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.KeyboardArrowLeft
-import androidx.compose.material.icons.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.Refresh
-import androidx.compose.material.icons.filled.Share
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -50,6 +44,8 @@ import com.google.firebase.FirebaseApp
 import com.marsa.smarttracker.ui.theme.SmartTrackerTheme
 import com.marsa.smarttrackerhub.domain.AccountSummary
 import com.marsa.smarttrackerhub.ui.components.DeltaChip
+import com.marsa.smarttrackerhub.ui.components.DetailSectionCard
+import com.marsa.smarttrackerhub.ui.components.DropdownField
 import com.marsa.smarttrackerhub.utils.ShareUtil
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -74,10 +70,6 @@ fun AccountDetailScreen(
     val isLoading by viewModel.isLoading.collectAsState()
     val comparison by viewModel.comparison.collectAsState()
 
-    val idx = availableMonths.indexOfFirst { it.id == selectedMonthId }
-    val canGoOlder = idx in 0 until (availableMonths.size - 1)
-    val canGoNewer = idx > 0
-
     val density = LocalDensity.current
     val widthPx = with(density) { LocalConfiguration.current.screenWidthDp.dp.roundToPx() }
 
@@ -87,19 +79,10 @@ fun AccountDetailScreen(
         topBar = {
             TopAppBar(
                 title = {
-                    Column {
-                        Text(
-                            text = selectedMonthId,
-                            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)
-                        )
-                        if (shopName.isNotBlank()) {
-                            Text(
-                                text = shopName,
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-                    }
+                    Text(
+                        text = shopName.ifBlank { "Account" },
+                        style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold)
+                    )
                 },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
@@ -110,29 +93,6 @@ fun AccountDetailScreen(
                     IconButton(onClick = { viewModel.refresh() }) {
                         Icon(Icons.Default.Refresh, contentDescription = "Refresh")
                     }
-                    IconButton(
-                        enabled = summary != null,
-                        onClick = {
-                            val activity = context as? ComponentActivity ?: return@IconButton
-                            val currentSummary = summary ?: return@IconButton
-                            ShareUtil.shareComposableAsImage(
-                                activity = activity,
-                                widthPx = widthPx,
-                                fileName = "account_${shopName.replace(" ", "_")}_${selectedMonthId.replace(" ", "_")}.png",
-                                shareTitle = "Share Account Detail"
-                            ) {
-                                SmartTrackerTheme {
-                                    Surface {
-                                        Column(modifier = Modifier.padding(16.dp)) {
-                                            AccountSectionCard(currentSummary)
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    ) {
-                        Icon(Icons.Default.Share, contentDescription = "Share")
-                    }
                 },
                 windowInsets = WindowInsets(0, 0, 0, 0),
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent)
@@ -140,13 +100,19 @@ fun AccountDetailScreen(
         }
     ) { padding ->
         Column(modifier = Modifier.fillMaxSize().padding(padding)) {
-            MonthSwitcher(
-                monthLabel = selectedMonthId,
-                canGoOlder = canGoOlder,
-                canGoNewer = canGoNewer,
-                onOlder = { viewModel.goOlder() },
-                onNewer = { viewModel.goNewer() }
+            DropdownField(
+                label = "Month",
+                selectedValue = selectedMonthId,
+                options = availableMonths.map { it.displayName },
+                onOptionSelected = { name ->
+                    availableMonths.firstOrNull { it.displayName == name }
+                        ?.let { viewModel.selectMonth(it.id) }
+                },
+                enabled = availableMonths.isNotEmpty(),
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
             )
+
+            Spacer(modifier = Modifier.height(12.dp))
 
             when {
                 isLoading && summary == null -> {
@@ -156,6 +122,7 @@ fun AccountDetailScreen(
                 }
 
                 summary != null -> {
+                    val currentSummary = summary!!
                     Column(
                         modifier = Modifier
                             .fillMaxSize()
@@ -163,7 +130,27 @@ fun AccountDetailScreen(
                             .padding(horizontal = 16.dp),
                         verticalArrangement = Arrangement.spacedBy(14.dp)
                     ) {
-                        AccountSectionCard(summary!!, comparison)
+                        SummaryCard(
+                            summary = currentSummary,
+                            comparison = comparison,
+                            onShare = {
+                                shareCard(
+                                    context, widthPx,
+                                    "account_summary_${shopName.replace(" ", "_")}_${selectedMonthId.replace(" ", "_")}.png",
+                                    "Share Account Summary"
+                                ) { SummaryCard(currentSummary, comparison) }
+                            }
+                        )
+                        StatementCard(
+                            summary = currentSummary,
+                            onShare = {
+                                shareCard(
+                                    context, widthPx,
+                                    "account_statement_${shopName.replace(" ", "_")}_${selectedMonthId.replace(" ", "_")}.png",
+                                    "Share Account Statement"
+                                ) { StatementCard(currentSummary) }
+                            }
+                        )
                         Spacer(modifier = Modifier.height(24.dp))
                     }
                 }
@@ -182,60 +169,44 @@ fun AccountDetailScreen(
     }
 }
 
-@Composable
-private fun MonthSwitcher(
-    monthLabel: String,
-    canGoOlder: Boolean,
-    canGoNewer: Boolean,
-    onOlder: () -> Unit,
-    onNewer: () -> Unit
+/** Renders [content] off-screen (themed) and shares it as an image. */
+private fun shareCard(
+    context: android.content.Context,
+    widthPx: Int,
+    fileName: String,
+    shareTitle: String,
+    content: @Composable () -> Unit
 ) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 8.dp, vertical = 4.dp),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically
+    val activity = context as? ComponentActivity ?: return
+    ShareUtil.shareComposableAsImage(
+        activity = activity,
+        widthPx = widthPx,
+        fileName = fileName,
+        shareTitle = shareTitle
     ) {
-        IconButton(onClick = onOlder, enabled = canGoOlder) {
-            Icon(
-                Icons.Default.KeyboardArrowLeft, contentDescription = "Older month",
-                tint = if (canGoOlder) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.outlineVariant
-            )
-        }
-        Text(monthLabel, style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold))
-        IconButton(onClick = onNewer, enabled = canGoNewer) {
-            Icon(
-                Icons.Default.KeyboardArrowRight, contentDescription = "Newer month",
-                tint = if (canGoNewer) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.outlineVariant
-            )
+        SmartTrackerTheme {
+            Surface {
+                Box(modifier = Modifier.padding(16.dp)) { content() }
+            }
         }
     }
 }
 
 @Composable
-private fun AccountSectionCard(summary: AccountSummary, comparison: AccountComparison? = null) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-    ) {
-        Column(modifier = Modifier.padding(16.dp)) {
-            Text(
-                text = "Account",
-                style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
-                color = MaterialTheme.colorScheme.onSurface
-            )
-
+private fun SummaryCard(
+    summary: AccountSummary,
+    comparison: AccountComparison? = null,
+    onShare: (() -> Unit)? = null
+) {
+    DetailSectionCard(title = "Summary", onShare = onShare) {
+        Column {
             val np = comparison?.netProfitDeltaPct
             val cb = comparison?.cashBalanceDeltaPct
             if (comparison != null && (np != null || cb != null)) {
-                Spacer(modifier = Modifier.height(6.dp))
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    DeltaChip(label = "Net Profit", deltaPercent = np)
+                    DeltaChip(deltaPercent = np, label = "Net Profit")
                     Spacer(modifier = Modifier.width(8.dp))
-                    DeltaChip(label = "Cash", deltaPercent = cb)
+                    DeltaChip(deltaPercent = cb, label = "Cash")
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(
                         text = "vs ${comparison.referenceLabel}",
@@ -243,10 +214,16 @@ private fun AccountSectionCard(summary: AccountSummary, comparison: AccountCompa
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
+                Spacer(modifier = Modifier.height(12.dp))
             }
-
-            Spacer(modifier = Modifier.height(10.dp))
-            AccountSummaryContent(summary = summary)
+            AccountProfitTiles(summary)
         }
+    }
+}
+
+@Composable
+private fun StatementCard(summary: AccountSummary, onShare: (() -> Unit)? = null) {
+    DetailSectionCard(title = "Statement", onShare = onShare) {
+        AccountBreakdown(summary)
     }
 }

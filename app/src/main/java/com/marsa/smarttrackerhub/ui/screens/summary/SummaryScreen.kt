@@ -4,6 +4,7 @@ import android.app.Application
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -30,8 +31,12 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.google.firebase.FirebaseApp
+import com.marsa.smarttracker.ui.theme.semanticStatusColors
 import com.marsa.smarttrackerhub.domain.AccessCode
+import com.marsa.smarttrackerhub.domain.AccountSummary
+import com.marsa.smarttrackerhub.ui.components.MetricCell
 import com.marsa.smarttrackerhub.ui.screens.sale.MonthListCard
+import com.marsa.smarttrackerhub.utils.formatMoney
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -56,6 +61,7 @@ fun SummaryScreen(
     val availableMonths by viewModel.availableMonths.collectAsState()
     val selectedShop by viewModel.selectedShop.collectAsState()
     val expanded by viewModel.expanded.collectAsState()
+    val summariesCache by viewModel.summariesCache.collectAsState()
 
     Column(
         modifier = Modifier
@@ -124,12 +130,45 @@ fun SummaryScreen(
                             onClick = {
                                 val sid = selectedShop?.shopId ?: return@MonthListCard
                                 onMonthClick(sid, monthItem.id, selectedShop?.name ?: "")
-                            }
+                            },
+                            details = { AccountMonthMetrics(summariesCache[monthItem.id]) }
                         )
                     }
                     item { Spacer(modifier = Modifier.height(24.dp)) }
                 }
             }
+        }
+    }
+}
+
+/**
+ * Per-month account row detail — an aligned two-column grid (parity with the Sales list).
+ * Accounts are a cash-flow view:
+ *   In Đx   Out Đy   (in = collection; out = purchase + expense)
+ *   GP Đz        Net Đw        (gross + net profit, sign-coloured)
+ * Shows a placeholder while the summary is still loading.
+ */
+@Composable
+private fun AccountMonthMetrics(summary: AccountSummary?) {
+    val colors = MaterialTheme.colorScheme
+    if (summary == null) {
+        Text("—", style = MaterialTheme.typography.bodySmall, color = colors.onSurfaceVariant)
+        return
+    }
+    val status = semanticStatusColors()
+    val cashIn = summary.totalCollection
+    val cashOut = summary.totalPurchases + summary.totalExpenses
+    val gpColor = if (summary.grossProfit >= 0) status.success else status.danger
+    val netColor = if (summary.netProfit >= 0) status.success else status.danger
+
+    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        Row(modifier = Modifier.fillMaxWidth()) {
+            MetricCell("In", formatMoney(cashIn, 0), colors.primary)
+            MetricCell("Out", formatMoney(cashOut, 0), colors.error)
+        }
+        Row(modifier = Modifier.fillMaxWidth()) {
+            MetricCell("GP", formatMoney(summary.grossProfit, 0), gpColor)
+            MetricCell("Net", formatMoney(summary.netProfit, 0), netColor)
         }
     }
 }

@@ -20,6 +20,8 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlin.coroutines.resume
+import kotlin.coroutines.suspendCoroutine
 
 class SummaryViewModel(
     application: Application,
@@ -129,11 +131,51 @@ class SummaryViewModel(
                     .sortedByDescending { it.timestamp }
 
                 _availableMonths.value = monthsList
+                if (monthsList.isNotEmpty()) {
+                    loadAllSummaries(shopId, monthsList.map { it.id })
+                }
                 if (_selectedMonthId.value == null && monthsList.isNotEmpty()) {
                     selectMonth(monthsList.first().id)
                 }
                 Log.d("SummaryViewModel", "Loaded ${monthsList.size} months for $shopId")
             }
+    }
+
+    /**
+     * Bulk-load every listed month's account summary so the list can show per-month metrics
+     * (collection / cash / net profit). Room-first; Firestore fetch only for uncached months.
+     */
+    private fun loadAllSummaries(shopId: String, monthIds: List<String>) {
+        if (monthIds.isEmpty()) return
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                val cachedIds = accountSummaryDao.getAllAccountSummariesForShop(shopId).map { it.monthId }.toSet()
+                monthIds.filterNot { it in cachedIds }.forEach { monthId ->
+                    runCatching { fetchAndCacheAccountDoc(shopId, monthId) }
+                        .onFailure { Log.e("SummaryViewModel", "bulk fetch failed: $monthId", it) }
+                }
+                val all = accountSummaryDao.getAllAccountSummariesForShop(shopId)
+                _summariesCache.value = all.associate { it.monthId to it.toDomain() }
+            } catch (e: Exception) {
+                Log.e("SummaryViewModel", "Error bulk-loading summaries for $shopId", e)
+            }
+        }
+    }
+
+    /** One-shot Firestore fetch of a single month's account summary doc, persisted to Room. */
+    private suspend fun fetchAndCacheAccountDoc(shopId: String, monthId: String) {
+        val summary = suspendCoroutine<AccountSummary?> { cont ->
+            firestore.collection("summary").document(shopId)
+                .collection("months").document(monthId).get()
+                .addOnSuccessListener { doc ->
+                    cont.resume(
+                        doc.toObject(AccountSummary::class.java)
+                            ?.let { if (it.lastUpdated == 0L) it.copy(lastUpdated = System.currentTimeMillis()) else it }
+                    )
+                }
+                .addOnFailureListener { cont.resume(null) }
+        }
+        if (summary != null) accountSummaryDao.insertAccountSummary(summary.toEntity(shopId, monthId))
     }
 
     /**

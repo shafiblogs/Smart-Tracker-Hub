@@ -27,27 +27,27 @@ import com.marsa.smarttrackerhub.utils.formatMoney
  * Moro Hub
  * muhammed.poyil@morohub.com
  */
+
+/** Headline tiles: Cash Balance + Gross/Net Profit (sign-coloured). */
 @Composable
-fun AccountSummaryContent(summary: AccountSummary) {
+fun AccountProfitTiles(summary: AccountSummary) {
     val colors = MaterialTheme.colorScheme
     val status = semanticStatusColors()
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        AccountTile("Cash Balance", formatMoney(summary.cashBalance, 0), colors.onSurface, Modifier.weight(1f))
+        ProfitTile("Gross Profit", summary.grossProfit, summary.grossMargin, status.success, status.danger, Modifier.weight(1f))
+        ProfitTile("Net Profit", summary.netProfit, summary.netProfitMargin, status.success, status.danger, Modifier.weight(1f))
+    }
+}
 
+/** Opening→closing balances + the collection/purchase/expense/outstanding breakdown. */
+@Composable
+fun AccountBreakdown(summary: AccountSummary) {
+    val colors = MaterialTheme.colorScheme
     Column {
-        // ── Headline tiles ────────────────────────────────────────────────
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            AccountTile("Cash Balance", formatMoney(summary.cashBalance, 0), colors.onSurface, Modifier.weight(1f))
-            ProfitTile("Gross Profit", summary.grossProfit, summary.grossMargin, status.success, status.danger, Modifier.weight(1f))
-            ProfitTile("Net Profit", summary.netProfit, summary.netProfitMargin, status.success, status.danger, Modifier.weight(1f))
-        }
-
-        Spacer(modifier = Modifier.height(14.dp))
-        HorizontalDivider(color = colors.outlineVariant.copy(alpha = 0.6f))
-        Spacer(modifier = Modifier.height(10.dp))
-
-        // ── Balances (opening → closing) ──────────────────────────────────
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
             Text("Balances", style = MaterialTheme.typography.labelMedium,
                 color = colors.onSurfaceVariant, modifier = Modifier.weight(1f))
@@ -64,11 +64,23 @@ fun AccountSummaryContent(summary: AccountSummary) {
         HorizontalDivider(color = colors.outlineVariant.copy(alpha = 0.6f))
         Spacer(modifier = Modifier.height(4.dp))
 
-        // ── Details (clean labels) ────────────────────────────────────────
         InfoRow("Total Sale", summary.totalCollection, color = colors.primary)
         InfoRow("Total Purchase", summary.totalPurchases, color = colors.error)
         InfoRow("Total Expense", summary.totalExpenses, color = colors.error)
         InfoRow("Outstanding Payment", summary.outstandingPayments, color = colors.onSurface)
+    }
+}
+
+/** Full content (tiles + breakdown) — kept for any single-card use. */
+@Composable
+fun AccountSummaryContent(summary: AccountSummary) {
+    val colors = MaterialTheme.colorScheme
+    Column {
+        AccountProfitTiles(summary)
+        Spacer(modifier = Modifier.height(14.dp))
+        HorizontalDivider(color = colors.outlineVariant.copy(alpha = 0.6f))
+        Spacer(modifier = Modifier.height(10.dp))
+        AccountBreakdown(summary)
     }
 }
 

@@ -38,6 +38,7 @@ import com.google.firebase.FirebaseApp
 import com.marsa.smarttrackerhub.domain.AccessCode
 import com.marsa.smarttracker.ui.theme.semanticStatusColors
 import com.marsa.smarttrackerhub.domain.MonthlySummary
+import com.marsa.smarttrackerhub.ui.components.MetricCell
 import com.marsa.smarttrackerhub.ui.screens.chart.salesMarginColor
 import com.marsa.smarttrackerhub.utils.formatMoney
 
@@ -179,27 +180,6 @@ private fun SaleMonthMetrics(summary: MonthlySummary?) {
             MetricCell("GP", formatMoney(grossProfit, 0), gpColor)
             MetricCell("Margin", if (hasSales) "${"%.0f".format(marginPct)}%" else "—", marginColor)
         }
-    }
-}
-
-/** One label+value pair, taking equal width so the two columns line up across rows. */
-@Composable
-private fun RowScope.MetricCell(label: String, value: String, valueColor: Color) {
-    Row(
-        modifier = Modifier.weight(1f),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Text(
-            text = label,
-            style = MaterialTheme.typography.labelMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
-        Spacer(modifier = Modifier.width(6.dp))
-        Text(
-            text = value,
-            style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold),
-            color = valueColor
-        )
     }
 }
 
