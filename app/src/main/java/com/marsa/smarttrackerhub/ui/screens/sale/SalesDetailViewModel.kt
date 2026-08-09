@@ -219,7 +219,8 @@ class SalesDetailViewModel(
             val prevSummary = fetchSummaryDomain(prev.id)
             _comparison.value = SalesComparison(
                 referenceLabel = prev.displayName,
-                totalSalesDeltaPct = prevSummary?.let { percentChange(current.totalSales, it.totalSales) }
+                totalSalesDeltaPct = prevSummary?.let { percentChange(current.totalSales, it.totalSales) },
+                totalPurchaseDeltaPct = prevSummary?.let { percentChange(current.totalPurchases, it.totalPurchases) }
             )
         }
     }
@@ -321,7 +322,8 @@ class SalesDetailViewModel(
 /** Sales month-over-month comparison (vs the next-older month). */
 data class SalesComparison(
     val referenceLabel: String,
-    val totalSalesDeltaPct: Double?
+    val totalSalesDeltaPct: Double?,
+    val totalPurchaseDeltaPct: Double? = null
 )
 
 class SalesDetailViewModelFactory(

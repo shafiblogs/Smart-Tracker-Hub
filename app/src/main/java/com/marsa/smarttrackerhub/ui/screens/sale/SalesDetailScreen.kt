@@ -146,25 +146,28 @@ fun SalesDetailScreen(
                         SalesSectionCard(
                             summary = currentSummary,
                             comparison = comparison,
+                            shopName = shopName,
                             onShare = {
                                 shareCard(
                                     context = context,
                                     widthPx = widthPx,
                                     fileName = "sales_${shopName.replace(" ", "_")}_${selectedMonthId.replace(" ", "_")}.png",
                                     shareTitle = "Share Sales"
-                                ) { SalesSectionCard(currentSummary, comparison) }
+                                ) { SalesSectionCard(currentSummary, comparison, shopName) }
                             }
                         )
                         PurchaseSectionCard(
                             categories = purchaseChart,
                             statistics = purchaseStats,
+                            comparison = comparison,
+                            shopName = shopName,
                             onShare = {
                                 shareCard(
                                     context = context,
                                     widthPx = widthPx,
                                     fileName = "purchase_${shopName.replace(" ", "_")}_${selectedMonthId.replace(" ", "_")}.png",
                                     shareTitle = "Share Purchase"
-                                ) { PurchaseSectionCard(purchaseChart, purchaseStats) }
+                                ) { PurchaseSectionCard(purchaseChart, purchaseStats, comparison, shopName) }
                             }
                         )
                         Spacer(modifier = Modifier.height(24.dp))
@@ -212,24 +215,15 @@ private fun shareCard(
 private fun SalesSectionCard(
     summary: MonthlySummary,
     comparison: SalesComparison? = null,
+    shopName: String = "",
     onShare: (() -> Unit)? = null
 ) {
     DetailSectionCard(
         title = "Sales",
+        subtitle = shopName,
         onShare = onShare,
         trailing = {
-            val delta = comparison?.totalSalesDeltaPct
-            if (delta != null) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    DeltaChip(deltaPercent = delta)
-                    Spacer(modifier = Modifier.width(6.dp))
-                    Text(
-                        text = "vs ${comparison.referenceLabel}",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-            }
+            comparison?.totalSalesDeltaPct?.let { DeltaChip(deltaPercent = it) }
         }
     ) { SummaryContent(summary = summary) }
 }
@@ -238,9 +232,18 @@ private fun SalesSectionCard(
 private fun PurchaseSectionCard(
     categories: List<PurchaseCategoryChartData>,
     statistics: PurchaseChartStatistics?,
+    comparison: SalesComparison? = null,
+    shopName: String = "",
     onShare: (() -> Unit)? = null
 ) {
-    DetailSectionCard(title = "Purchase", onShare = onShare) {
+    DetailSectionCard(
+        title = "Purchase",
+        subtitle = shopName,
+        onShare = onShare,
+        trailing = {
+            comparison?.totalPurchaseDeltaPct?.let { DeltaChip(deltaPercent = it) }
+        }
+    ) {
         PurchaseBreakdownSection(categories = categories, statistics = statistics)
     }
 }
