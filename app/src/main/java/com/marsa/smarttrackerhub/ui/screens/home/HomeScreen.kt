@@ -23,7 +23,6 @@ import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.google.firebase.FirebaseApp
 import com.marsa.smarttrackerhub.domain.AccessCode
-import com.marsa.smarttrackerhub.ui.screens.chart.MonthlySalesChart
 import com.marsa.smarttrackerhub.ui.screens.chart.UnifiedStatisticsCard
 import com.marsa.smarttracker.ui.theme.SmartTrackerTheme
 import com.marsa.smarttrackerhub.utils.ShareUtil
@@ -47,9 +46,7 @@ fun HomeScreen(
         )
     )
     val selectedShop     by viewModel.selectedShop.collectAsState()
-    val chartData        by viewModel.chartData.collectAsState()
     val shops            by viewModel.shops.collectAsState()
-    val isLoading        by viewModel.isLoading.collectAsState()
     val statistics       by viewModel.statistics.collectAsState()
     val expanded         by viewModel.expanded.collectAsState()
     val periodLabel      by viewModel.periodLabel.collectAsState()
@@ -61,7 +58,6 @@ fun HomeScreen(
     // Purchase chart state
     val purchaseStatistics   by viewModel.purchaseStatistics.collectAsState()
 
-    var chartView              by remember { mutableStateOf<View?>(null) }
     var statsView              by remember { mutableStateOf<View?>(null) }
 
     LaunchedEffect(Unit) {
@@ -212,144 +208,6 @@ fun HomeScreen(
             )
             Spacer(modifier = Modifier.height(24.dp))
         }
-
-        // ── Sales Trends title + share ───────────────────────────────────────
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text(
-                text = "Sales Trends",
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.SemiBold
-            )
-            IconButton(
-                onClick = {
-                    val act = activity ?: return@IconButton
-                    ShareUtil.shareComposableAsImage(
-                        activity = act,
-                        widthPx = shareWidthPx,
-                        fileName = "sales_chart_${selectedShop?.name?.replace(" ", "_")}.png",
-                        shareTitle = "Share Sales Chart"
-                    ) {
-                        SmartTrackerTheme {
-                            Surface(color = MaterialTheme.colorScheme.surface) {
-                                MonthlySalesChart(
-                                    data = chartData,
-                                    shopAddress = selectedShop?.name ?: "",
-                                    periodLabel = periodLabel,
-                                    isTargetAchieved = (statistics?.averageAchievementPercentage ?: 0.0) >= 100,
-                                    achievementPercentage = statistics?.averageAchievementPercentage ?: 0.0,
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .height(350.dp)
-                                )
-                            }
-                        }
-                    }
-                },
-                enabled = chartData.isNotEmpty()
-            ) {
-                Icon(
-                    imageVector = Icons.Default.Share,
-                    contentDescription = "Share Chart",
-                    tint = if (chartData.isNotEmpty())
-                        MaterialTheme.colorScheme.primary
-                    else
-                        MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-        }
-
-        Spacer(modifier = Modifier.height(12.dp))
-
-        // ── Sales Chart Card ─────────────────────────────────────────────────
-        Card(
-            modifier = Modifier.fillMaxWidth(),
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-        ) {
-            AndroidView(
-                factory = { ctx ->
-                    androidx.compose.ui.platform.ComposeView(ctx).apply {
-                        setContent {
-                            SalesChartContent(
-                                isLoading = isLoading,
-                                chartData = chartData,
-                                selectedShop = selectedShop,
-                                periodLabel = periodLabel,
-                                statistics = statistics
-                            )
-                        }
-                    }.also { chartView = it }
-                },
-                update = { view ->
-                    view.setContent {
-                        SalesChartContent(
-                            isLoading = isLoading,
-                            chartData = chartData,
-                            selectedShop = selectedShop,
-                            periodLabel = periodLabel,
-                            statistics = statistics
-                        )
-                    }
-                },
-                modifier = Modifier.fillMaxWidth()
-            )
-        }
-
-        Spacer(modifier = Modifier.height(16.dp))
     }
 }
 
-// ── Private helper composables ───────────────────────────────────────────────
-
-@Composable
-private fun SalesChartContent(
-    isLoading: Boolean,
-    chartData: List<com.marsa.smarttrackerhub.ui.screens.chart.MonthlyChartData>,
-    selectedShop: com.marsa.smarttrackerhub.ui.screens.statement.ShopListDto?,
-    periodLabel: String,
-    statistics: com.marsa.smarttrackerhub.domain.ChartStatistics?
-) {
-    // Themed + solid surface background so the shared capture isn't transparent (see PurchaseChartContent).
-    SmartTrackerTheme {
-    Box(modifier = Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.surface)) {
-    if (isLoading) {
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(350.dp),
-            contentAlignment = Alignment.Center
-        ) {
-            CircularProgressIndicator()
-        }
-    } else if (chartData.isEmpty()) {
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(350.dp),
-            contentAlignment = Alignment.Center
-        ) {
-            Text(
-                text = "No data available for selected shop",
-                style = MaterialTheme.typography.bodyLarge,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-        }
-    } else {
-        MonthlySalesChart(
-            data = chartData,
-            shopAddress = selectedShop?.name ?: "",
-            periodLabel = periodLabel,
-            isTargetAchieved = (statistics?.averageAchievementPercentage ?: 0.0) >= 100,
-            achievementPercentage = statistics?.averageAchievementPercentage ?: 0.0,
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(350.dp)
-        )
-    }
-    }
-    }
-}
