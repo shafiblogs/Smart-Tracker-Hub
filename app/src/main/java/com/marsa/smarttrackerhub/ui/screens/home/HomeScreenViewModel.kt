@@ -8,6 +8,7 @@ import com.google.firebase.FirebaseApp
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import com.marsa.smarttrackerhub.data.AppDatabase
+import com.marsa.smarttrackerhub.data.entity.PurchaseEntity
 import com.marsa.smarttrackerhub.data.entity.SummaryEntity
 import com.marsa.smarttrackerhub.data.entity.toDomain
 import com.marsa.smarttrackerhub.data.entity.toEntity
@@ -15,6 +16,7 @@ import com.marsa.smarttrackerhub.domain.AccessCode
 import com.marsa.smarttrackerhub.domain.AccountSummary
 import com.marsa.smarttrackerhub.domain.ChartStatistics
 import com.marsa.smarttrackerhub.domain.MonthRange
+import com.marsa.smarttrackerhub.domain.MonthlySummary
 import com.marsa.smarttrackerhub.domain.ShopRegion
 import com.marsa.smarttrackerhub.domain.getHomeShopUser
 import com.marsa.smarttrackerhub.domain.getSummaryShopList
@@ -103,6 +105,13 @@ class HomeScreenViewModel(
         withContext(Dispatchers.IO) {
             shops = getHomeShopUser(userAccessCode, db).filter { it.region == ShopRegion.UAE }
             regions = getSummaryShopList(userAccessCode).filter { it.region == ShopRegion.UAE }
+
+            // Refresh ONLY the current calendar month from Firestore (best-effort) so the
+            // in-progress month shows the latest sales/purchase/account, not stale Room data.
+            val currentMonthId = SimpleDateFormat("MMMM - yyyy", Locale.getDefault())
+                .format(Calendar.getInstance().time)
+            shops.forEach { it.shopId?.let { id -> refreshSalesMonth(id, currentMonthId) } }
+            regions.forEach { it.shopId?.let { id -> refreshAccountMonth(id, currentMonthId) } }
 
             val byShop = mutableMapOf<String, List<SummaryEntity>>()
             val monthTimestamps = mutableMapOf<String, Long>()
@@ -243,6 +252,59 @@ class HomeScreenViewModel(
             }
         }
         return agg
+    }
+
+    /** Force-fetch one month's sales summary + purchase breakdown from Firestore into Room. */
+    private suspend fun refreshSalesMonth(shopId: String, monthId: String) {
+        @Suppress("UNCHECKED_CAST")
+        val doc = suspendCoroutine<com.google.firebase.firestore.DocumentSnapshot?> { cont ->
+            salesFirestore.collection("summary").document(shopId)
+                .collection("months").document(monthId).get()
+                .addOnSuccessListener { cont.resume(it) }
+                .addOnFailureListener { cont.resume(null) }
+        } ?: return
+        if (!doc.exists()) return
+
+        doc.toObject(MonthlySummary::class.java)?.let { s ->
+            val stamped = if (s.lastUpdated == 0L) s.copy(lastUpdated = System.currentTimeMillis()) else s
+            runCatching { summaryDao.insertSummary(stamped.toEntity(shopId, monthId)) }
+        }
+
+        @Suppress("UNCHECKED_CAST")
+        val breakdown = doc.get("purchaseBreakdown") as? List<Map<String, Any>> ?: emptyList()
+        if (breakdown.isNotEmpty()) {
+            val entities = breakdown.map { m ->
+                PurchaseEntity(
+                    shopId = shopId,
+                    monthId = monthId,
+                    categoryId = (m["categoryId"] as? Long)?.toInt() ?: 0,
+                    categoryName = m["categoryName"] as? String ?: "Uncategorised",
+                    totalAmount = parseAmount(m["totalAmount"]),
+                    lastUpdated = System.currentTimeMillis()
+                )
+            }
+            runCatching {
+                purchaseDao.deletePurchasesForMonth(shopId, monthId)
+                purchaseDao.insertPurchases(entities)
+            }
+        }
+    }
+
+    /** Force-fetch one month's account summary from Firestore into Room. */
+    private suspend fun refreshAccountMonth(shopId: String, monthId: String) {
+        val fs = accountFirestore ?: return
+        val summary = suspendCoroutine<AccountSummary?> { cont ->
+            fs.collection("summary").document(shopId).collection("months").document(monthId).get()
+                .addOnSuccessListener { doc ->
+                    cont.resume(
+                        doc.toObject(AccountSummary::class.java)?.let {
+                            if (it.lastUpdated == 0L) it.copy(lastUpdated = System.currentTimeMillis()) else it
+                        }
+                    )
+                }
+                .addOnFailureListener { cont.resume(null) }
+        }
+        if (summary != null) runCatching { accountDao.insertAccountSummary(summary.toEntity(shopId, monthId)) }
     }
 
     private suspend fun fetchPurchaseBreakdown(shopId: String, monthId: String): List<PurchaseItem> {
