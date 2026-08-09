@@ -25,6 +25,8 @@ data class AccountSummaryEntity(
     val netProfitMargin: Double,
     val openingCashBalance: Double,
     val openingOutstandingBalance: Double,
+    val withdrawal: Double = 0.0,
+    val provision: Double = 0.0,
     val lastUpdated: Long // Timestamp for cache tracking
 )
 
@@ -43,6 +45,8 @@ fun AccountSummaryEntity.toDomain(): AccountSummary {
         netProfitMargin = netProfitMargin,
         openingCashBalance = openingCashBalance,
         openingOutstandingBalance = openingOutstandingBalance,
+        withdrawal = withdrawal,
+        provision = provision,
         lastUpdated = lastUpdated
     )
 }
@@ -68,6 +72,8 @@ fun AccountSummary.toEntity(shopId: String, monthId: String): AccountSummaryEnti
         netProfitMargin = netProfitMargin,
         openingCashBalance = openingCashBalance,
         openingOutstandingBalance = openingOutstandingBalance,
+        withdrawal = withdrawal,
+        provision = provision,
         lastUpdated = if (lastUpdated > 0) lastUpdated else System.currentTimeMillis()
     )
 }

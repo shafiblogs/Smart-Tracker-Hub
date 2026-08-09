@@ -180,6 +180,10 @@ private fun SaleMonthMetrics(summary: MonthlySummary?) {
             MetricCell("GP", formatMoney(grossProfit, 0), gpColor)
             MetricCell("Margin", if (hasSales) "${"%.0f".format(marginPct)}%" else "—", marginColor)
         }
+        Row(modifier = Modifier.fillMaxWidth()) {
+            MetricCell("CR Purchase", formatMoney(summary.creditPurchase, 0), colors.error)
+            MetricCell("VAT Purchase", formatMoney(summary.vatPurchase, 0), colors.error)
+        }
     }
 }
 

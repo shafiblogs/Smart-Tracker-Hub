@@ -106,6 +106,8 @@ fun SummaryContent(summary: MonthlySummary) {
 
         // ── Details (clean labels) ────────────────────────────────────────
         InfoRow("Total Purchase", summary.totalPurchases, color = colors.error)
+        InfoRow("Credit Purchase", summary.creditPurchase, color = colors.error)
+        InfoRow("VAT Purchase", summary.vatPurchase, color = colors.error)
         InfoRow("Total Expense", summary.totalExpenses, color = colors.error)
         InfoRow("Total Cash In", summary.totalCashIn, color = colors.primary)
         InfoRow("Total Cash Out", summary.totalCashOut, color = colors.error)

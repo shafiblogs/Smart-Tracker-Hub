@@ -174,6 +174,10 @@ private fun AccountMonthMetrics(summary: AccountSummary?) {
             MetricCell("GP", formatMoney(summary.grossProfit, 0), gpColor)
             MetricCell("Net", formatMoney(summary.netProfit, 0), netColor)
         }
+        Row(modifier = Modifier.fillMaxWidth()) {
+            MetricCell("Expense", formatMoney(summary.totalExpenses, 0), colors.error)
+            MetricCell("Withdrawal", formatMoney(summary.withdrawal, 0), colors.error)
+        }
     }
 }
 

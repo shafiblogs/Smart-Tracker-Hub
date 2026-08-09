@@ -28,6 +28,8 @@ data class SummaryEntity(
     val totalCashOut: Double,
     val totalCreditSale: Double,
     val creditSalePayment: Double,
+    val vatPurchase: Double = 0.0,
+    val creditPurchase: Double = 0.0,
     val lastUpdated: Long
 )
 
@@ -50,6 +52,8 @@ fun SummaryEntity.toDomain(): MonthlySummary {
         totalCashOut = totalCashOut,
         totalCreditSale = totalCreditSale,
         creditSalePayment = creditSalePayment,
+        vatPurchase = vatPurchase,
+        creditPurchase = creditPurchase,
         updatedDate = "", // Can be derived from lastUpdated if needed
         lastUpdated = lastUpdated // NEW: Pass the timestamp
     )
@@ -79,6 +83,8 @@ fun MonthlySummary.toEntity(shopId: String, monthId: String): SummaryEntity {
         totalCashOut = totalCashOut,
         totalCreditSale = totalCreditSale,
         creditSalePayment = creditSalePayment,
+        vatPurchase = vatPurchase,
+        creditPurchase = creditPurchase,
         lastUpdated = if (lastUpdated > 0) lastUpdated else System.currentTimeMillis() // Use existing or create new
     )
 }

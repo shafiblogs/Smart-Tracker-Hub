@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -64,10 +65,30 @@ fun AccountBreakdown(summary: AccountSummary) {
         HorizontalDivider(color = colors.outlineVariant.copy(alpha = 0.6f))
         Spacer(modifier = Modifier.height(4.dp))
 
-        InfoRow("Total Sale", summary.totalCollection, color = colors.primary)
-        InfoRow("Total Purchase", summary.totalPurchases, color = colors.error)
-        InfoRow("Total Expense", summary.totalExpenses, color = colors.error)
-        InfoRow("Outstanding Payment", summary.outstandingPayments, color = colors.onSurface)
+        AccountAmountRow("Total Sale", summary.totalCollection, colors.primary)
+        AccountAmountRow("Total Purchase", summary.totalPurchases, colors.error)
+        AccountAmountRow("Total Expense", summary.totalExpenses, colors.error)
+        AccountAmountRow("Provision", summary.provision, colors.secondary)
+        AccountAmountRow("Withdrawal", summary.withdrawal, colors.error)
+        AccountAmountRow("Outstanding Payment", summary.outstandingPayments, colors.onSurface)
+    }
+}
+
+/** Label (left) + amount (right) — always visible (unlike InfoRow which hides zeros). */
+@Composable
+private fun AccountAmountRow(label: String, amount: Double, valueColor: Color) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 4.dp),
+        horizontalArrangement = Arrangement.SpaceBetween
+    ) {
+        Text(label, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text(
+            formatMoney(amount, 0),
+            style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold),
+            color = valueColor
+        )
     }
 }
 
