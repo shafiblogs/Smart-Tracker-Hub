@@ -24,7 +24,6 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.google.firebase.FirebaseApp
 import com.marsa.smarttrackerhub.domain.AccessCode
 import com.marsa.smarttrackerhub.ui.screens.chart.MonthlySalesChart
-import com.marsa.smarttrackerhub.ui.screens.chart.PurchaseCategoryChart
 import com.marsa.smarttrackerhub.ui.screens.chart.UnifiedStatisticsCard
 import com.marsa.smarttracker.ui.theme.SmartTrackerTheme
 import com.marsa.smarttrackerhub.utils.ShareUtil
@@ -60,13 +59,10 @@ fun HomeScreen(
     val salesMargin      by viewModel.salesMargin.collectAsState()
 
     // Purchase chart state
-    val isPurchaseLoading    by viewModel.isPurchaseLoading.collectAsState()
-    val purchaseCategoryData by viewModel.purchaseCategoryData.collectAsState()
     val purchaseStatistics   by viewModel.purchaseStatistics.collectAsState()
 
     var chartView              by remember { mutableStateOf<View?>(null) }
     var statsView              by remember { mutableStateOf<View?>(null) }
-    var purchaseChartView      by remember { mutableStateOf<View?>(null) }
 
     LaunchedEffect(Unit) {
         viewModel.loadScreenData(userAccessCode)
@@ -303,154 +299,11 @@ fun HomeScreen(
             )
         }
 
-        Spacer(modifier = Modifier.height(24.dp))
-
-        // ── Purchase Trend title + share ─────────────────────────────────
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text(
-                text = "Purchase Trend",
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.SemiBold
-            )
-            IconButton(
-                onClick = {
-                    val act = activity ?: return@IconButton
-                    val stats = purchaseStatistics ?: return@IconButton
-                    ShareUtil.shareComposableAsImage(
-                        activity = act,
-                        widthPx = shareWidthPx,
-                        fileName = "purchase_chart_${selectedShop?.name?.replace(" ", "_")}.png",
-                        shareTitle = "Share Purchase Trend"
-                    ) {
-                        SmartTrackerTheme {
-                            Surface(color = MaterialTheme.colorScheme.surface) {
-                                PurchaseCategoryChart(
-                                    categories = purchaseCategoryData,
-                                    statistics = stats,
-                                    shopAddress = selectedShop?.name ?: "",
-                                    periodLabel = periodLabel,
-                                    modifier = Modifier.fillMaxWidth()
-                                )
-                            }
-                        }
-                    }
-                },
-                enabled = purchaseCategoryData.isNotEmpty()
-            ) {
-                Icon(
-                    imageVector = Icons.Default.Share,
-                    contentDescription = "Share Purchase Chart",
-                    tint = if (purchaseCategoryData.isNotEmpty())
-                        MaterialTheme.colorScheme.primary
-                    else
-                        MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-        }
-
-        Spacer(modifier = Modifier.height(12.dp))
-
-        // ── Purchase Chart Card ──────────────────────────────────────────────
-        Card(
-            modifier = Modifier.fillMaxWidth(),
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-        ) {
-            AndroidView(
-                factory = { ctx ->
-                    androidx.compose.ui.platform.ComposeView(ctx).apply {
-                        setContent {
-                            PurchaseChartContent(
-                                isPurchaseLoading    = isPurchaseLoading,
-                                purchaseCategoryData = purchaseCategoryData,
-                                purchaseStatistics   = purchaseStatistics,
-                                selectedShop         = selectedShop,
-                                periodLabel          = periodLabel
-                            )
-                        }
-                    }.also { purchaseChartView = it }
-                },
-                update = { view ->
-                    view.setContent {
-                        PurchaseChartContent(
-                            isPurchaseLoading    = isPurchaseLoading,
-                            purchaseCategoryData = purchaseCategoryData,
-                            purchaseStatistics   = purchaseStatistics,
-                            selectedShop         = selectedShop,
-                            periodLabel          = periodLabel
-                        )
-                    }
-                },
-                modifier = Modifier.fillMaxWidth()
-            )
-        }
-
         Spacer(modifier = Modifier.height(16.dp))
     }
 }
 
 // ── Private helper composables ───────────────────────────────────────────────
-
-@Composable
-private fun PurchaseChartContent(
-    isPurchaseLoading: Boolean,
-    purchaseCategoryData: List<com.marsa.smarttrackerhub.ui.screens.chart.PurchaseCategoryChartData>,
-    purchaseStatistics: com.marsa.smarttrackerhub.ui.screens.chart.PurchaseChartStatistics?,
-    selectedShop: com.marsa.smarttrackerhub.ui.screens.statement.ShopListDto?,
-    periodLabel: String = ""
-) {
-    // Wrap in the app theme + a solid surface background so the shared image (captured from
-    // this ComposeView) isn't transparent — a transparent PNG renders dark and hides the
-    // dark shop-name text, which looked like "dark mode" in light mode.
-    SmartTrackerTheme {
-    Box(modifier = Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.surface)) {
-    when {
-        isPurchaseLoading -> {
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(200.dp),
-                contentAlignment = Alignment.Center
-            ) {
-                CircularProgressIndicator()
-            }
-        }
-        purchaseCategoryData.isEmpty() -> {
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(200.dp),
-                contentAlignment = Alignment.Center
-            ) {
-                Text(
-                    text = if (selectedShop == null)
-                        "Select a shop to view purchases"
-                    else
-                        "No purchase data available",
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-        }
-        else -> {
-            purchaseStatistics?.let { stats ->
-                com.marsa.smarttrackerhub.ui.screens.chart.PurchaseCategoryChart(
-                    categories   = purchaseCategoryData,
-                    statistics   = stats,
-                    shopAddress  = selectedShop?.name ?: "",
-                    periodLabel  = periodLabel,
-                    modifier     = Modifier.fillMaxWidth()
-                )
-            }
-        }
-    }
-    }
-    }
-}
 
 @Composable
 private fun SalesChartContent(
