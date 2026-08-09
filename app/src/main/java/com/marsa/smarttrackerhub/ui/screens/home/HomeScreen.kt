@@ -1,43 +1,39 @@
 package com.marsa.smarttrackerhub.ui.screens.home
 
 import android.app.Application
-import android.view.View
-import androidx.activity.ComponentActivity
-import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Share
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.google.firebase.FirebaseApp
 import com.marsa.smarttrackerhub.domain.AccessCode
+import com.marsa.smarttrackerhub.ui.components.DetailSectionCard
+import com.marsa.smarttrackerhub.ui.components.DropdownField
 import com.marsa.smarttrackerhub.ui.screens.chart.UnifiedStatisticsCard
-import com.marsa.smarttracker.ui.theme.SmartTrackerTheme
-import com.marsa.smarttrackerhub.utils.ShareUtil
+import com.marsa.smarttrackerhub.ui.screens.summary.AccountProfitTiles
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeScreen(
     userAccessCode: AccessCode
 ) {
     val context = LocalContext.current
-    // For full-height off-screen chart capture when sharing trend graphs.
-    val activity = context as? ComponentActivity
-    val density = LocalDensity.current
-    val configuration = LocalConfiguration.current
-    val shareWidthPx = with(density) { configuration.screenWidthDp.dp.roundToPx() }
     val firebaseApp = FirebaseApp.getInstance("SmartTrackerApp")
     val viewModel: HomeScreenViewModel = viewModel(
         factory = HomeScreenViewModelFactory(
@@ -45,24 +41,14 @@ fun HomeScreen(
             firebaseApp = firebaseApp
         )
     )
-    val selectedShop     by viewModel.selectedShop.collectAsState()
-    val shops            by viewModel.shops.collectAsState()
-    val statistics       by viewModel.statistics.collectAsState()
-    val expanded         by viewModel.expanded.collectAsState()
-    val periodLabel      by viewModel.periodLabel.collectAsState()
-    val availableRanges  by viewModel.availableRanges.collectAsState()
-    val selectedRange    by viewModel.selectedRange.collectAsState()
-    val periodExpanded   by viewModel.periodExpanded.collectAsState()
-    val salesMargin      by viewModel.salesMargin.collectAsState()
 
-    // Purchase chart state
-    val purchaseStatistics   by viewModel.purchaseStatistics.collectAsState()
+    val availableRanges by viewModel.availableRanges.collectAsState()
+    val selectedRange by viewModel.selectedRange.collectAsState()
+    val accountCards by viewModel.accountCards.collectAsState()
+    val shopStats by viewModel.shopStats.collectAsState()
+    val isLoading by viewModel.isLoading.collectAsState()
 
-    var statsView              by remember { mutableStateOf<View?>(null) }
-
-    LaunchedEffect(Unit) {
-        viewModel.loadScreenData(userAccessCode)
-    }
+    LaunchedEffect(Unit) { viewModel.loadScreenData(userAccessCode) }
 
     Column(
         modifier = Modifier
@@ -70,144 +56,71 @@ fun HomeScreen(
             .verticalScroll(rememberScrollState())
             .padding(16.dp)
     ) {
-
-        // ── Shop Selector ────────────────────────────────────────────────────
-        ExposedDropdownMenuBox(
-            expanded = expanded,
-            onExpandedChange = { viewModel.setExpanded(!expanded) }
-        ) {
-            OutlinedTextField(
-                value = selectedShop?.name ?: "",
-                onValueChange = {},
-                readOnly = true,
-                label = { Text("Select Shop") },
-                placeholder = { if (selectedShop == null) Text("Choose a shop...") },
-                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded) },
-                shape = RoundedCornerShape(12.dp),
-                modifier = Modifier
-                    .menuAnchor()
-                    .fillMaxWidth()
-            )
-            ExposedDropdownMenu(
-                expanded = expanded,
-                onDismissRequest = { viewModel.setExpanded(false) },
-                modifier = Modifier.heightIn(max = 300.dp)
-            ) {
-                shops.forEach { shop ->
-                    DropdownMenuItem(
-                        text = {
-                            Column {
-                                Text(shop.name ?: "-", style = MaterialTheme.typography.bodyLarge)
-                                if (!shop.address.isNullOrBlank()) {
-                                    Text(
-                                        text = shop.address,
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
-                                }
-                            }
-                        },
-                        onClick = {
-                            viewModel.setSelectedShop(shop)
-                            viewModel.setExpanded(false)
-                        }
-                    )
-                }
-            }
-        }
-
-        Spacer(modifier = Modifier.height(12.dp))
-
-        // ── Period Selector ──────────────────────────────────────────────────
-        ExposedDropdownMenuBox(
-            expanded = periodExpanded,
-            onExpandedChange = { viewModel.setPeriodExpanded(!periodExpanded) }
-        ) {
-            OutlinedTextField(
-                value = selectedRange.displayName,
-                onValueChange = {},
-                readOnly = true,
-                label = { Text("Time Period") },
-                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(periodExpanded) },
-                shape = RoundedCornerShape(12.dp),
-                modifier = Modifier
-                    .menuAnchor()
-                    .fillMaxWidth()
-            )
-            ExposedDropdownMenu(
-                expanded = periodExpanded,
-                onDismissRequest = { viewModel.setPeriodExpanded(false) }
-            ) {
-                availableRanges.forEach { range ->
-                    DropdownMenuItem(
-                        text = {
-                            Text(
-                                text = range.displayName,
-                                style = MaterialTheme.typography.bodyLarge
-                            )
-                        },
-                        onClick = {
-                            viewModel.setSelectedRange(range)
-                            viewModel.setPeriodExpanded(false)
-                        }
-                    )
-                }
-            }
-        }
+        // ── Period selector (drives everything below) ────────────────────────
+        DropdownField(
+            label = "Period",
+            selectedValue = selectedRange.displayName,
+            options = availableRanges.map { it.displayName },
+            onOptionSelected = { name ->
+                availableRanges.firstOrNull { it.displayName == name }
+                    ?.let { viewModel.setSelectedRange(it) }
+            },
+            enabled = availableRanges.isNotEmpty(),
+            modifier = Modifier.fillMaxWidth()
+        )
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        // ── Unified Statistics Card (Sales + Purchases) ──────────────────────
-        if (statistics != null && purchaseStatistics != null) {
-            AndroidView(
-                factory = { ctx ->
-                    androidx.compose.ui.platform.ComposeView(ctx).apply {
-                        setContent {
-                            UnifiedStatisticsCard(
-                                salesStatistics = statistics!!,
-                                purchaseStatistics = purchaseStatistics!!,
-                                shopName = selectedShop?.name ?: "",
-                                periodLabel = periodLabel,
-                                salesMargin = salesMargin,
-                                onShareClick = {
-                                    statsView?.let { view ->
-                                        ShareUtil.shareViewAsImage(
-                                            view = view,
-                                            context = context,
-                                            fileName = "statistics_${selectedShop?.name?.replace(" ", "_")}.png",
-                                            shareTitle = "Share Statistics"
-                                        )
-                                    }
-                                }
-                            )
-                        }
-                    }.also { statsView = it }
-                },
-                update = { view ->
-                    view.setContent {
-                        UnifiedStatisticsCard(
-                            salesStatistics = statistics!!,
-                            purchaseStatistics = purchaseStatistics!!,
-                            shopName = selectedShop?.name ?: "",
-                            periodLabel = periodLabel,
-                            salesMargin = salesMargin,
-                            onShareClick = {
-                                statsView?.let { v ->
-                                    ShareUtil.shareViewAsImage(
-                                        view = v,
-                                        context = context,
-                                        fileName = "statistics_${selectedShop?.name?.replace(" ", "_")}.png",
-                                        shareTitle = "Share Statistics"
-                                    )
-                                }
-                            }
+        if (isLoading && accountCards.isEmpty() && shopStats.isEmpty()) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 48.dp),
+                contentAlignment = Alignment.Center
+            ) { CircularProgressIndicator() }
+        } else {
+            // ── Account card(s) — region-level aggregate, on top ─────────────
+            accountCards.forEach { ra ->
+                DetailSectionCard(title = "Account", subtitle = ra.region.name ?: "") {
+                    val summary = ra.summary
+                    if (summary != null) {
+                        AccountProfitTiles(summary)
+                    } else {
+                        Text(
+                            text = "No account data for ${selectedRange.displayName}",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
-                },
-                modifier = Modifier.fillMaxWidth()
-            )
+                }
+                Spacer(modifier = Modifier.height(14.dp))
+            }
+
+            // ── Sales card per shop (same UnifiedStatisticsCard as the old Home) ──
+            shopStats.forEach { st ->
+                val sales = st.sales
+                val purchase = st.purchase
+                if (sales != null && purchase != null) {
+                    UnifiedStatisticsCard(
+                        salesStatistics = sales,
+                        purchaseStatistics = purchase,
+                        shopName = st.shop.name ?: "",
+                        periodLabel = selectedRange.displayName,
+                        salesMargin = st.salesMargin
+                    )
+                } else {
+                    DetailSectionCard(title = "Sales", subtitle = st.shop.name ?: "") {
+                        Text(
+                            text = "No sales data for ${selectedRange.displayName}",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+                Spacer(modifier = Modifier.height(14.dp))
+            }
+
             Spacer(modifier = Modifier.height(24.dp))
         }
     }
 }
-
