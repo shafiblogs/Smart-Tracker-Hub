@@ -113,10 +113,10 @@ class HomeScreenViewModel(
         computeStats()
         if (hadCache) _isLoading.value = false   // records available → hide progress, refresh silently
 
-        // 2) Silently refresh ONLY the current calendar month from Firestore, then re-render.
+        // 2) Silently refresh all months in the selected period from Firestore, then re-render.
         //    (If nothing was cached, the spinner stays up until this first fetch completes.)
         withContext(Dispatchers.IO) {
-            refreshCurrentMonth()
+            refreshSelectedPeriod(_selectedRange.value)
             buildIndexFromRoom()
         }
         computeStats()
@@ -125,7 +125,14 @@ class HomeScreenViewModel(
 
     fun setSelectedRange(range: MonthRange) {
         _selectedRange.value = range
-        viewModelScope.launch { computeStats() }
+        viewModelScope.launch {
+            // Refresh all months in the newly selected period from Firestore
+            withContext(Dispatchers.IO) {
+                refreshSelectedPeriod(range)
+                buildIndexFromRoom()
+            }
+            computeStats()
+        }
     }
 
     /** Build the shop→summaries index + month list from Room only (no network). */
@@ -148,12 +155,16 @@ class HomeScreenViewModel(
         allMonthsSorted = monthTimestamps.entries.sortedByDescending { it.value }.map { it.key }
     }
 
-    /** Best-effort Firestore refresh of the current calendar month (sales + account). */
-    private suspend fun refreshCurrentMonth() {
-        val currentMonthId = SimpleDateFormat("MMMM - yyyy", Locale.getDefault())
-            .format(Calendar.getInstance().time)
-        shops.forEach { it.shopId?.let { id -> refreshSalesMonth(id, currentMonthId) } }
-        regions.forEach { it.shopId?.let { id -> refreshAccountMonth(id, currentMonthId) } }
+    /** Firestore refresh of all months in the selected period (sales + account). */
+    private suspend fun refreshSelectedPeriod(range: MonthRange) {
+        val (_, statsCount, skip) = windowFor(range)
+        // Get the months to refresh: skip the first 'skip' months, then take 'statsCount' months
+        val monthsToRefresh = allMonthsSorted.drop(skip).take(statsCount)
+
+        monthsToRefresh.forEach { monthId ->
+            shops.forEach { it.shopId?.let { id -> refreshSalesMonth(id, monthId) } }
+            regions.forEach { it.shopId?.let { id -> refreshAccountMonth(id, monthId) } }
+        }
     }
 
     /** Compute shop + account cards for the selected period. Does NOT toggle isLoading. */
