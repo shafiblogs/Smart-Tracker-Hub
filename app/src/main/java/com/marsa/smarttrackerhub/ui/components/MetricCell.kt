@@ -3,6 +3,7 @@ package com.marsa.smarttrackerhub.ui.components
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -21,7 +22,7 @@ import androidx.compose.ui.unit.dp
 @Composable
 fun RowScope.MetricCell(label: String, value: String, valueColor: Color) {
     Row(
-        modifier = Modifier.weight(1f),
+        modifier = Modifier.weight(1f).padding(vertical = 3.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Text(

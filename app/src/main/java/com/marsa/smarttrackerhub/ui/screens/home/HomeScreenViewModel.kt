@@ -57,7 +57,8 @@ class HomeScreenViewModel(
         val shop: ShopListDto,
         val sales: ChartStatistics?,
         val purchase: PurchaseChartStatistics?,
-        val salesMargin: Double
+        val salesMargin: Double,
+        val lastUpdated: Long = 0L
     )
 
     data class RegionAccount(val region: ShopListDto, val summary: AccountSummary?)
@@ -239,8 +240,9 @@ class HomeScreenViewModel(
         val totalSales = statsMonths.sumOf { it.totalSales }
         val totalPurchases = statsMonths.sumOf { it.totalPurchases }
         val margin = if (totalSales > 0) (totalSales - totalPurchases) / totalSales * 100.0 else 0.0
+        val lastUpdated = statsMonths.maxOf { it.lastUpdated }
 
-        return ShopStats(shop, sales, purchase, margin)
+        return ShopStats(shop, sales, purchase, margin, lastUpdated)
     }
 
     private suspend fun aggregateBreakdown(

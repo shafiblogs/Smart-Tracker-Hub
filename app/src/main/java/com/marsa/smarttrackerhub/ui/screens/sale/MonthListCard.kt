@@ -22,9 +22,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
+import com.marsa.smarttrackerhub.utils.formatLastUpdated
 
 /**
  * Compact, tappable month row for the Sales/Account list screens — month title + optional
@@ -64,6 +62,15 @@ fun MonthListCard(
                     imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
                     contentDescription = "View details",
                     tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+                )
+            }
+
+            if (lastUpdated != null) {
+                Spacer(modifier = Modifier.height(2.dp))
+                Text(
+                    text = lastUpdated.formatLastUpdated(),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
 

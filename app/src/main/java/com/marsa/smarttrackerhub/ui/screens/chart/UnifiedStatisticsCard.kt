@@ -43,6 +43,7 @@ fun UnifiedStatisticsCard(
     shopName: String,
     periodLabel: String,
     salesMargin: Double = 0.0,
+    caption: String? = null,
     modifier: Modifier = Modifier,
     onShareClick: (() -> Unit)? = null
 ) {
@@ -80,6 +81,13 @@ fun UnifiedStatisticsCard(
                         style = MaterialTheme.typography.bodySmall,
                         color = colors.onSurfaceVariant
                     )
+                    if (!caption.isNullOrBlank()) {
+                        Text(
+                            text = caption,
+                            style = MaterialTheme.typography.labelSmall,
+                            color = colors.onSurfaceVariant
+                        )
+                    }
                 }
 
                 onShareClick?.let { callback ->
@@ -105,10 +113,12 @@ fun UnifiedStatisticsCard(
             Spacer(modifier = Modifier.height(12.dp))
 
             // ── Two-Column Layout ─────────────────────────────────────────────
+            // Matches DetailSectionCard's content padding exactly: 16dp horizontal, 16dp
+            // bottom, no top (the Spacer above already supplies that gap after the divider).
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 8.dp)
+                    .padding(start = 16.dp, end = 16.dp, bottom = 16.dp)
             ) {
                 // LEFT COLUMN: SALES
                 Column(
@@ -268,8 +278,6 @@ fun UnifiedStatisticsCard(
                     }
                 }
             }
-
-            Spacer(modifier = Modifier.height(8.dp))
         }
     }
 }

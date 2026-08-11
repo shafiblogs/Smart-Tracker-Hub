@@ -7,10 +7,12 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
@@ -38,7 +40,7 @@ fun AccountProfitTiles(summary: AccountSummary) {
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        AccountTile("Cash Balance", formatMoney(summary.cashBalance, 0), colors.onSurface, Modifier.weight(1f))
+        AccountTile("Balance", formatMoney(summary.cashBalance, 0), colors.onSurface, Modifier.weight(1f))
         ProfitTile("Gross Profit", summary.grossProfit, summary.grossMargin, status.success, status.danger, Modifier.weight(1f))
         ProfitTile("Net Profit", summary.netProfit, summary.netProfitMargin, status.success, status.danger, Modifier.weight(1f))
     }
@@ -59,36 +61,67 @@ fun AccountBreakdown(summary: AccountSummary) {
         }
         Spacer(modifier = Modifier.height(6.dp))
         BalanceComparisonRow("Cash", summary.openingCashBalance, summary.cashBalance)
+        BalanceComparisonRow("Account", summary.openingAccountBalance, summary.accountBalance)
         BalanceComparisonRow("Outstanding", summary.openingOutstandingBalance, summary.outstandingBalance)
 
         Spacer(modifier = Modifier.height(10.dp))
         HorizontalDivider(color = colors.outlineVariant.copy(alpha = 0.6f))
         Spacer(modifier = Modifier.height(4.dp))
 
-        AccountAmountRow("Total Sale", summary.totalCollection, colors.primary)
-        AccountAmountRow("Total Purchase", summary.totalPurchases, colors.error)
-        AccountAmountRow("Total Expense", summary.totalExpenses, colors.error)
+        AccountAmountRow("Collection", summary.totalCollection, colors.primary)
+        AccountAmountRow("Purchase", summary.totalPurchases, colors.error)
+        AccountAmountRow("Expense", summary.totalExpenses, colors.error)
         AccountAmountRow("Provision", summary.provision, colors.secondary)
         AccountAmountRow("Withdrawal", summary.withdrawal, colors.error)
         AccountAmountRow("Outstanding Payment", summary.outstandingPayments, colors.onSurface)
+
+        val cashOut = summary.openingCashBalance + summary.totalCollection - summary.cashBalance
+        AccountAmountRow("Cash Out", cashOut, colors.error)
+
+        Spacer(modifier = Modifier.height(10.dp))
+        HorizontalDivider(color = colors.outlineVariant.copy(alpha = 0.6f))
+        Spacer(modifier = Modifier.height(4.dp))
+
+        val status = semanticStatusColors()
+        AccountAmountRow(
+            "Gross Profit", summary.grossProfit,
+            if (summary.grossProfit >= 0) status.success else status.danger,
+            trailingLabel = "${"%.0f".format(summary.grossMargin)}%"
+        )
+        AccountAmountRow(
+            "Net Profit", summary.netProfit,
+            if (summary.netProfit >= 0) status.success else status.danger,
+            trailingLabel = "${"%.0f".format(summary.netProfitMargin)}%"
+        )
     }
 }
 
-/** Label (left) + amount (right) — always visible (unlike InfoRow which hides zeros). */
+/** Label (left) + amount (right, optionally with a trailing % label) — always visible (unlike InfoRow which hides zeros). */
 @Composable
-private fun AccountAmountRow(label: String, amount: Double, valueColor: Color) {
+private fun AccountAmountRow(label: String, amount: Double, valueColor: Color, trailingLabel: String? = null) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(vertical = 4.dp),
-        horizontalArrangement = Arrangement.SpaceBetween
+            .padding(vertical = 2.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
     ) {
         Text(label, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        Text(
-            formatMoney(amount, 0),
-            style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold),
-            color = valueColor
-        )
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(
+                formatMoney(amount, 0),
+                style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold),
+                color = valueColor
+            )
+            if (trailingLabel != null) {
+                Spacer(modifier = Modifier.width(6.dp))
+                Text(
+                    trailingLabel,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
     }
 }
 

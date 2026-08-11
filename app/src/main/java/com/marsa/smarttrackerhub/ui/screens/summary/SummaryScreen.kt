@@ -121,7 +121,7 @@ fun SummaryScreen(
             else -> {
                 LazyColumn(
                     modifier = Modifier.fillMaxSize(),
-                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     items(availableMonths) { monthItem ->
                         MonthListCard(
@@ -131,6 +131,7 @@ fun SummaryScreen(
                                 val sid = selectedShop?.shopId ?: return@MonthListCard
                                 onMonthClick(sid, monthItem.id, selectedShop?.name ?: "")
                             },
+                            lastUpdated = summariesCache[monthItem.id]?.lastUpdated,
                             details = { AccountMonthMetrics(summariesCache[monthItem.id]) }
                         )
                     }
@@ -165,7 +166,7 @@ private fun AccountMonthMetrics(summary: AccountSummary?) {
     val gpColor = if (summary.grossProfit >= 0) status.success else status.danger
     val netColor = if (summary.netProfit >= 0) status.success else status.danger
 
-    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
         Row(modifier = Modifier.fillMaxWidth()) {
             MetricCell("In", formatMoney(cashIn, 0), colors.primary)
             MetricCell("Out", formatMoney(cashOut, 0), colors.error)
@@ -176,7 +177,7 @@ private fun AccountMonthMetrics(summary: AccountSummary?) {
         }
         Row(modifier = Modifier.fillMaxWidth()) {
             MetricCell("Expense", formatMoney(summary.totalExpenses, 0), colors.error)
-            MetricCell("Withdrawal", formatMoney(summary.withdrawal, 0), colors.error)
+            MetricCell("Withdrawal", formatMoney(summary.withdrawal, 0), status.success)
         }
     }
 }

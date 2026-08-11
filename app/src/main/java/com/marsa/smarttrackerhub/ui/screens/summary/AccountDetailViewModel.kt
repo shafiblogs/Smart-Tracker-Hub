@@ -55,9 +55,24 @@ class AccountDetailViewModel(
     private val _comparison = MutableStateFlow<AccountComparison?>(null)
     val comparison: StateFlow<AccountComparison?> = _comparison
 
+    /** Cached month history (newest→oldest, capped at 6) — feeds the profit trend chart. */
+    private val _history = MutableStateFlow<List<AccountSummary>>(emptyList())
+    val history: StateFlow<List<AccountSummary>> = _history
+
     init {
         loadMonths()
         loadMonth(_selectedMonthId.value)
+        loadHistory()
+    }
+
+    private fun loadHistory() {
+        viewModelScope.launch(Dispatchers.IO) {
+            runCatching { accountSummaryDao.getAllAccountSummariesForShop(shopId) }
+                .getOrNull()
+                ?.take(6)
+                ?.map { it.toDomain() }
+                ?.let { _history.value = it }
+        }
     }
 
     private fun loadMonths() {
@@ -131,6 +146,7 @@ class AccountDetailViewModel(
                     updateComparison()
                     viewModelScope.launch(Dispatchers.IO) {
                         runCatching { accountSummaryDao.insertAccountSummary(s.toEntity(shopId, monthId)) }
+                        loadHistory()
                     }
                 }
                 _isLoading.value = false

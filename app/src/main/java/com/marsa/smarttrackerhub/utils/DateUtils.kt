@@ -39,6 +39,10 @@ fun Long.formatTimestamp(): String {
     return dateFormat.format(Date(this))
 }
 
+/** "Updated 24 Jul 2026, 06:12 PM" — card caption for data provenance. */
+fun Long.formatLastUpdated(): String =
+    if (this == 0L) "Never updated" else "Updated ${formatTimestamp()}"
+
 fun Long.getExpiryStatus(): ExpiryStatus {
     val currentTime = System.currentTimeMillis()
     val diffInMillis = this - currentTime

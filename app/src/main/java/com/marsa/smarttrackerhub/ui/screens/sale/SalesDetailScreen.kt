@@ -1,7 +1,6 @@
 package com.marsa.smarttrackerhub.ui.screens.sale
 
 import android.app.Application
-import androidx.activity.ComponentActivity
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -19,17 +18,12 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Refresh
-import androidx.compose.material.icons.filled.Share
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
@@ -46,7 +40,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.google.firebase.FirebaseApp
-import com.marsa.smarttracker.ui.theme.SmartTrackerTheme
 import com.marsa.smarttrackerhub.domain.MonthlySummary
 import com.marsa.smarttrackerhub.ui.components.DeltaChip
 import com.marsa.smarttrackerhub.ui.components.DetailSectionCard
@@ -54,7 +47,8 @@ import com.marsa.smarttrackerhub.ui.components.DropdownField
 import com.marsa.smarttrackerhub.ui.screens.chart.PurchaseCategoryChartData
 import com.marsa.smarttrackerhub.ui.screens.chart.PurchaseChartStatistics
 import com.marsa.smarttrackerhub.ui.screens.purchase.PurchaseBreakdownSection
-import com.marsa.smarttrackerhub.utils.ShareUtil
+import com.marsa.smarttrackerhub.utils.formatLastUpdated
+import com.marsa.smarttrackerhub.utils.shareCard
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -161,13 +155,19 @@ fun SalesDetailScreen(
                             statistics = purchaseStats,
                             comparison = comparison,
                             shopName = shopName,
+                            lastUpdated = currentSummary.lastUpdated,
                             onShare = {
                                 shareCard(
                                     context = context,
                                     widthPx = widthPx,
                                     fileName = "purchase_${shopName.replace(" ", "_")}_${selectedMonthId.replace(" ", "_")}.png",
                                     shareTitle = "Share Purchase"
-                                ) { PurchaseSectionCard(purchaseChart, purchaseStats, comparison, shopName) }
+                                ) {
+                                    PurchaseSectionCard(
+                                        purchaseChart, purchaseStats, comparison, shopName,
+                                        currentSummary.lastUpdated
+                                    )
+                                }
                             }
                         )
                         Spacer(modifier = Modifier.height(24.dp))
@@ -188,29 +188,6 @@ fun SalesDetailScreen(
     }
 }
 
-/** Renders [content] off-screen (themed) and shares it as an image. */
-private fun shareCard(
-    context: android.content.Context,
-    widthPx: Int,
-    fileName: String,
-    shareTitle: String,
-    content: @Composable () -> Unit
-) {
-    val activity = context as? ComponentActivity ?: return
-    ShareUtil.shareComposableAsImage(
-        activity = activity,
-        widthPx = widthPx,
-        fileName = fileName,
-        shareTitle = shareTitle
-    ) {
-        SmartTrackerTheme {
-            Surface {
-                Box(modifier = Modifier.padding(16.dp)) { content() }
-            }
-        }
-    }
-}
-
 @Composable
 private fun SalesSectionCard(
     summary: MonthlySummary,
@@ -221,6 +198,7 @@ private fun SalesSectionCard(
     DetailSectionCard(
         title = "Sales",
         subtitle = shopName,
+        caption = summary.lastUpdated.formatLastUpdated(),
         onShare = onShare,
         trailing = {
             comparison?.totalSalesDeltaPct?.let { DeltaChip(deltaPercent = it) }
@@ -234,11 +212,13 @@ private fun PurchaseSectionCard(
     statistics: PurchaseChartStatistics?,
     comparison: SalesComparison? = null,
     shopName: String = "",
+    lastUpdated: Long = 0L,
     onShare: (() -> Unit)? = null
 ) {
     DetailSectionCard(
         title = "Purchase",
         subtitle = shopName,
+        caption = lastUpdated.formatLastUpdated(),
         onShare = onShare,
         trailing = {
             comparison?.totalPurchaseDeltaPct?.let { DeltaChip(deltaPercent = it) }

@@ -1,6 +1,5 @@
 package com.marsa.smarttrackerhub.ui.screens.investments
 
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -13,9 +12,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -29,6 +25,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.marsa.smarttrackerhub.ui.components.DetailSectionCard
 import com.marsa.smarttrackerhub.utils.formatMoney
 
 /**
@@ -75,7 +72,11 @@ fun InvestmentsScreen(
                     }
                 } else {
                     items(uiState.shops) { row ->
-                        InvestmentShopCard(row = row, onClick = { onShopClick(row.shopId) })
+                        InvestmentShopCard(
+                            row = row,
+                            totalPortfolioCapital = uiState.totalCapital,
+                            onClick = { onShopClick(row.shopId) }
+                        )
                     }
                 }
             }
@@ -85,62 +86,24 @@ fun InvestmentsScreen(
 
 @Composable
 private fun PortfolioSummaryCard(state: InvestmentsUiState) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
-    ) {
-        Column(modifier = Modifier.fillMaxWidth().padding(16.dp)) {
+    DetailSectionCard(title = "Portfolio") {
+        Column(modifier = Modifier.fillMaxWidth()) {
             Text(
-                text = "Portfolio",
-                style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
+                text = formatMoney(state.totalCapital, 0),
+                style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.SemiBold),
                 color = MaterialTheme.colorScheme.primary
             )
-            Spacer(modifier = Modifier.height(12.dp))
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                SummaryTile(
-                    label = "Total Capital",
-                    value = formatMoney(state.totalCapital, 0),
-                    valueColor = MaterialTheme.colorScheme.primary,
-                    alignment = Alignment.Start
-                )
-                SummaryTile(
-                    label = "Shops",
-                    value = state.shopCount.toString(),
-                    alignment = Alignment.CenterHorizontally
-                )
-                SummaryTile(
-                    label = "Investors",
-                    value = state.investorCount.toString(),
-                    alignment = Alignment.End
-                )
-            }
+            Spacer(modifier = Modifier.height(3.dp))
+            Text(
+                text = "${state.shopCount} shops · ${state.investorCount} investors",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Spacer(modifier = Modifier.height(14.dp))
+            CapitalDistributionBar(
+                shops = state.shops,
+                totalCapital = state.totalCapital
+            )
         }
-    }
-}
-
-@Composable
-private fun androidx.compose.foundation.layout.RowScope.SummaryTile(
-    label: String,
-    value: String,
-    valueColor: androidx.compose.ui.graphics.Color = MaterialTheme.colorScheme.onSurface,
-    alignment: Alignment.Horizontal
-) {
-    Column(horizontalAlignment = alignment) {
-        Text(
-            text = label,
-            style = MaterialTheme.typography.labelMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
-        Spacer(modifier = Modifier.height(4.dp))
-        Text(
-            text = value,
-            style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
-            color = valueColor
-        )
     }
 }

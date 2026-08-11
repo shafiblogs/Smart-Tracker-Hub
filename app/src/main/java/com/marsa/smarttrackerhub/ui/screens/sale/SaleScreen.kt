@@ -125,7 +125,7 @@ fun SaleScreen(
             else -> {
                 LazyColumn(
                     modifier = Modifier.fillMaxSize(),
-                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     items(availableMonths) { monthItem ->
                         MonthListCard(
@@ -135,6 +135,7 @@ fun SaleScreen(
                                 val sid = selectedShop?.shopId ?: return@MonthListCard
                                 onMonthClick(sid, monthItem.id, selectedShop?.name ?: "")
                             },
+                            lastUpdated = summariesCache[monthItem.id]?.lastUpdated,
                             details = { SaleMonthMetrics(summariesCache[monthItem.id]) }
                         )
                     }
@@ -171,7 +172,7 @@ private fun SaleMonthMetrics(summary: MonthlySummary?) {
     val status = semanticStatusColors()
     val gpColor = if (grossProfit >= 0) status.success else status.danger
 
-    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Row(modifier = Modifier.fillMaxWidth()) {
             MetricCell("Sale", formatMoney(totalSales, 0), colors.onSurface)
             MetricCell("Purchase", formatMoney(summary.totalPurchases, 0), colors.onSurface)
@@ -182,7 +183,7 @@ private fun SaleMonthMetrics(summary: MonthlySummary?) {
         }
         Row(modifier = Modifier.fillMaxWidth()) {
             MetricCell("CR Purchase", formatMoney(summary.creditPurchase, 0), colors.error)
-            MetricCell("VAT Purchase", formatMoney(summary.vatPurchase, 0), colors.error)
+            MetricCell("VAT Purchase", formatMoney(summary.vatPurchase, 0), colors.onSurface)
         }
     }
 }

@@ -1,7 +1,6 @@
 package com.marsa.smarttrackerhub.ui.screens.summary
 
 import android.app.Application
-import androidx.activity.ComponentActivity
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -24,7 +23,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
@@ -41,12 +39,12 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.google.firebase.FirebaseApp
-import com.marsa.smarttracker.ui.theme.SmartTrackerTheme
 import com.marsa.smarttrackerhub.domain.AccountSummary
 import com.marsa.smarttrackerhub.ui.components.DeltaChip
 import com.marsa.smarttrackerhub.ui.components.DetailSectionCard
 import com.marsa.smarttrackerhub.ui.components.DropdownField
-import com.marsa.smarttrackerhub.utils.ShareUtil
+import com.marsa.smarttrackerhub.utils.formatLastUpdated
+import com.marsa.smarttrackerhub.utils.shareCard
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -69,6 +67,7 @@ fun AccountDetailScreen(
     val summary by viewModel.summary.collectAsState()
     val isLoading by viewModel.isLoading.collectAsState()
     val comparison by viewModel.comparison.collectAsState()
+    val history by viewModel.history.collectAsState()
 
     val density = LocalDensity.current
     val widthPx = with(density) { LocalConfiguration.current.screenWidthDp.dp.roundToPx() }
@@ -133,22 +132,57 @@ fun AccountDetailScreen(
                         SummaryCard(
                             summary = currentSummary,
                             comparison = comparison,
+                            shopName = shopName,
                             onShare = {
                                 shareCard(
                                     context, widthPx,
                                     "account_summary_${shopName.replace(" ", "_")}_${selectedMonthId.replace(" ", "_")}.png",
                                     "Share Account Summary"
-                                ) { SummaryCard(currentSummary, comparison) }
+                                ) { SummaryCard(currentSummary, comparison, shopName) }
                             }
                         )
                         StatementCard(
                             summary = currentSummary,
+                            shopName = shopName,
                             onShare = {
                                 shareCard(
                                     context, widthPx,
                                     "account_statement_${shopName.replace(" ", "_")}_${selectedMonthId.replace(" ", "_")}.png",
                                     "Share Account Statement"
-                                ) { StatementCard(currentSummary) }
+                                ) { StatementCard(currentSummary, shopName) }
+                            }
+                        )
+                        CashFlowCard(
+                            summary = currentSummary,
+                            shopName = shopName,
+                            onShare = {
+                                shareCard(
+                                    context, widthPx,
+                                    "account_cashflow_${shopName.replace(" ", "_")}_${selectedMonthId.replace(" ", "_")}.png",
+                                    "Share Cash Flow"
+                                ) { CashFlowCard(currentSummary, shopName) }
+                            }
+                        )
+                        MoneyAllocationCard(
+                            summary = currentSummary,
+                            shopName = shopName,
+                            onShare = {
+                                shareCard(
+                                    context, widthPx,
+                                    "account_allocation_${shopName.replace(" ", "_")}_${selectedMonthId.replace(" ", "_")}.png",
+                                    "Share Allocation"
+                                ) { MoneyAllocationCard(currentSummary, shopName) }
+                            }
+                        )
+                        ProfitTrendCard(
+                            history = history,
+                            shopName = shopName,
+                            onShare = {
+                                shareCard(
+                                    context, widthPx,
+                                    "account_trend_${shopName.replace(" ", "_")}.png",
+                                    "Share Profit Trend"
+                                ) { ProfitTrendCard(history, shopName) }
                             }
                         )
                         Spacer(modifier = Modifier.height(24.dp))
@@ -169,36 +203,19 @@ fun AccountDetailScreen(
     }
 }
 
-/** Renders [content] off-screen (themed) and shares it as an image. */
-private fun shareCard(
-    context: android.content.Context,
-    widthPx: Int,
-    fileName: String,
-    shareTitle: String,
-    content: @Composable () -> Unit
-) {
-    val activity = context as? ComponentActivity ?: return
-    ShareUtil.shareComposableAsImage(
-        activity = activity,
-        widthPx = widthPx,
-        fileName = fileName,
-        shareTitle = shareTitle
-    ) {
-        SmartTrackerTheme {
-            Surface {
-                Box(modifier = Modifier.padding(16.dp)) { content() }
-            }
-        }
-    }
-}
-
 @Composable
 private fun SummaryCard(
     summary: AccountSummary,
     comparison: AccountComparison? = null,
+    shopName: String = "",
     onShare: (() -> Unit)? = null
 ) {
-    DetailSectionCard(title = "Summary", onShare = onShare) {
+    DetailSectionCard(
+        title = "Summary",
+        subtitle = shopName,
+        caption = summary.lastUpdated.formatLastUpdated(),
+        onShare = onShare
+    ) {
         Column {
             val np = comparison?.netProfitDeltaPct
             val cb = comparison?.cashBalanceDeltaPct
@@ -207,12 +224,6 @@ private fun SummaryCard(
                     DeltaChip(deltaPercent = np, label = "Net Profit")
                     Spacer(modifier = Modifier.width(8.dp))
                     DeltaChip(deltaPercent = cb, label = "Cash")
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(
-                        text = "vs ${comparison.referenceLabel}",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
                 }
                 Spacer(modifier = Modifier.height(12.dp))
             }
@@ -222,8 +233,13 @@ private fun SummaryCard(
 }
 
 @Composable
-private fun StatementCard(summary: AccountSummary, onShare: (() -> Unit)? = null) {
-    DetailSectionCard(title = "Statement", onShare = onShare) {
+private fun StatementCard(summary: AccountSummary, shopName: String = "", onShare: (() -> Unit)? = null) {
+    DetailSectionCard(
+        title = "Statement",
+        subtitle = shopName,
+        caption = summary.lastUpdated.formatLastUpdated(),
+        onShare = onShare
+    ) {
         AccountBreakdown(summary)
     }
 }
