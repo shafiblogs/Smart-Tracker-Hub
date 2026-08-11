@@ -59,8 +59,8 @@ fun DetailSectionCard(
                         Spacer(modifier = Modifier.height(4.dp))
                         Text(
                             text = subtitle,
-                            style = MaterialTheme.typography.bodySmall,
-                            color = colors.onSurfaceVariant
+                            style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Medium),
+                            color = colors.onSurface
                         )
                     }
                     if (!caption.isNullOrBlank()) {

@@ -10,13 +10,8 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.ui.draw.clip
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
@@ -32,7 +27,7 @@ import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.google.firebase.FirebaseApp
@@ -41,8 +36,8 @@ import com.marsa.smarttrackerhub.domain.AccessCode
 import com.marsa.smarttrackerhub.domain.AccountSummary
 import com.marsa.smarttrackerhub.ui.components.DetailSectionCard
 import com.marsa.smarttrackerhub.ui.components.DropdownField
-import com.marsa.smarttrackerhub.ui.screens.chart.ProfitComparisonRing
 import com.marsa.smarttrackerhub.ui.screens.chart.UnifiedStatisticsCard
+import com.marsa.smarttrackerhub.ui.screens.chart.MoneyAllocationBar
 import com.marsa.smarttrackerhub.utils.formatLastUpdated
 import com.marsa.smarttrackerhub.utils.formatMoney
 import com.marsa.smarttrackerhub.utils.shareCard
@@ -178,128 +173,91 @@ fun HomeScreen(
 }
 
 /**
- * Home account card:
- *  - two headline profit tiles (Gross / Net, sign-coloured, with margin) either side of a
- *    part-to-whole ring showing how much of gross survived as net, then
- *  - a divider + an aligned amount list (Collection / Purchase / Expense / Withdrawal / Provision).
+ * Home account card redesign:
+ *  - Three headline tiles: Collection (neutral), Gross Profit (sign-coloured, with margin), Net
+ *    Profit (sign-coloured, with margin)
+ *  - A segmented bar + legend showing Collection split across Purchase / Expense / Withdrawal /
+ *    Provision / Out Payment / Retained — this is the single source of truth for the breakdown,
+ *    so the figures aren't repeated in a separate list below it.
  */
 @Composable
 private fun HomeAccountTiles(summary: AccountSummary) {
     val colors = MaterialTheme.colorScheme
+    val status = semanticStatusColors()
     Column(modifier = Modifier.fillMaxWidth()) {
+        // Three headline tiles
         Row(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            SignedTile(
-                "Gross Profit", summary.grossProfit, summary.grossMargin,
-                horizontalAlignment = Alignment.Start
+            AccountTile("Collection", formatMoney(summary.totalCollection, 0), colors.primary, modifier = Modifier.weight(1f))
+            AccountTile(
+                "Gross Profit",
+                formatMoney(summary.grossProfit, 0),
+                if (summary.grossProfit >= 0) status.success else status.danger,
+                marginPercent = summary.grossMargin,
+                modifier = Modifier.weight(1f)
             )
-            ProfitComparisonRing(grossProfit = summary.grossProfit, netProfit = summary.netProfit)
-            SignedTile(
-                "Net Profit", summary.netProfit, summary.netProfitMargin,
-                horizontalAlignment = Alignment.End
+            AccountTile(
+                "Net Profit",
+                formatMoney(summary.netProfit, 0),
+                if (summary.netProfit >= 0) status.success else status.danger,
+                marginPercent = summary.netProfitMargin,
+                modifier = Modifier.weight(1f)
             )
         }
 
-        // Legend — both profit tiles are sign-coloured green, so the ring's arcs need naming.
-        if (summary.grossProfit > 0) {
-            Spacer(modifier = Modifier.height(10.dp))
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.Center,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                LegendKey(
-                    color = if (summary.netProfit >= 0) semanticStatusColors().success
-                    else semanticStatusColors().danger,
-                    label = "Net kept"
-                )
-                Spacer(modifier = Modifier.width(16.dp))
-                LegendKey(color = colors.surfaceVariant, label = "Deducted")
-            }
-        }
-
-        Spacer(modifier = Modifier.height(12.dp))
+        Spacer(modifier = Modifier.height(14.dp))
         HorizontalDivider(color = colors.outlineVariant)
-        Spacer(modifier = Modifier.height(6.dp))
+        Spacer(modifier = Modifier.height(12.dp))
 
-        AccountLineRow("Collection", summary.totalCollection, colors.primary)
-        AccountLineRow("Purchase", summary.totalPurchases, colors.onSurface)
-        if (summary.outstandingPayments > 0) {
-            AccountLineRow("Out Payment", summary.outstandingPayments, semanticStatusColors().success)
-        }
-        AccountLineRow("Expense", summary.totalExpenses, colors.error)
-        AccountLineRow("Withdrawal", summary.withdrawal, semanticStatusColors().success)
-        AccountLineRow("Provision", summary.provision, colors.onSurface)
-    }
-}
-
-/** One dot + caption naming a [ProfitComparisonRing] arc. */
-@Composable
-private fun LegendKey(color: Color, label: String) {
-    Row(verticalAlignment = Alignment.CenterVertically) {
-        Box(
-            modifier = Modifier
-                .size(8.dp)
-                .clip(CircleShape)
-                .background(color)
-        )
-        Spacer(modifier = Modifier.width(5.dp))
-        Text(
-            text = label,
-            style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
+        // Money allocation bar + legend: Collection split across categories, Out Payment folded
+        // into the same reconciliation as Retained.
+        MoneyAllocationBar(
+            collection = summary.totalCollection,
+            purchase = summary.totalPurchases,
+            expense = summary.totalExpenses,
+            withdrawal = summary.withdrawal,
+            provision = summary.provision,
+            outstandingPayments = summary.outstandingPayments
         )
     }
 }
 
+/** Headline tile: label + formatted amount, with an optional margin % (Gross/Net only). */
 @Composable
-private fun SignedTile(
+private fun AccountTile(
     label: String,
-    amount: Double,
-    marginPercent: Double,
-    horizontalAlignment: Alignment.Horizontal
+    value: String,
+    valueColor: Color,
+    marginPercent: Double? = null,
+    modifier: Modifier = Modifier
 ) {
-    val status = semanticStatusColors()
-    val color = if (amount >= 0) status.success else status.danger
-    val textAlign = if (horizontalAlignment == Alignment.End) TextAlign.End else TextAlign.Start
-    Column(horizontalAlignment = horizontalAlignment) {
+    Column(modifier = modifier) {
         Text(
-            label, style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = textAlign
+            label,
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
         )
         Spacer(modifier = Modifier.height(2.dp))
         Text(
-            formatMoney(amount, 0),
-            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-            color = color,
-            textAlign = textAlign
+            value,
+            style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold),
+            color = valueColor,
+            maxLines = 1,
+            softWrap = false,
+            overflow = TextOverflow.Ellipsis
         )
-        Text(
-            "${"%.0f".format(marginPercent)}% margin",
-            style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            textAlign = textAlign
-        )
-    }
-}
-
-/** Label (left) + amount (right) — always visible, even when the value is 0. */
-@Composable
-private fun AccountLineRow(label: String, amount: Double, valueColor: Color) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 5.dp),
-        horizontalArrangement = Arrangement.SpaceBetween
-    ) {
-        Text(label, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        Text(
-            formatMoney(amount, 0),
-            style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold),
-            color = valueColor
-        )
+        if (marginPercent != null) {
+            Text(
+                "${"%.0f".format(marginPercent)}% margin",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+        }
     }
 }

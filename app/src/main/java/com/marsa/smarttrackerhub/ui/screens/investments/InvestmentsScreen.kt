@@ -90,7 +90,7 @@ private fun PortfolioSummaryCard(state: InvestmentsUiState) {
         Column(modifier = Modifier.fillMaxWidth()) {
             Text(
                 text = formatMoney(state.totalCapital, 0),
-                style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.SemiBold),
+                style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
                 color = MaterialTheme.colorScheme.primary
             )
             Spacer(modifier = Modifier.height(3.dp))

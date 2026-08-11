@@ -80,7 +80,7 @@ fun InvestmentShopCard(
             ) {
                 Text(
                     text = row.shopName,
-                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
+                    style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold),
                     color = colors.onSurface,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
@@ -110,7 +110,7 @@ fun InvestmentShopCard(
             ) {
                 Text(
                     text = formatMoney(row.totalCapital, 0),
-                    style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.SemiBold),
+                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
                     color = colors.primary
                 )
                 Text(
