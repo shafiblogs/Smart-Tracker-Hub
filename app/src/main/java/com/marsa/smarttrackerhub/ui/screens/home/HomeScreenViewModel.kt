@@ -102,60 +102,75 @@ class HomeScreenViewModel(
         signIn(firebaseApp)
         accountApp?.let { signIn(it) }
 
+        // 1) Render whatever is already cached in Room — instantly, no spinner.
         withContext(Dispatchers.IO) {
             shops = getHomeShopUser(userAccessCode, db).filter { it.region == ShopRegion.UAE }
             regions = getSummaryShopList(userAccessCode).filter { it.region == ShopRegion.UAE }
-
-            // Refresh ONLY the current calendar month from Firestore (best-effort) so the
-            // in-progress month shows the latest sales/purchase/account, not stale Room data.
-            val currentMonthId = SimpleDateFormat("MMMM - yyyy", Locale.getDefault())
-                .format(Calendar.getInstance().time)
-            shops.forEach { it.shopId?.let { id -> refreshSalesMonth(id, currentMonthId) } }
-            regions.forEach { it.shopId?.let { id -> refreshAccountMonth(id, currentMonthId) } }
-
-            val byShop = mutableMapOf<String, List<SummaryEntity>>()
-            val monthTimestamps = mutableMapOf<String, Long>()
-            shops.forEach { shop ->
-                val id = shop.shopId ?: return@forEach
-                var list = summaryDao.getAllSummariesForShop(id)
-                val recalced = TargetSaleCalculator.calculateTargetSalesForShop(list)
-                val oldTargets = list.associate { it.monthYear to it.targetSale }
-                if (recalced.any { it.targetSale != oldTargets[it.monthYear] }) {
-                    summaryDao.insertSummaries(recalced)
-                    list = recalced
-                }
-                byShop[id] = list.sortedByDescending { it.monthTimestamp }
-                list.forEach { monthTimestamps[it.monthYear] = it.monthTimestamp }
-            }
-            salesByShop = byShop
-            allMonthsSorted = monthTimestamps.entries.sortedByDescending { it.value }.map { it.key }
+            buildIndexFromRoom()
         }
-        recompute()
+        val hadCache = allMonthsSorted.isNotEmpty()
+        computeStats()
+        if (hadCache) _isLoading.value = false   // records available → hide progress, refresh silently
+
+        // 2) Silently refresh ONLY the current calendar month from Firestore, then re-render.
+        //    (If nothing was cached, the spinner stays up until this first fetch completes.)
+        withContext(Dispatchers.IO) {
+            refreshCurrentMonth()
+            buildIndexFromRoom()
+        }
+        computeStats()
+        _isLoading.value = false
     }
 
     fun setSelectedRange(range: MonthRange) {
         _selectedRange.value = range
-        recompute()
+        viewModelScope.launch { computeStats() }
     }
 
-    private fun recompute() = viewModelScope.launch {
-        _isLoading.value = true
-        val range = _selectedRange.value
+    /** Build the shop→summaries index + month list from Room only (no network). */
+    private suspend fun buildIndexFromRoom() {
+        val byShop = mutableMapOf<String, List<SummaryEntity>>()
+        val monthTimestamps = mutableMapOf<String, Long>()
+        shops.forEach { shop ->
+            val id = shop.shopId ?: return@forEach
+            var list = summaryDao.getAllSummariesForShop(id)
+            val recalced = TargetSaleCalculator.calculateTargetSalesForShop(list)
+            val oldTargets = list.associate { it.monthYear to it.targetSale }
+            if (recalced.any { it.targetSale != oldTargets[it.monthYear] }) {
+                summaryDao.insertSummaries(recalced)
+                list = recalced
+            }
+            byShop[id] = list.sortedByDescending { it.monthTimestamp }
+            list.forEach { monthTimestamps[it.monthYear] = it.monthTimestamp }
+        }
+        salesByShop = byShop
+        allMonthsSorted = monthTimestamps.entries.sortedByDescending { it.value }.map { it.key }
+    }
 
+    /** Best-effort Firestore refresh of the current calendar month (sales + account). */
+    private suspend fun refreshCurrentMonth() {
+        val currentMonthId = SimpleDateFormat("MMMM - yyyy", Locale.getDefault())
+            .format(Calendar.getInstance().time)
+        shops.forEach { it.shopId?.let { id -> refreshSalesMonth(id, currentMonthId) } }
+        regions.forEach { it.shopId?.let { id -> refreshAccountMonth(id, currentMonthId) } }
+    }
+
+    /** Compute shop + account cards for the selected period. Does NOT toggle isLoading. */
+    private suspend fun computeStats() {
+        val range = _selectedRange.value
+        // Sales first (fast, Room-backed) so the UI paints immediately…
         _shopStats.value = withContext(Dispatchers.IO) {
             shops.map { shop -> buildShopStats(shop, range) }
         }
-
-        // Account card uses the representative (newest-in-window) month.
-        val skip = windowFor(range).third
-        val accountMonth = allMonthsSorted.getOrNull(skip) ?: allMonthsSorted.firstOrNull()
+        // …then the account card(s) for the representative (newest-in-window) month.
+        val accountMonth = allMonthsSorted.getOrNull(windowFor(range).third)
+            ?: allMonthsSorted.firstOrNull()
         _accountCards.value = withContext(Dispatchers.IO) {
             regions.map { region ->
                 RegionAccount(region, region.shopId?.takeIf { accountMonth != null }
                     ?.let { fetchAccount(it, accountMonth!!) })
             }
         }
-        _isLoading.value = false
     }
 
     /** (chartMonthCount, statsMonthCount, skipCount) — same windows as the old Home. */
