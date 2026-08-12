@@ -47,6 +47,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -924,22 +925,15 @@ fun SmartTrackerNavHost(navController: NavHostController) {
                         // Version info at the bottom
                         Spacer(modifier = Modifier.weight(1f))
                         HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp))
-                        Column(
+                        Text(
+                            "Version ${BuildConfig.VERSION_NAME} - ${SimpleDateFormat("dd MMM yyyy", Locale.getDefault()).format(Date())}",
                             modifier = Modifier
-                                .padding(horizontal = 16.dp, vertical = 12.dp)
                                 .fillMaxWidth()
-                        ) {
-                            Text(
-                                "v${BuildConfig.VERSION_NAME}",
-                                style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                            Text(
-                                "Built ${SimpleDateFormat("MMM dd, yyyy", Locale.getDefault()).format(Date())}",
-                                style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
+                                .padding(horizontal = 16.dp, vertical = 12.dp),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            textAlign = TextAlign.Center
+                        )
                     }
                 }
             }
