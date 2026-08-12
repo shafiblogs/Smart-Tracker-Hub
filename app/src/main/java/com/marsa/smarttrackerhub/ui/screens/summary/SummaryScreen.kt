@@ -188,7 +188,7 @@ private fun AccountMonthCashFlowBars(summary: AccountSummary?) {
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         // In bar with label above
         Text(
-            text = "In",
+            text = "Cash In",
             style = MaterialTheme.typography.labelSmall,
             color = colors.onSurfaceVariant
         )
@@ -215,7 +215,7 @@ private fun AccountMonthCashFlowBars(summary: AccountSummary?) {
 
         // Out bar with label above
         Text(
-            text = "Out",
+            text = "Cash Out",
             style = MaterialTheme.typography.labelSmall,
             color = colors.onSurfaceVariant
         )
@@ -246,7 +246,7 @@ private fun AccountMonthCashFlowBars(summary: AccountSummary?) {
             AedText(
                 amount = retained,
                 prefix = if (retained >= 0) "+" else "",
-                suffix = " retained",
+                suffix = " balance",
                 style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.SemiBold),
                 color = if (retained >= 0) gpColor else status.danger
             )
