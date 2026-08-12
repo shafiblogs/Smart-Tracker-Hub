@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -21,6 +22,7 @@ import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
@@ -154,7 +156,10 @@ fun SummaryScreen(
                                     )
                                 }
                             }) else null,
-                            details = { AccountMonthMetrics(summary) }
+                            underHeader = if (summary != null) ({
+                                AccountMonthCashFlowBars(summary)
+                            }) else null,
+                            details = { AccountMonthSecondaryMetrics(summary) }
                         )
                     }
                     item { Spacer(modifier = Modifier.height(24.dp)) }
@@ -165,17 +170,14 @@ fun SummaryScreen(
 }
 
 /**
- * Per-month account row detail — headline shows net profit, this shows cash flow stacked bars.
- * In/Out bars show the gap between money in and money out.
- * Underneath: GP, Expense, Withdrawal (neutral).
+ * Cash flow bars that render under the month headline (in underHeader slot).
+ * Shows In/Out stacked bars and retained amount to indicate the month's cash position.
  */
 @Composable
-private fun AccountMonthMetrics(summary: AccountSummary?) {
+private fun AccountMonthCashFlowBars(summary: AccountSummary?) {
     val colors = MaterialTheme.colorScheme
-    if (summary == null) {
-        Text("—", style = MaterialTheme.typography.bodySmall, color = colors.onSurfaceVariant)
-        return
-    }
+    if (summary == null) return
+
     val status = semanticStatusColors()
     val cashIn = summary.totalCollection
     val cashOut = summary.openingCashBalance + summary.totalCollection - summary.cashBalance
@@ -183,55 +185,63 @@ private fun AccountMonthMetrics(summary: AccountSummary?) {
     val gpColor = if (summary.grossProfit >= 0) status.success else status.danger
     val retained = cashIn - cashOut
 
-    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-        // In bar
-        Row(modifier = Modifier.fillMaxWidth()) {
-            Text(
-                text = "In",
-                style = MaterialTheme.typography.labelSmall,
-                color = colors.onSurfaceVariant,
-                modifier = Modifier.width(40.dp)
-            )
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        // In bar with label above
+        Text(
+            text = "In",
+            style = MaterialTheme.typography.labelSmall,
+            color = colors.onSurfaceVariant
+        )
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(end = 32.dp)
+                .height(8.dp)
+                .clip(RoundedCornerShape(4.dp))
+                .background(colors.outlineVariant.copy(alpha = 0.25f))
+        ) {
             Box(
                 modifier = Modifier
-                    .weight((cashIn / maxCash).toFloat().coerceIn(0.01f, 1f))
-                    .height(8.dp)
-                    .clip(RoundedCornerShape(4.dp))
+                    .fillMaxWidth((cashIn / maxCash).toFloat().coerceIn(0.01f, 1f))
+                    .fillMaxHeight()
                     .background(colors.primary)
             )
         }
         AedText(
             amount = cashIn,
             style = MaterialTheme.typography.labelSmall,
-            color = colors.onSurfaceVariant,
-            modifier = Modifier.padding(start = 40.dp)
+            color = colors.onSurfaceVariant
         )
 
-        // Out bar
-        Row(modifier = Modifier.fillMaxWidth()) {
-            Text(
-                text = "Out",
-                style = MaterialTheme.typography.labelSmall,
-                color = colors.onSurfaceVariant,
-                modifier = Modifier.width(40.dp)
-            )
+        // Out bar with label above
+        Text(
+            text = "Out",
+            style = MaterialTheme.typography.labelSmall,
+            color = colors.onSurfaceVariant
+        )
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(end = 32.dp)
+                .height(8.dp)
+                .clip(RoundedCornerShape(4.dp))
+                .background(colors.outlineVariant.copy(alpha = 0.25f))
+        ) {
             Box(
                 modifier = Modifier
-                    .weight((cashOut / maxCash).toFloat().coerceIn(0.01f, 1f))
-                    .height(8.dp)
-                    .clip(RoundedCornerShape(4.dp))
+                    .fillMaxWidth((cashOut / maxCash).toFloat().coerceIn(0.01f, 1f))
+                    .fillMaxHeight()
                     .background(colors.outline)
             )
         }
         Row(
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier.fillMaxWidth().padding(end = 32.dp),
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
             AedText(
                 amount = cashOut,
                 style = MaterialTheme.typography.labelSmall,
-                color = colors.onSurfaceVariant,
-                modifier = Modifier.width(40.dp)
+                color = colors.onSurfaceVariant
             )
             AedText(
                 amount = retained,
@@ -241,53 +251,65 @@ private fun AccountMonthMetrics(summary: AccountSummary?) {
                 color = if (retained >= 0) gpColor else status.danger
             )
         }
+    }
+}
 
-        // Divider
-        androidx.compose.material3.HorizontalDivider(color = colors.outlineVariant)
+/**
+ * Secondary metrics for the Account month card detail section.
+ * Shows Gross Profit, Expense, and Withdrawal in three-column label-over-value layout.
+ */
+@Composable
+private fun AccountMonthSecondaryMetrics(summary: AccountSummary?) {
+    val colors = MaterialTheme.colorScheme
+    if (summary == null) {
+        Text("—", style = MaterialTheme.typography.bodySmall, color = colors.onSurfaceVariant)
+        return
+    }
+    val status = semanticStatusColors()
+    val gpColor = if (summary.grossProfit >= 0) status.success else status.danger
 
-        // Secondary metrics: label-over-value three columns, matching SaleMonthMetrics' primary
-        // row so the Sales and Account cards read identically when switching tabs.
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-            verticalAlignment = Alignment.Top
-        ) {
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = "Gross profit",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = colors.onSurfaceVariant
-                )
-                AedText(
-                    amount = summary.grossProfit,
-                    style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold),
-                    color = gpColor
-                )
-            }
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = "Expense",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = colors.onSurfaceVariant
-                )
-                AedText(
-                    amount = summary.totalExpenses,
-                    style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold),
-                    color = colors.onSurface
-                )
-            }
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = "Withdrawal",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = colors.onSurfaceVariant
-                )
-                AedText(
-                    amount = summary.withdrawal,
-                    style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold),
-                    color = colors.onSurface
-                )
-            }
+    // Three-column label-over-value layout, matching SaleMonthMetrics' primary row
+    // so the Sales and Account cards read identically when switching tabs.
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        verticalAlignment = Alignment.Top
+    ) {
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = "Gross profit",
+                style = MaterialTheme.typography.labelSmall,
+                color = colors.onSurfaceVariant
+            )
+            AedText(
+                amount = summary.grossProfit,
+                style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold),
+                color = gpColor
+            )
+        }
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = "Expense",
+                style = MaterialTheme.typography.labelSmall,
+                color = colors.onSurfaceVariant
+            )
+            AedText(
+                amount = summary.totalExpenses,
+                style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold),
+                color = colors.onSurface
+            )
+        }
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = "Withdrawal",
+                style = MaterialTheme.typography.labelSmall,
+                color = colors.onSurfaceVariant
+            )
+            AedText(
+                amount = summary.withdrawal,
+                style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold),
+                color = colors.onSurface
+            )
         }
     }
 }

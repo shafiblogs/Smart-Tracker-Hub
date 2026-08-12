@@ -83,12 +83,14 @@ fun MonthListCard(
             }
 
             if (underHeader != null) {
-                Spacer(modifier = Modifier.height(8.dp))
+                Spacer(modifier = Modifier.height(10.dp))
                 underHeader()
-            }
-
-            if (details != null) {
-                // Divider under the month header — extends up to (but not under) the arrow.
+                if (details != null) {
+                    Spacer(modifier = Modifier.height(10.dp))
+                    details()
+                }
+            } else if (details != null) {
+                // Divider only when there's no underHeader
                 Spacer(modifier = Modifier.height(8.dp))
                 HorizontalDivider(
                     modifier = Modifier
