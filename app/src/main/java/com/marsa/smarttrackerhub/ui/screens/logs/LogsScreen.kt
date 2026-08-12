@@ -48,6 +48,9 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
+import com.marsa.smarttrackerhub.domain.MonthOption
+import com.marsa.smarttrackerhub.domain.MonthSelection
+import com.marsa.smarttrackerhub.ui.components.MonthSelector
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.marsa.smarttracker.ui.theme.sTypography
 import com.marsa.smarttrackerhub.utils.PdfExportUtil
@@ -79,7 +82,6 @@ fun LogsScreen(viewModel: LogsViewModel = viewModel()) {
     val employeeMonthSummary by viewModel.employeeMonthSummary.collectAsState()
 
     var selectionExpanded by remember { mutableStateOf(false) }
-    var monthExpanded     by remember { mutableStateOf(false) }
 
     // View refs for sharing
     val summaryViewRef  = remember { mutableStateOf<android.view.View?>(null) }
@@ -176,34 +178,16 @@ fun LogsScreen(viewModel: LogsViewModel = viewModel()) {
 
         Spacer(modifier = Modifier.height(8.dp))
 
-        // ── Month dropdown ─────────────────────────────────────────────────
-        ExposedDropdownMenuBox(
-            expanded         = monthExpanded,
-            onExpandedChange = { monthExpanded = it }
-        ) {
-            OutlinedTextField(
-                value         = selectedMonth.displayName,
-                onValueChange = {},
-                readOnly      = true,
-                label         = { Text("Month") },
-                trailingIcon  = { ExposedDropdownMenuDefaults.TrailingIcon(monthExpanded) },
-                modifier      = Modifier.fillMaxWidth().menuAnchor()
-            )
-            ExposedDropdownMenu(
-                expanded         = monthExpanded,
-                onDismissRequest = { monthExpanded = false }
-            ) {
-                viewModel.availableMonths.forEach { month ->
-                    DropdownMenuItem(
-                        text    = { Text(month.displayName) },
-                        onClick = {
-                            viewModel.selectMonth(month)
-                            monthExpanded = false
-                        }
-                    )
-                }
-            }
-        }
+        // ── Month picker ─────────────────────────────────────────────────────
+        MonthSelector(
+            label = "Month",
+            selection = MonthSelection.Month(selectedMonth),
+            presets = emptyList(),
+            onSelectionChange = { sel ->
+                if (sel is MonthSelection.Month) viewModel.selectMonth(sel.option)
+            },
+            modifier = Modifier.fillMaxWidth()
+        )
 
         Spacer(modifier = Modifier.height(12.dp))
 

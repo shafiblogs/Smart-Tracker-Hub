@@ -47,7 +47,7 @@ import com.marsa.smarttrackerhub.domain.MonthlySummary
 import com.marsa.smarttrackerhub.ui.components.AedText
 import com.marsa.smarttrackerhub.ui.components.DeltaChip
 import com.marsa.smarttrackerhub.ui.components.DetailSectionCard
-import com.marsa.smarttrackerhub.ui.components.DropdownField
+import com.marsa.smarttrackerhub.ui.components.AvailableMonthSelector
 import com.marsa.smarttrackerhub.ui.components.MarginBar
 import com.marsa.smarttrackerhub.ui.screens.chart.PurchaseCategoryChartData
 import com.marsa.smarttrackerhub.ui.screens.chart.PurchaseChartStatistics
@@ -118,15 +118,13 @@ fun SalesDetailScreen(
         }
     ) { padding ->
         Column(modifier = Modifier.fillMaxSize().padding(padding)) {
-            // Common month selector (matches the shop/region dropdown style).
-            DropdownField(
+            // Month selector: every month with data as a one-tap preset, plus a grid picker
+            // for anything else (D-series follow-up — see AvailableMonthSelector).
+            AvailableMonthSelector(
                 label = "Month",
-                selectedValue = selectedMonthId,
-                options = availableMonths.map { it.displayName },
-                onOptionSelected = { name ->
-                    availableMonths.firstOrNull { it.displayName == name }
-                        ?.let { viewModel.selectMonth(it.id) }
-                },
+                availableMonths = availableMonths,
+                selectedMonthId = selectedMonthId,
+                onMonthIdSelected = { viewModel.selectMonth(it) },
                 enabled = availableMonths.isNotEmpty(),
                 modifier = Modifier.padding(horizontal = spaceLg, vertical = spaceSm)
             )

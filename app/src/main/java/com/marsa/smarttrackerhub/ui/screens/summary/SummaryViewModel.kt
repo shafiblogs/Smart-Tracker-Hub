@@ -12,8 +12,8 @@ import com.marsa.smarttrackerhub.data.entity.toDomain
 import com.marsa.smarttrackerhub.data.entity.toEntity
 import com.marsa.smarttrackerhub.domain.AccessCode
 import com.marsa.smarttrackerhub.domain.AccountSummary
+import com.marsa.smarttrackerhub.domain.AvailableMonth
 import com.marsa.smarttrackerhub.domain.getSummaryShopList
-import com.marsa.smarttrackerhub.ui.screens.sale.TargetSaleCalculator
 import com.marsa.smarttrackerhub.ui.screens.statement.ShopListDto
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -31,8 +31,8 @@ class SummaryViewModel(
     private val _shops = MutableStateFlow<List<ShopListDto>>(emptyList())
     val shops: StateFlow<List<ShopListDto>> = _shops
 
-    private val _availableMonths = MutableStateFlow<List<MonthItem>>(emptyList())
-    val availableMonths: StateFlow<List<MonthItem>> = _availableMonths
+    private val _availableMonths = MutableStateFlow<List<AvailableMonth>>(emptyList())
+    val availableMonths: StateFlow<List<AvailableMonth>> = _availableMonths
 
     private val _summariesCache = MutableStateFlow<Map<String, AccountSummary>>(emptyMap())
     val summariesCache: StateFlow<Map<String, AccountSummary>> = _summariesCache
@@ -120,15 +120,9 @@ class SummaryViewModel(
                     return@addSnapshotListener
                 }
                 val monthsList = snapshot?.documents
-                    ?.map { doc ->
-                        MonthItem(
-                            id = doc.id,
-                            displayName = doc.id,
-                            timestamp = TargetSaleCalculator.parseMonthYearToTimestamp(doc.id)
-                        )
-                    }
+                    ?.map { doc -> AvailableMonth(id = doc.id) }
                     .orEmpty()
-                    .sortedByDescending { it.timestamp }
+                    .sortedByDescending { it.yearMonth?.let { ym -> ym.year * 12L + ym.monthValue } ?: Long.MIN_VALUE }
 
                 _availableMonths.value = monthsList
                 if (monthsList.isNotEmpty()) {
@@ -239,9 +233,3 @@ class SummaryViewModel(
         monthsListenerRegistration?.remove()
     }
 }
-
-data class MonthItem(
-    val id: String,
-    val displayName: String,
-    val timestamp: Long = 0L
-)

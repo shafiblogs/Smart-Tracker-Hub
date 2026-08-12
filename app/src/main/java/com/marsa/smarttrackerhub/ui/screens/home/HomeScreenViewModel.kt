@@ -15,7 +15,8 @@ import com.marsa.smarttrackerhub.data.entity.toEntity
 import com.marsa.smarttrackerhub.domain.AccessCode
 import com.marsa.smarttrackerhub.domain.AccountSummary
 import com.marsa.smarttrackerhub.domain.ChartStatistics
-import com.marsa.smarttrackerhub.domain.MonthRange
+import com.marsa.smarttrackerhub.domain.MonthOption
+import com.marsa.smarttrackerhub.domain.MonthSelection
 import com.marsa.smarttrackerhub.domain.MonthlySummary
 import com.marsa.smarttrackerhub.domain.ShopRegion
 import com.marsa.smarttrackerhub.domain.getHomeShopUser
@@ -33,22 +34,38 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import java.text.SimpleDateFormat
-import java.util.Calendar
-import java.util.Locale
+import java.time.YearMonth
+import java.time.temporal.ChronoUnit
 import kotlin.coroutines.resume
 import kotlin.coroutines.suspendCoroutine
 
 private const val MIN_PURCHASE_CATEGORY_TARGET = 500.0
 private const val MIN_TOTAL_PURCHASE_TARGET = 10000.0
 
+/** Period-picker entries for Home: current month, then the two trailing ranges.
+ *  The "Pick a month…" entry is always available as an additional option. */
+private fun defaultRanges(): List<MonthSelection> {
+    val current = YearMonth.now()
+    return listOf(
+        MonthSelection.Month(MonthOption(current)),
+        MonthSelection.TrailingRange(3),
+        MonthSelection.TrailingRange(6)
+    )
+}
+
 /**
- * Home screen: a period selector (Current / Previous / Last 3 / Last 6 months) driving,
+ * Home screen: a period selector (Current Month / Pick a Month / Last 3 / Last 6 months) driving,
  * for the chosen period (UAE only):
  *   - one Account card (region-level aggregate, AccountTrackerApp), then
  *   - one Sales card (UnifiedStatisticsCard: sales + purchase stats) per shop.
  *
  * Same per-shop window math the old Home used, now rendered for every shop instead of one.
+ *
+ * The period selector's free "pick a month" entry is deliberately NOT wired in yet: [windowFor]
+ * and [purchaseIndicesFor] compute a skip count that indexes into [allMonthsSorted] — the months
+ * a shop actually has cached — rather than a calendar distance. Those agree only when there's no
+ * gap between "now" and a shop's most recent cached month. Resolving an arbitrary picked month
+ * correctly means switching to a lookup-by-key (fetch-then-locate), which is a separate change.
  */
 class HomeScreenViewModel(
     private val application: Application,
@@ -82,15 +99,11 @@ class HomeScreenViewModel(
     private val accountApp = runCatching { FirebaseApp.getInstance("AccountTrackerApp") }.getOrNull()
     private val accountFirestore = accountApp?.let { FirebaseFirestore.getInstance(it) }
 
-    private val _availableRanges = MutableStateFlow(MonthRange.getAvailableRanges())
-    val availableRanges: StateFlow<List<MonthRange>> = _availableRanges.asStateFlow()
+    private val _availableRanges = MutableStateFlow(defaultRanges())
+    val availableRanges: StateFlow<List<MonthSelection>> = _availableRanges.asStateFlow()
 
-    private val _selectedRange = MutableStateFlow<MonthRange>(
-        MonthRange.CurrentMonth(
-            SimpleDateFormat("MMMM yyyy", Locale.getDefault()).format(Calendar.getInstance().time)
-        )
-    )
-    val selectedRange: StateFlow<MonthRange> = _selectedRange.asStateFlow()
+    private val _selectedRange = MutableStateFlow<MonthSelection>(MonthSelection.currentMonth())
+    val selectedRange: StateFlow<MonthSelection> = _selectedRange.asStateFlow()
 
     private val _accountCards = MutableStateFlow<List<RegionAccount>>(emptyList())
     val accountCards: StateFlow<List<RegionAccount>> = _accountCards.asStateFlow()
@@ -140,7 +153,7 @@ class HomeScreenViewModel(
         _isLoading.value = false
     }
 
-    fun setSelectedRange(range: MonthRange) {
+    fun setSelectedRange(range: MonthSelection) {
         _selectedRange.value = range
         viewModelScope.launch {
             // Refresh all months in the newly selected period from Firestore
@@ -173,7 +186,7 @@ class HomeScreenViewModel(
     }
 
     /** Firestore refresh of all months in the selected period (sales + account). */
-    private suspend fun refreshSelectedPeriod(range: MonthRange) {
+    private suspend fun refreshSelectedPeriod(range: MonthSelection) {
         val (_, statsCount, skip) = windowFor(range)
         // Get the months to refresh: skip the first 'skip' months, then take 'statsCount' months
         val monthsToRefresh = allMonthsSorted.drop(skip).take(statsCount)
@@ -202,25 +215,33 @@ class HomeScreenViewModel(
         }
     }
 
+    /**
+     * How many calendar months back from "now" a [MonthSelection.Month] sits — 0 for the
+     * current month, 1 for last month, etc. Only exact for the built-in relative presets
+     * ([defaultRanges]); see the class doc for why an arbitrary picked month isn't wired in yet.
+     */
+    private fun relativeSkipFor(month: MonthSelection.Month): Int =
+        ChronoUnit.MONTHS.between(month.option.yearMonth, YearMonth.now()).toInt().coerceAtLeast(0)
+
     /** (chartMonthCount, statsMonthCount, skipCount) — same windows as the old Home. */
-    private fun windowFor(range: MonthRange): Triple<Int, Int, Int> = when (range) {
-        is MonthRange.CurrentMonth          -> Triple(1, 1, 0)
-        is MonthRange.PreviousMonth         -> Triple(1, 1, 1)
-        is MonthRange.PreviousPreviousMonth -> Triple(1, 1, 2)
-        is MonthRange.Last3Months           -> Triple(3, 3, 1)
-        is MonthRange.Last6Months           -> Triple(6, 6, 1)
+    private fun windowFor(range: MonthSelection): Triple<Int, Int, Int> = when (range) {
+        is MonthSelection.Month         -> Triple(1, 1, relativeSkipFor(range))
+        is MonthSelection.TrailingRange -> Triple(range.monthCount, range.monthCount, 1)
     }
 
     /** Purchase current-window vs previous-window indices into the shop's newest→oldest list. */
-    private fun purchaseIndicesFor(range: MonthRange): Pair<List<Int>, List<Int>> = when (range) {
-        is MonthRange.CurrentMonth          -> listOf(0) to listOf(1)
-        is MonthRange.PreviousMonth         -> listOf(1) to listOf(2)
-        is MonthRange.PreviousPreviousMonth -> listOf(2) to listOf(3)
-        is MonthRange.Last3Months           -> listOf(1, 2, 3) to listOf(4, 5, 6)
-        is MonthRange.Last6Months           -> (1..6).toList() to (7..12).toList()
+    private fun purchaseIndicesFor(range: MonthSelection): Pair<List<Int>, List<Int>> = when (range) {
+        is MonthSelection.Month -> {
+            val skip = relativeSkipFor(range)
+            listOf(skip) to listOf(skip + 1)
+        }
+        is MonthSelection.TrailingRange -> {
+            val n = range.monthCount
+            (1..n).toList() to (n + 1..2 * n).toList()
+        }
     }
 
-    private suspend fun buildShopStats(shop: ShopListDto, range: MonthRange): ShopStats {
+    private suspend fun buildShopStats(shop: ShopListDto, range: MonthSelection): ShopStats {
         val id = shop.shopId
         val list = id?.let { salesByShop[it] } ?: emptyList()
         if (id == null || list.isEmpty()) return ShopStats(shop, null, null, 0.0)

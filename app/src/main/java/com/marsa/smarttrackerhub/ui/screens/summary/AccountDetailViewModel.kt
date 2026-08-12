@@ -13,8 +13,8 @@ import com.marsa.smarttrackerhub.data.AppDatabase
 import com.marsa.smarttrackerhub.data.entity.toDomain
 import com.marsa.smarttrackerhub.data.entity.toEntity
 import com.marsa.smarttrackerhub.domain.AccountSummary
+import com.marsa.smarttrackerhub.domain.AvailableMonth
 import com.marsa.smarttrackerhub.ui.components.percentChange
-import com.marsa.smarttrackerhub.ui.screens.sale.TargetSaleCalculator
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -39,8 +39,8 @@ class AccountDetailViewModel(
     private val firestore = FirebaseFirestore.getInstance(firebaseApp)
     private var monthsListener: ListenerRegistration? = null
 
-    private val _availableMonths = MutableStateFlow<List<MonthItem>>(emptyList())
-    val availableMonths: StateFlow<List<MonthItem>> = _availableMonths
+    private val _availableMonths = MutableStateFlow<List<AvailableMonth>>(emptyList())
+    val availableMonths: StateFlow<List<AvailableMonth>> = _availableMonths
 
     private val _selectedMonthId = MutableStateFlow(initialMonthId)
     val selectedMonthId: StateFlow<String> = _selectedMonthId
@@ -80,14 +80,9 @@ class AccountDetailViewModel(
             .addSnapshotListener { snap, err ->
                 if (err != null) return@addSnapshotListener
                 _availableMonths.value = snap?.documents
-                    ?.map {
-                        MonthItem(
-                            id = it.id, displayName = it.id,
-                            timestamp = TargetSaleCalculator.parseMonthYearToTimestamp(it.id)
-                        )
-                    }
+                    ?.map { doc -> AvailableMonth(id = doc.id) }
                     .orEmpty()
-                    .sortedByDescending { it.timestamp }
+                    .sortedByDescending { it.yearMonth?.let { ym -> ym.year * 12L + ym.monthValue } ?: Long.MIN_VALUE }
                 updateComparison()
             }
     }

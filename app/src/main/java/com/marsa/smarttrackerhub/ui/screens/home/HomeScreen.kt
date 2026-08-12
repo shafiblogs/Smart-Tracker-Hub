@@ -39,7 +39,7 @@ import com.marsa.smarttrackerhub.domain.AccessCode
 import com.marsa.smarttrackerhub.domain.AccountSummary
 import com.marsa.smarttrackerhub.ui.components.AedText
 import com.marsa.smarttrackerhub.ui.components.DetailSectionCard
-import com.marsa.smarttrackerhub.ui.components.DropdownField
+import com.marsa.smarttrackerhub.ui.components.MonthSelector
 import com.marsa.smarttrackerhub.ui.screens.chart.UnifiedStatisticsCard
 import com.marsa.smarttrackerhub.ui.screens.chart.MoneyAllocationBar
 import com.marsa.smarttrackerhub.utils.formatLastUpdated
@@ -75,14 +75,11 @@ fun HomeScreen(
             .padding(16.dp)
     ) {
         // ── Period selector (drives everything below) ────────────────────────
-        DropdownField(
+        MonthSelector(
             label = "Period",
-            selectedValue = selectedRange.displayName,
-            options = availableRanges.map { it.displayName },
-            onOptionSelected = { name ->
-                availableRanges.firstOrNull { it.displayName == name }
-                    ?.let { viewModel.setSelectedRange(it) }
-            },
+            selection = selectedRange,
+            presets = availableRanges,
+            onSelectionChange = { viewModel.setSelectedRange(it) },
             enabled = availableRanges.isNotEmpty(),
             modifier = Modifier.fillMaxWidth()
         )

@@ -10,6 +10,7 @@ import com.google.firebase.firestore.FirebaseFirestore
 import com.marsa.smarttrackerhub.data.AppDatabase
 import com.marsa.smarttrackerhub.data.entity.EmployeeInfo
 import com.marsa.smarttrackerhub.data.entity.ShopInfo
+import com.marsa.smarttrackerhub.domain.MonthOption
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -17,9 +18,8 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
-import java.time.LocalDate
+import java.time.YearMonth
 import java.time.format.DateTimeFormatter
-import java.util.Locale
 import kotlin.coroutines.resume
 import kotlin.coroutines.suspendCoroutine
 
@@ -37,12 +37,6 @@ fun SelectionItem.displayLabel(): String = when (this) {
     is SelectionItem.EmployeeItem -> "${employee.employeeName} · $shopName"
 }
 
-// ── Month picker ─────────────────────────────────────────────────────────────
-
-data class MonthOption(
-    val key: String,         // "yyyy-MM"
-    val displayName: String  // "March 2026"
-)
 
 // ── Raw log entry ─────────────────────────────────────────────────────────────
 
@@ -205,7 +199,9 @@ class LogsViewModel : ViewModel() {
 
     private fun loadLogs() = viewModelScope.launch {
         val item  = _selectedItem.value ?: return@launch
-        val month = _selectedMonth.value.key
+        // Logs' own Firestore convention ("yyyy-MM") — distinct from the summary docs'
+        // "MonthName - yyyy" key, so this is derived locally rather than via MonthOption.
+        val month = _selectedMonth.value.yearMonth.format(LOGS_MONTH_KEY_FORMATTER)
         val shopFirebaseId = when (item) {
             is SelectionItem.ShopItem     -> item.shop.shopId
             is SelectionItem.EmployeeItem -> item.employee.associatedShopFirebaseId
@@ -343,13 +339,13 @@ class LogsViewModel : ViewModel() {
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
+/** Logs' own Firestore key convention for `shops/{id}/logs/{key}/data` — "yyyy-MM", distinct
+ *  from the summary docs' "MonthName - yyyy" convention (see MonthOption.SUMMARY_KEY_FORMATTER). */
+private val LOGS_MONTH_KEY_FORMATTER: DateTimeFormatter = DateTimeFormatter.ofPattern("yyyy-MM")
+
 private fun buildMonthOptions(): List<MonthOption> {
-    val now = LocalDate.now()
-    val fmt = DateTimeFormatter.ofPattern("MMMM yyyy", Locale.ENGLISH)
-    return (0..11).map { ago ->
-        val d = now.minusMonths(ago.toLong())
-        MonthOption(d.format(DateTimeFormatter.ofPattern("yyyy-MM")), d.format(fmt))
-    }
+    val now = YearMonth.now()
+    return (0..11).map { ago -> MonthOption(now.minusMonths(ago.toLong())) }
 }
 
 fun Long.toHoursLabel(): String {
