@@ -17,6 +17,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.unit.dp
+import com.marsa.smarttracker.ui.theme.semanticStatusColors
 import kotlin.math.max
 
 @Composable
@@ -30,6 +31,7 @@ fun MonthlySalesChart(
     onShareClick: (() -> Unit)? = null
 ) {
     val colors = MaterialTheme.colorScheme
+    val status = semanticStatusColors()
     var touchInfo by remember { mutableStateOf<ChartTouchInfo?>(null) }
 
     Box(modifier = modifier) {
@@ -147,7 +149,7 @@ fun MonthlySalesChart(
                         val monthAchievementPercentage = (monthData.averageSale / monthData.targetSale) * 100
 
                         // Achievement-based color — shared palette
-                        val avgColor = salesAchievementColor(monthAchievementPercentage, colors.error)
+                        val avgColor = salesAchievementColor(monthAchievementPercentage, status)
 
                         val avgY =
                             chartHeight - bottomPadding - (monthData.averageSale * yScale).toFloat()

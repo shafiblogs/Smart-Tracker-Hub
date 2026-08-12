@@ -24,6 +24,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.marsa.smarttrackerhub.domain.ChartStatistics
+import com.marsa.smarttracker.ui.theme.semanticStatusColors
 import kotlin.math.abs
 
 @Composable
@@ -35,11 +36,12 @@ fun StatisticsCard(
     onShareClick: (() -> Unit)? = null
 ) {
     val colors = MaterialTheme.colorScheme
+    val status = semanticStatusColors()
     val isTargetAchieved = statistics.averageAchievementPercentage >= 100
 
     // Achievement color — shared palette
     fun getAchievementColor(percentage: Double): Color =
-        salesAchievementColor(percentage, colors.error)
+        salesAchievementColor(percentage, status)
 
     Card(
         modifier = modifier.fillMaxWidth(),
@@ -128,7 +130,7 @@ fun StatisticsCard(
                     StatItem(
                         label = "Difference",
                         value = "$icon ${String.format("%.0f", abs(difference))}",
-                        valueColor = if (difference >= 0) ChartSuccessGreen else colors.error
+                        valueColor = if (difference >= 0) status.success else status.danger
                     )
                 }
             }

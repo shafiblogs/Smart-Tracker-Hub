@@ -1,10 +1,13 @@
 package com.marsa.smarttrackerhub.ui.screens.notifications
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -33,6 +36,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.text.style.TextAlign
+import com.marsa.smarttracker.ui.theme.semanticStatusColors
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -47,30 +52,30 @@ fun NotificationCard(
     notification: NotificationItem,
     onClick: () -> Unit
 ) {
-    val dateFormat = SimpleDateFormat("dd MMM yyyy", Locale.ENGLISH)
+    val colors = MaterialTheme.colorScheme
+    val status = com.marsa.smarttracker.ui.theme.semanticStatusColors()
 
-    val (icon, iconColor, backgroundColor) = when (notification.priority) {
-        NotificationPriority.HIGH -> {
-            // Expired/Due/Pending - Red theme
-            val notificationIcon = when (notification.type) {
-                NotificationType.SHOP_LICENSE_EXPIRED -> Icons.Default.Info
-                NotificationType.EMPLOYEE_VISA_EXPIRED -> Icons.Default.Person
-                NotificationType.ZAKATH_STOCK_DUE -> Icons.Default.CheckCircle
-                NotificationType.ZAKATH_PAYMENT_PENDING -> Icons.Default.Info
-                else -> Icons.Default.Warning
-            }
-            Triple(notificationIcon, MaterialTheme.colorScheme.error, MaterialTheme.colorScheme.surface)
-        }
-        NotificationPriority.MEDIUM -> {
-            // Near expiry/Approaching - WarningAmber (BrandOrange)
-            val notificationIcon = when (notification.type) {
-                NotificationType.SHOP_LICENSE_NEAR_EXPIRY -> Icons.Default.Info
-                NotificationType.EMPLOYEE_VISA_NEAR_EXPIRY -> Icons.Default.Person
-                NotificationType.ZAKATH_STOCK_APPROACHING -> Icons.Default.CheckCircle
-                else -> Icons.Default.Warning
-            }
-            Triple(notificationIcon, MaterialTheme.colorScheme.secondary, MaterialTheme.colorScheme.surface)
-        }
+    // Determine severity color and label
+    val (severityColor, severityLabel) = when (notification.priority) {
+        NotificationPriority.HIGH -> Pair(status.danger, "OVERDUE")
+        NotificationPriority.MEDIUM -> Pair(status.warning, "DUE SOON")
+    }
+
+    // Calculate days remaining
+    val today = System.currentTimeMillis()
+    val daysRemaining = ((notification.expiryDate - today) / (1000 * 60 * 60 * 24)).toInt()
+    val daysLabel = when {
+        daysRemaining > 0 -> Pair(daysRemaining, "days left")
+        daysRemaining < 0 -> Pair(-daysRemaining, "days over")
+        else -> Pair(0, "due today")
+    }
+
+    // Determine notification category
+    val category = when (notification.type) {
+        NotificationType.SHOP_LICENSE_EXPIRED, NotificationType.SHOP_LICENSE_NEAR_EXPIRY -> "Shop licence"
+        NotificationType.EMPLOYEE_VISA_EXPIRED, NotificationType.EMPLOYEE_VISA_NEAR_EXPIRY -> "Employee visa"
+        NotificationType.ZAKATH_STOCK_DUE, NotificationType.ZAKATH_STOCK_APPROACHING -> "Zakath stock"
+        NotificationType.ZAKATH_PAYMENT_PENDING -> "Zakath payment"
     }
 
     Card(
@@ -80,139 +85,84 @@ fun NotificationCard(
         shape = RoundedCornerShape(16.dp),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
         colors = CardDefaults.cardColors(
-            containerColor = backgroundColor
+            containerColor = colors.surface
         )
     ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.Top
-        ) {
-            // Icon with circular background
-            Surface(
-                shape = CircleShape,
-                color = iconColor.copy(alpha = 0.1f),
-                modifier = Modifier.size(48.dp)
-            ) {
-                Icon(
-                    imageVector = icon,
-                    contentDescription = null,
-                    tint = iconColor,
-                    modifier = Modifier.padding(12.dp)
-                )
-            }
-
-            Spacer(modifier = Modifier.width(12.dp))
+        Row(modifier = Modifier.fillMaxWidth()) {
+            // Severity rail
+            Box(
+                modifier = Modifier
+                    .width(4.dp)
+                    .fillMaxHeight()
+                    .background(severityColor)
+            )
 
             // Content
             Column(modifier = Modifier.weight(1f)) {
+                // Eyebrow: status pill + category
                 Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Text(
-                        text = notification.title,
-                        style = MaterialTheme.typography.titleMedium.copy(
-                            fontSize = 16.sp,
-                            fontWeight = FontWeight.Bold
-                        ),
-                        color = MaterialTheme.colorScheme.onSurface,
-                        modifier = Modifier.weight(1f)
-                    )
-
-                    if (notification.priority == NotificationPriority.HIGH) {
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Surface(
-                            shape = RoundedCornerShape(4.dp),
-                            color = MaterialTheme.colorScheme.errorContainer
-                        ) {
-                            Row(
-                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(4.dp)
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.Warning,
-                                    contentDescription = "High Priority",
-                                    tint = MaterialTheme.colorScheme.onErrorContainer,
-                                    modifier = Modifier.size(14.dp)
-                                )
-                                Text(
-                                    text = "Urgent",
-                                    style = MaterialTheme.typography.labelSmall.copy(
-                                        fontSize = 11.sp,
-                                        fontWeight = FontWeight.Bold
-                                    ),
-                                    color = MaterialTheme.colorScheme.onErrorContainer
-                                )
-                            }
-                        }
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(6.dp))
-
-                Text(
-                    text = notification.message,
-                    style = MaterialTheme.typography.bodyMedium.copy(
-                        fontSize = 14.sp
-                    ),
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-
-                Spacer(modifier = Modifier.height(8.dp))
-
-                Row(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Surface(
-                        shape = CircleShape,
-                        color = iconColor,
-                        modifier = Modifier.size(8.dp)
-                    ) {}
-
-                    Spacer(modifier = Modifier.width(6.dp))
-
-                    val dateLabel = when (notification.type) {
-                        NotificationType.ZAKATH_STOCK_DUE,
-                        NotificationType.ZAKATH_STOCK_APPROACHING -> "Stock Due"
-                        NotificationType.ZAKATH_PAYMENT_PENDING -> "Stock Taken"
-                        else -> "Expires"
+                        shape = RoundedCornerShape(4.dp),
+                        color = severityColor.copy(alpha = 0.14f)
+                    ) {
+                        Text(
+                            text = severityLabel,
+                            style = MaterialTheme.typography.labelSmall.copy(
+                                fontSize = 10.sp,
+                                letterSpacing = 0.09f.sp,
+                                fontWeight = FontWeight.Bold
+                            ),
+                            color = severityColor,
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                        )
                     }
-
                     Text(
-                        text = "$dateLabel: ${dateFormat.format(Date(notification.expiryDate))}",
-                        style = MaterialTheme.typography.bodySmall.copy(
-                            fontSize = 12.sp,
-                            fontWeight = FontWeight.Medium
-                        ),
-                        color = iconColor
+                        text = category,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = colors.onSurfaceVariant
                     )
                 }
 
-                // Show additional info if available
-                notification.additionalInfo?.let { info ->
-                    Spacer(modifier = Modifier.height(8.dp))
-                    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-                    Spacer(modifier = Modifier.height(8.dp))
+                Spacer(modifier = Modifier.height(8.dp))
 
-                    Surface(
-                        shape = RoundedCornerShape(6.dp),
-                        color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f)
-                    ) {
-                        Text(
-                            text = info,
-                            style = MaterialTheme.typography.bodySmall.copy(
-                                fontSize = 13.sp,
-                                fontWeight = FontWeight.SemiBold
-                            ),
-                            color = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
-                        )
-                    }
-                }
+                // Title: subject (e.g., employee name or shop name)
+                Text(
+                    text = notification.title,
+                    style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold),
+                    color = colors.onSurface
+                )
+
+                Spacer(modifier = Modifier.height(3.dp))
+
+                // Subtitle: detailed message + location
+                Text(
+                    text = notification.message,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = colors.onSurfaceVariant
+                )
+            }
+
+            // Days remaining: right-aligned block
+            Column(
+                horizontalAlignment = Alignment.End,
+                modifier = Modifier.padding(start = 12.dp)
+            ) {
+                Text(
+                    text = daysLabel.first.toString(),
+                    style = MaterialTheme.typography.titleLarge.copy(
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 22.sp
+                    ),
+                    color = severityColor
+                )
+                Text(
+                    text = daysLabel.second,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = severityColor
+                )
             }
         }
     }

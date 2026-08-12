@@ -25,8 +25,9 @@ import androidx.compose.ui.unit.dp
 import com.marsa.smarttrackerhub.utils.formatLastUpdated
 
 /**
- * Compact, tappable month row for the Sales/Account list screens — month title + optional
- * subtitle, with a trailing chevron indicating it opens a detail screen.
+ * Compact, tappable month row for the Sales/Account list screens.
+ * Header: month title + optional headline (e.g., margin % or net profit) + chevron.
+ * Optional lastUpdated caption and details section.
  */
 @Composable
 fun MonthListCard(
@@ -35,6 +36,7 @@ fun MonthListCard(
     onClick: () -> Unit,
     subtitle: String? = null,
     lastUpdated: Long? = null,
+    headline: (@Composable () -> Unit)? = null,
     details: (@Composable () -> Unit)? = null
 ) {
     Card(
@@ -50,27 +52,31 @@ fun MonthListCard(
                 .fillMaxWidth()
                 .padding(horizontal = 16.dp, vertical = 16.dp)
         ) {
-            // Month name + chevron
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(
-                    text = monthLabel,
-                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-                    color = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.weight(1f)
-                )
+            // Month name + headline + chevron
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = monthLabel,
+                        style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold),
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                    if (lastUpdated != null) {
+                        Spacer(modifier = Modifier.height(2.dp))
+                        Text(
+                            text = lastUpdated.formatLastUpdated(),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+                headline?.invoke()
                 Icon(
                     imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
                     contentDescription = "View details",
                     tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
-                )
-            }
-
-            if (lastUpdated != null) {
-                Spacer(modifier = Modifier.height(2.dp))
-                Text(
-                    text = lastUpdated.formatLastUpdated(),
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
 

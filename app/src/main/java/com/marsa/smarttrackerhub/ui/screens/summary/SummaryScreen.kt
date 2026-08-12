@@ -1,6 +1,7 @@
 package com.marsa.smarttrackerhub.ui.screens.summary
 
 import android.app.Application
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -11,9 +12,11 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.draw.clip
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExposedDropdownMenuBox
@@ -28,6 +31,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.google.firebase.FirebaseApp
@@ -124,6 +128,8 @@ fun SummaryScreen(
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     items(availableMonths) { monthItem ->
+                        val summary = summariesCache[monthItem.id]
+                        val status = semanticStatusColors()
                         MonthListCard(
                             monthLabel = monthItem.displayName,
                             shopName = selectedShop?.name ?: "",
@@ -131,8 +137,27 @@ fun SummaryScreen(
                                 val sid = selectedShop?.shopId ?: return@MonthListCard
                                 onMonthClick(sid, monthItem.id, selectedShop?.name ?: "")
                             },
-                            lastUpdated = summariesCache[monthItem.id]?.lastUpdated,
-                            details = { AccountMonthMetrics(summariesCache[monthItem.id]) }
+                            lastUpdated = summary?.lastUpdated,
+                            headline = if (summary != null) ({
+                                Column(horizontalAlignment = Alignment.End) {
+                                    Text(
+                                        text = if (summary.netProfit >= 0) "+" else "",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = if (summary.netProfit >= 0) status.success else status.danger
+                                    )
+                                    Text(
+                                        text = formatMoney(summary.netProfit, 0),
+                                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                                        color = if (summary.netProfit >= 0) status.success else status.danger
+                                    )
+                                    Text(
+                                        text = "net profit",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = if (summary.netProfit >= 0) status.success else status.danger
+                                    )
+                                }
+                            }) else null,
+                            details = { AccountMonthMetrics(summary) }
                         )
                     }
                     item { Spacer(modifier = Modifier.height(24.dp)) }
@@ -143,15 +168,9 @@ fun SummaryScreen(
 }
 
 /**
- * Per-month account row detail — an aligned two-column grid (parity with the Sales list).
- * Accounts are a cash-flow view:
- *   In Đx   Out Đy   (in = collection; out = actual cash disbursed)
- *   GP Đz   Net Đw   (gross + net profit, sign-coloured)
- *
- * Out is derived from the cash-balance identity — Out = openingCash + In − closingCash — so it
- * reflects the *real* cash that left (excludes credit purchases, includes outstanding settlements)
- * and `In − Out` always equals the month's cash-balance movement.
- * Shows a placeholder while the summary is still loading.
+ * Per-month account row detail — headline shows net profit, this shows cash flow stacked bars.
+ * In/Out bars show the gap between money in and money out.
+ * Underneath: GP, Expense, Withdrawal (neutral).
  */
 @Composable
 private fun AccountMonthMetrics(summary: AccountSummary?) {
@@ -163,21 +182,115 @@ private fun AccountMonthMetrics(summary: AccountSummary?) {
     val status = semanticStatusColors()
     val cashIn = summary.totalCollection
     val cashOut = summary.openingCashBalance + summary.totalCollection - summary.cashBalance
+    val maxCash = kotlin.math.max(cashIn, cashOut).coerceAtLeast(1.0)
     val gpColor = if (summary.grossProfit >= 0) status.success else status.danger
-    val netColor = if (summary.netProfit >= 0) status.success else status.danger
+    val retained = cashIn - cashOut
 
     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        // In bar
         Row(modifier = Modifier.fillMaxWidth()) {
-            MetricCell("In", formatMoney(cashIn, 0), colors.primary)
-            MetricCell("Out", formatMoney(cashOut, 0), colors.error)
+            Text(
+                text = "In",
+                style = MaterialTheme.typography.labelSmall,
+                color = colors.onSurfaceVariant,
+                modifier = Modifier.width(40.dp)
+            )
+            Box(
+                modifier = Modifier
+                    .weight((cashIn / maxCash).toFloat().coerceIn(0.01f, 1f))
+                    .height(8.dp)
+                    .clip(RoundedCornerShape(4.dp))
+                    .background(colors.primary)
+            )
         }
+        Text(
+            text = formatMoney(cashIn, 0),
+            style = MaterialTheme.typography.labelSmall,
+            color = colors.onSurfaceVariant,
+            modifier = Modifier.padding(start = 40.dp)
+        )
+
+        // Out bar
         Row(modifier = Modifier.fillMaxWidth()) {
-            MetricCell("GP", formatMoney(summary.grossProfit, 0), gpColor)
-            MetricCell("Net", formatMoney(summary.netProfit, 0), netColor)
+            Text(
+                text = "Out",
+                style = MaterialTheme.typography.labelSmall,
+                color = colors.onSurfaceVariant,
+                modifier = Modifier.width(40.dp)
+            )
+            Box(
+                modifier = Modifier
+                    .weight((cashOut / maxCash).toFloat().coerceIn(0.01f, 1f))
+                    .height(8.dp)
+                    .clip(RoundedCornerShape(4.dp))
+                    .background(colors.outline)
+            )
         }
-        Row(modifier = Modifier.fillMaxWidth()) {
-            MetricCell("Expense", formatMoney(summary.totalExpenses, 0), colors.error)
-            MetricCell("Withdrawal", formatMoney(summary.withdrawal, 0), status.success)
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Text(
+                text = formatMoney(cashOut, 0),
+                style = MaterialTheme.typography.labelSmall,
+                color = colors.onSurfaceVariant,
+                modifier = Modifier.width(40.dp)
+            )
+            Text(
+                text = "${if (retained >= 0) "+" else ""}${formatMoney(retained, 0)} retained",
+                style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.SemiBold),
+                color = if (retained >= 0) gpColor else colors.error
+            )
+        }
+
+        // Divider
+        androidx.compose.material3.HorizontalDivider(color = colors.outlineVariant)
+
+        // Secondary metrics
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Text(
+                text = "Gross profit",
+                style = MaterialTheme.typography.bodySmall,
+                color = colors.onSurfaceVariant
+            )
+            Text(
+                text = formatMoney(summary.grossProfit, 0),
+                style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.SemiBold),
+                color = gpColor
+            )
+        }
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Text(
+                text = "Expense",
+                style = MaterialTheme.typography.bodySmall,
+                color = colors.onSurfaceVariant
+            )
+            Text(
+                text = formatMoney(summary.totalExpenses, 0),
+                style = MaterialTheme.typography.bodySmall,
+                color = colors.onSurface
+            )
+        }
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Text(
+                text = "Withdrawal",
+                style = MaterialTheme.typography.bodySmall,
+                color = colors.onSurfaceVariant
+            )
+            Text(
+                text = formatMoney(summary.withdrawal, 0),
+                style = MaterialTheme.typography.bodySmall,
+                color = colors.onSurface
+            )
         }
     }
 }

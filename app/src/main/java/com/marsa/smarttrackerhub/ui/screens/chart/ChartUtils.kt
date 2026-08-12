@@ -21,6 +21,7 @@ import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.unit.sp
 import com.marsa.smarttrackerhub.utils.getShortMonthName
+import com.marsa.smarttracker.ui.theme.SemanticStatusColors
 import kotlin.math.max
 import kotlin.math.pow
 import kotlin.math.sqrt
@@ -334,6 +335,7 @@ fun DrawScope.drawSingleMonthLegend(
     chartWidth: Float,
     topPadding: Float,
     colors: ColorScheme,
+    status: SemanticStatusColors,
     achievementPercentage: Double // Changed from isTargetMet to percentage
 ) {
     val legendY = topPadding / 2.5f
@@ -371,7 +373,7 @@ fun DrawScope.drawSingleMonthLegend(
 
     // Average legend with achievement-based color — shared palette
     val avgStart = startX + boxSize + 5f + targetWidth + spacing
-    val avgColor = salesAchievementColor(achievementPercentage, colors.error)
+    val avgColor = salesAchievementColor(achievementPercentage, status)
 
     drawRect(
         color = avgColor,

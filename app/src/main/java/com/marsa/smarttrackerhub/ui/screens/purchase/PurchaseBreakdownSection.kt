@@ -24,6 +24,7 @@ import com.marsa.smarttrackerhub.ui.screens.chart.PurchaseCategoryChartData
 import com.marsa.smarttrackerhub.ui.screens.chart.PurchaseChartStatistics
 import com.marsa.smarttrackerhub.ui.screens.chart.purchaseAchievementColor
 import com.marsa.smarttrackerhub.utils.formatMoney
+import com.marsa.smarttracker.ui.theme.semanticStatusColors
 import kotlin.math.roundToInt
 
 /**
@@ -39,6 +40,7 @@ fun PurchaseBreakdownSection(
     statistics: PurchaseChartStatistics?
 ) {
     val colors = MaterialTheme.colorScheme
+    val status = semanticStatusColors()
     if (categories.isEmpty()) {
         Text(
             text = "No purchase data for this month",
@@ -53,7 +55,7 @@ fun PurchaseBreakdownSection(
     val totalTarget = statistics?.totalTarget ?: 0.0
     val hasBudget = totalTarget > 0.0
     val overallPct = statistics?.achievementPercentage ?: 0.0
-    val overallColor = if (hasBudget) purchaseAchievementColor(overallPct, colors.error) else colors.onSurface
+    val overallColor = if (hasBudget) purchaseAchievementColor(overallPct, status) else colors.onSurface
 
     Column {
         // ── Headline tiles ────────────────────────────────────────────────
@@ -81,7 +83,7 @@ fun PurchaseBreakdownSection(
         // ── Per-category actual vs target ─────────────────────────────────
         categories.forEach { c ->
             val barColor = if (!c.hasTarget) colors.primary
-            else purchaseAchievementColor(c.achievementPercentage, colors.error)
+            else purchaseAchievementColor(c.achievementPercentage, status)
             val fraction = if (c.hasTarget && c.target > 0) (c.actual / c.target).toFloat() else 1f
 
             Column(modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp)) {

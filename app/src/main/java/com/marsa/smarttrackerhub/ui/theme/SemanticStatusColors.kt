@@ -12,23 +12,27 @@ import androidx.compose.ui.graphics.Color
  * success = positive/on-target (e.g. synced, target met)
  * danger  = negative/over (e.g. failed, under target)
  * warning = pending/at-risk (e.g. unsynced, near target)
+ * neutral = ordinary facts carrying no judgement (e.g. sale amount, expense, withdrawal)
  */
 data class SemanticStatusColors(
     val success: Color,
     val danger: Color,
-    val warning: Color
+    val warning: Color,
+    val neutral: Color
 )
 
 private val LightSemanticStatusColors = SemanticStatusColors(
     success = Color(0xFF15803D), // green-700
     danger  = Color(0xFFDC2626), // red-600
-    warning = Color(0xFFEA580C)  // orange-600
+    warning = Color(0xFFEA580C), // orange-600
+    neutral = Color(0xFF1D1B20)  // onSurface
 )
 
 private val DarkSemanticStatusColors = SemanticStatusColors(
     success = Color(0xFF4ADE80), // green-400
     danger  = Color(0xFFF87171), // red-400
-    warning = Color(0xFFFB923C)  // orange-400
+    warning = Color(0xFFFB923C), // orange-400
+    neutral = Color(0xFFEAE7E1)  // onSurface
 )
 
 @Composable

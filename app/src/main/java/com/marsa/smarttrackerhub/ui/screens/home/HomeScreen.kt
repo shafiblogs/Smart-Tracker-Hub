@@ -1,6 +1,7 @@
 package com.marsa.smarttrackerhub.ui.screens.home
 
 import android.app.Application
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -10,6 +11,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.CircularProgressIndicator
@@ -29,6 +31,7 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.google.firebase.FirebaseApp
 import com.marsa.smarttracker.ui.theme.semanticStatusColors
@@ -36,6 +39,7 @@ import com.marsa.smarttrackerhub.domain.AccessCode
 import com.marsa.smarttrackerhub.domain.AccountSummary
 import com.marsa.smarttrackerhub.ui.components.DetailSectionCard
 import com.marsa.smarttrackerhub.ui.components.DropdownField
+import com.marsa.smarttrackerhub.ui.components.MoneyText
 import com.marsa.smarttrackerhub.ui.screens.chart.UnifiedStatisticsCard
 import com.marsa.smarttrackerhub.ui.screens.chart.MoneyAllocationBar
 import com.marsa.smarttrackerhub.utils.formatLastUpdated
@@ -174,45 +178,99 @@ fun HomeScreen(
 
 /**
  * Home account card redesign:
- *  - Three headline tiles: Collection (neutral), Gross Profit (sign-coloured, with margin), Net
- *    Profit (sign-coloured, with margin)
- *  - A segmented bar + legend showing Collection split across Purchase / Expense / Withdrawal /
- *    Provision / Out Payment / Retained — this is the single source of truth for the breakdown,
- *    so the figures aren't repeated in a separate list below it.
+ *  - Collection: full-width headline (largest type, no ellipsis)
+ *  - Gross Profit + Net Profit: two-up row with inline margins
+ *  - Money allocation bar + legend: simplified to one hue stepped by opacity
  */
 @Composable
 private fun HomeAccountTiles(summary: AccountSummary) {
     val colors = MaterialTheme.colorScheme
     val status = semanticStatusColors()
     Column(modifier = Modifier.fillMaxWidth()) {
-        // Three headline tiles
+        // Collection headline
+        Text(
+            "COLLECTION",
+            style = MaterialTheme.typography.labelSmall.copy(letterSpacing = 0.06f.sp),
+            color = colors.onSurfaceVariant,
+            fontWeight = FontWeight.Medium
+        )
+        Spacer(modifier = Modifier.height(4.dp))
+        MoneyText(
+            text = formatMoney(summary.totalCollection, 0),
+            style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold, fontSize = 28.sp),
+            color = colors.onSurface
+        )
+        Spacer(modifier = Modifier.height(16.dp))
+
+        // Gross Profit + Net Profit two-up row
         Row(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
+            horizontalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            AccountTile("Collection", formatMoney(summary.totalCollection, 0), colors.primary, modifier = Modifier.weight(1f))
-            AccountTile(
-                "Gross Profit",
-                formatMoney(summary.grossProfit, 0),
-                if (summary.grossProfit >= 0) status.success else status.danger,
-                marginPercent = summary.grossMargin,
-                modifier = Modifier.weight(1f)
+            // Gross Profit
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    "Gross Profit",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = colors.onSurfaceVariant
+                )
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    MoneyText(
+                        text = formatMoney(summary.grossProfit, 0),
+                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                        color = if (summary.grossProfit >= 0) status.success else status.danger
+                    )
+                    Text(
+                        "${"%.0f".format(summary.grossMargin)}%",
+                        style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.SemiBold),
+                        color = if (summary.grossProfit >= 0) status.success else status.danger
+                    )
+                }
+            }
+
+            // Divider
+            Box(
+                modifier = Modifier
+                    .width(1.dp)
+                    .height(40.dp)
+                    .background(colors.outlineVariant)
             )
-            AccountTile(
-                "Net Profit",
-                formatMoney(summary.netProfit, 0),
-                if (summary.netProfit >= 0) status.success else status.danger,
-                marginPercent = summary.netProfitMargin,
-                modifier = Modifier.weight(1f)
-            )
+
+            // Net Profit
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    "Net Profit",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = colors.onSurfaceVariant
+                )
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    MoneyText(
+                        text = formatMoney(summary.netProfit, 0),
+                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                        color = if (summary.netProfit >= 0) status.success else status.danger
+                    )
+                    Text(
+                        "${"%.0f".format(summary.netProfitMargin)}%",
+                        style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.SemiBold),
+                        color = if (summary.netProfit >= 0) status.success else status.danger
+                    )
+                }
+            }
         }
 
-        Spacer(modifier = Modifier.height(14.dp))
+        Spacer(modifier = Modifier.height(20.dp))
         HorizontalDivider(color = colors.outlineVariant)
         Spacer(modifier = Modifier.height(12.dp))
 
-        // Money allocation bar + legend: Collection split across categories, Out Payment folded
-        // into the same reconciliation as Retained.
+        // Money allocation bar + legend
         MoneyAllocationBar(
             collection = summary.totalCollection,
             purchase = summary.totalPurchases,
@@ -221,43 +279,5 @@ private fun HomeAccountTiles(summary: AccountSummary) {
             provision = summary.provision,
             outstandingPayments = summary.outstandingPayments
         )
-    }
-}
-
-/** Headline tile: label + formatted amount, with an optional margin % (Gross/Net only). */
-@Composable
-private fun AccountTile(
-    label: String,
-    value: String,
-    valueColor: Color,
-    marginPercent: Double? = null,
-    modifier: Modifier = Modifier
-) {
-    Column(modifier = modifier) {
-        Text(
-            label,
-            style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis
-        )
-        Spacer(modifier = Modifier.height(2.dp))
-        Text(
-            value,
-            style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold),
-            color = valueColor,
-            maxLines = 1,
-            softWrap = false,
-            overflow = TextOverflow.Ellipsis
-        )
-        if (marginPercent != null) {
-            Text(
-                "${"%.0f".format(marginPercent)}% margin",
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
-        }
     }
 }

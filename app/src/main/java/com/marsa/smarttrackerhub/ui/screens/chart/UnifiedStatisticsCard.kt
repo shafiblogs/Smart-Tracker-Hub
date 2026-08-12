@@ -32,6 +32,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.marsa.smarttrackerhub.domain.ChartStatistics
 import com.marsa.smarttrackerhub.utils.formatMoney
+import com.marsa.smarttracker.ui.theme.semanticStatusColors
 
 /**
  * Shop statistics card — stacked vertical layout with Sales above Purchase.
@@ -54,10 +55,11 @@ fun UnifiedStatisticsCard(
     onShareClick: (() -> Unit)? = null
 ) {
     val colors = MaterialTheme.colorScheme
+    val status = semanticStatusColors()
 
-    fun getAchievementColor(percentage: Double): Color = salesAchievementColor(percentage, colors.error)
+    fun getAchievementColor(percentage: Double): Color = salesAchievementColor(percentage, status)
 
-    fun getPurchaseAchievementColor(percentage: Double): Color = purchaseAchievementColor(percentage, colors.error)
+    fun getPurchaseAchievementColor(percentage: Double): Color = purchaseAchievementColor(percentage, status)
 
     Card(
         modifier = modifier.fillMaxWidth(),
@@ -129,7 +131,8 @@ fun UnifiedStatisticsCard(
                 SalesMetricsSection(
                     salesStatistics = salesStatistics,
                     salesMargin = salesMargin,
-                    getAchievementColor = ::getAchievementColor
+                    getAchievementColor = ::getAchievementColor,
+                    status = status
                 )
 
                 HorizontalDivider(color = colors.outlineVariant)
@@ -137,7 +140,8 @@ fun UnifiedStatisticsCard(
                 // PURCHASE SECTION
                 PurchaseMetricsSection(
                     purchaseStatistics = purchaseStatistics,
-                    getPurchaseAchievementColor = ::getPurchaseAchievementColor
+                    getPurchaseAchievementColor = ::getPurchaseAchievementColor,
+                    status = status
                 )
             }
         }
@@ -148,7 +152,8 @@ fun UnifiedStatisticsCard(
 private fun SalesMetricsSection(
     salesStatistics: ChartStatistics,
     salesMargin: Double,
-    getAchievementColor: (Double) -> Color
+    getAchievementColor: (Double) -> Color,
+    status: com.marsa.smarttracker.ui.theme.SemanticStatusColors
 ) {
     val colors = MaterialTheme.colorScheme
     val targetAvg = salesStatistics.totalTarget / salesStatistics.totalMonths
@@ -188,8 +193,13 @@ private fun SalesMetricsSection(
 
         Spacer(modifier = Modifier.height(8.dp))
 
-        // Achievement bar
-        AchievementBar(percentage = achievement, color = achievementColor)
+        // Achievement bar with target tick
+        AchievementBar(
+            actual = actualAvg,
+            target = targetAvg,
+            color = achievementColor,
+            label = "target"
+        )
 
         Spacer(modifier = Modifier.height(8.dp))
 
@@ -206,11 +216,7 @@ private fun SalesMetricsSection(
             Text(
                 text = "${"%.0f".format(salesMargin)}%",
                 style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.SemiBold),
-                color = when {
-                    salesMargin >= 30 -> ChartSuccessGreen
-                    salesMargin >= 10 -> ChartWarningAmber
-                    else -> colors.error
-                }
+                color = salesMarginColor(salesMargin, status)
             )
         }
     }
@@ -219,7 +225,8 @@ private fun SalesMetricsSection(
 @Composable
 private fun PurchaseMetricsSection(
     purchaseStatistics: PurchaseChartStatistics,
-    getPurchaseAchievementColor: (Double) -> Color
+    getPurchaseAchievementColor: (Double) -> Color,
+    status: com.marsa.smarttracker.ui.theme.SemanticStatusColors
 ) {
     val colors = MaterialTheme.colorScheme
     val achievement = purchaseStatistics.achievementPercentage
@@ -258,9 +265,14 @@ private fun PurchaseMetricsSection(
 
         Spacer(modifier = Modifier.height(8.dp))
 
-        // Achievement bar
+        // Achievement bar with budget tick
         if (purchaseStatistics.totalTarget > 0) {
-            AchievementBar(percentage = achievement, color = achievementColor)
+            AchievementBar(
+                actual = purchaseStatistics.totalActual,
+                target = purchaseStatistics.totalTarget,
+                color = achievementColor,
+                label = "budget"
+            )
         } else {
             Box(
                 modifier = Modifier
@@ -291,9 +303,9 @@ private fun PurchaseMetricsSection(
                 text = "${purchaseStatistics.categoriesOnTarget} / ${purchaseStatistics.totalCategories}",
                 style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.SemiBold),
                 color = when {
-                    onTargetPercentage >= 80 -> ChartSuccessGreen
-                    onTargetPercentage >= 50 -> ChartWarningAmber
-                    else -> colors.error
+                    onTargetPercentage >= 80 -> status.success
+                    onTargetPercentage >= 50 -> status.warning
+                    else -> status.danger
                 }
             )
         }
@@ -323,25 +335,61 @@ private fun SectionHeaderRow(
 
 @Composable
 private fun AchievementBar(
-    percentage: Double,
+    actual: Double,
+    target: Double,
     color: Color,
+    label: String = "target",
     modifier: Modifier = Modifier
 ) {
-    val filled = (percentage.coerceIn(0.0, 100.0) / 100.0).toFloat()
-    Box(
-        modifier = modifier
-            .fillMaxWidth()
-            .height(6.dp)
-            .clip(RoundedCornerShape(3.dp))
-            .background(MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.25f))
-    ) {
-        if (filled > 0f) {
+    val maxValue = kotlin.math.max(actual, target).coerceAtLeast(1.0)
+    val filledFraction = (actual / maxValue).coerceIn(0.0, 1.0).toFloat()
+    val targetFraction = (target / maxValue).coerceIn(0.0, 1.0).toFloat()
+
+    Column(modifier = modifier.fillMaxWidth()) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(8.dp)
+                .clip(RoundedCornerShape(4.dp))
+                .background(MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.25f))
+        ) {
+            // Filled portion
+            if (filledFraction > 0f) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth(filledFraction)
+                        .fillMaxHeight()
+                        .background(color)
+                )
+            }
+            // Target tick mark
             Box(
                 modifier = Modifier
-                    .fillMaxWidth(filled)
+                    .fillMaxWidth(targetFraction)
                     .fillMaxHeight()
-                    .background(color)
+                    .padding(end = 1.dp),
+                contentAlignment = Alignment.CenterEnd
+            ) {
+                Box(
+                    modifier = Modifier
+                        .width(2.dp)
+                        .fillMaxHeight()
+                        .background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.85f))
+                )
+            }
+        }
+        Spacer(modifier = Modifier.height(4.dp))
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Spacer(modifier = Modifier.weight(targetFraction.coerceIn(0f, 0.95f)))
+            Text(
+                text = label,
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
             )
+            Spacer(modifier = Modifier.weight((1f - targetFraction).coerceIn(0.05f, 1f)))
         }
     }
 }

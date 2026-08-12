@@ -111,10 +111,10 @@ fun InvestmentShopCard(
                 Text(
                     text = formatMoney(row.totalCapital, 0),
                     style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
-                    color = colors.primary
+                    color = colors.onSurface
                 )
                 Text(
-                    text = "${"%.0f".format(portfolioShare)}% of portfolio",
+                    text = "${"%.0f".format(portfolioShare)}%",
                     style = MaterialTheme.typography.bodySmall,
                     color = colors.onSurfaceVariant
                 )
@@ -122,6 +122,12 @@ fun InvestmentShopCard(
 
             Spacer(modifier = Modifier.height(8.dp))
             PortfolioShareBar(sharePercentage = portfolioShare)
+            Spacer(modifier = Modifier.height(5.dp))
+            Text(
+                text = "share of portfolio capital",
+                style = MaterialTheme.typography.labelSmall,
+                color = colors.onSurfaceVariant
+            )
             Spacer(modifier = Modifier.height(12.dp))
 
             // Investor count, the single chevron, and — only when allocation isn't the expected
@@ -132,7 +138,7 @@ fun InvestmentShopCard(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = "${row.investorCount} investors",
+                    text = "${row.investorCount} investor${if (row.investorCount == 1) "" else "s"}",
                     style = MaterialTheme.typography.bodySmall,
                     color = colors.onSurfaceVariant
                 )

@@ -128,6 +128,10 @@ fun SaleScreen(
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     items(availableMonths) { monthItem ->
+                        val summary = summariesCache[monthItem.id]
+                        val marginPct = if (summary != null && summary.totalSales > 0.0) {
+                            (summary.totalSales - summary.totalPurchases) / summary.totalSales * 100
+                        } else 0.0
                         MonthListCard(
                             monthLabel = monthItem.displayName,
                             shopName = selectedShop?.name ?: "",
@@ -135,8 +139,22 @@ fun SaleScreen(
                                 val sid = selectedShop?.shopId ?: return@MonthListCard
                                 onMonthClick(sid, monthItem.id, selectedShop?.name ?: "")
                             },
-                            lastUpdated = summariesCache[monthItem.id]?.lastUpdated,
-                            details = { SaleMonthMetrics(summariesCache[monthItem.id]) }
+                            lastUpdated = summary?.lastUpdated,
+                            headline = if (summary != null) ({
+                                Column(horizontalAlignment = Alignment.End) {
+                                    Text(
+                                        text = "${"%.0f".format(marginPct)}%",
+                                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                                        color = salesMarginColor(marginPct, semanticStatusColors())
+                                    )
+                                    Text(
+                                        text = "margin",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = salesMarginColor(marginPct, semanticStatusColors())
+                                    )
+                                }
+                            }) else null,
+                            details = { SaleMonthMetrics(summary) }
                         )
                     }
                     item { Spacer(modifier = Modifier.height(24.dp)) }
@@ -147,10 +165,9 @@ fun SaleScreen(
 }
 
 /**
- * Per-month sale row detail — an aligned two-column grid:
- *   Sale  Đx        Purchase  Đy     (raw amounts, neutral)
- *   GP    Đz        Margin    w%     (GP colored by sign; margin by salesMarginColor)
- * Shows a placeholder while the summary is still loading.
+ * Per-month sale row detail — headline shows margin, this section shows primary metrics.
+ * Primary: Sale, Purchase, Gross Profit (three columns)
+ * Secondary: Credit Purchase, VAT Purchase (below divider)
  */
 @Composable
 private fun SaleMonthMetrics(summary: MonthlySummary?) {
@@ -164,26 +181,93 @@ private fun SaleMonthMetrics(summary: MonthlySummary?) {
         return
     }
 
+    val status = semanticStatusColors()
     val totalSales = summary.totalSales
     val hasSales = totalSales > 0.0
     val grossProfit = totalSales - summary.totalPurchases
-    val marginPct = if (hasSales) grossProfit / totalSales * 100 else 0.0
-    val marginColor = if (hasSales) salesMarginColor(marginPct, colors.error) else colors.onSurfaceVariant
-    val status = semanticStatusColors()
     val gpColor = if (grossProfit >= 0) status.success else status.danger
 
-    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Row(modifier = Modifier.fillMaxWidth()) {
-            MetricCell("Sale", formatMoney(totalSales, 0), colors.onSurface)
-            MetricCell("Purchase", formatMoney(summary.totalPurchases, 0), colors.onSurface)
+    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        // Primary metrics: three columns
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            verticalAlignment = Alignment.Top
+        ) {
+            // Sale
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = "Sale",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = colors.onSurfaceVariant
+                )
+                Text(
+                    text = formatMoney(totalSales, 0),
+                    style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold),
+                    color = colors.onSurface
+                )
+            }
+            // Purchase
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = "Purchase",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = colors.onSurfaceVariant
+                )
+                Text(
+                    text = formatMoney(summary.totalPurchases, 0),
+                    style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold),
+                    color = colors.onSurface
+                )
+            }
+            // Gross Profit
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = "Gross profit",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = colors.onSurfaceVariant
+                )
+                Text(
+                    text = formatMoney(grossProfit, 0),
+                    style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold),
+                    color = gpColor
+                )
+            }
         }
-        Row(modifier = Modifier.fillMaxWidth()) {
-            MetricCell("GP", formatMoney(grossProfit, 0), gpColor)
-            MetricCell("Margin", if (hasSales) "${"%.0f".format(marginPct)}%" else "—", marginColor)
+
+        // Divider
+        androidx.compose.material3.HorizontalDivider(color = colors.outlineVariant)
+
+        // Secondary metrics
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Text(
+                text = "Credit purchase",
+                style = MaterialTheme.typography.bodySmall,
+                color = colors.onSurfaceVariant
+            )
+            Text(
+                text = formatMoney(summary.creditPurchase, 0),
+                style = MaterialTheme.typography.bodySmall,
+                color = colors.onSurface
+            )
         }
-        Row(modifier = Modifier.fillMaxWidth()) {
-            MetricCell("CR Purchase", formatMoney(summary.creditPurchase, 0), colors.error)
-            MetricCell("VAT Purchase", formatMoney(summary.vatPurchase, 0), colors.onSurface)
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Text(
+                text = "VAT purchase",
+                style = MaterialTheme.typography.bodySmall,
+                color = colors.onSurfaceVariant
+            )
+            Text(
+                text = formatMoney(summary.vatPurchase, 0),
+                style = MaterialTheme.typography.bodySmall,
+                color = colors.onSurface
+            )
         }
     }
 }

@@ -11,6 +11,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.unit.sp
+import com.marsa.smarttracker.ui.theme.semanticStatusColors
 import kotlin.math.max
 
 @Composable
@@ -19,6 +20,7 @@ fun SingleMonthBarChart(
     colors: ColorScheme,
     modifier: Modifier = Modifier
 ) {
+    val status = semanticStatusColors()
     Canvas(modifier = modifier) {
         val chartWidth = size.width
         val chartHeight = size.height
@@ -37,7 +39,7 @@ fun SingleMonthBarChart(
 
         // Achievement color — shared palette
         fun getAchievementColor(percentage: Double): Color =
-            salesAchievementColor(percentage, colors.error)
+            salesAchievementColor(percentage, status)
 
         // Draw grid and Y-axis
         drawGridAndYAxis(

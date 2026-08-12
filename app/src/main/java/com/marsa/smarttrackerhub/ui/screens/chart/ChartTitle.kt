@@ -16,6 +16,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.marsa.smarttracker.ui.theme.semanticStatusColors
 
 @Composable
 fun ChartTitle(
@@ -28,9 +29,10 @@ fun ChartTitle(
     if (shopAddress.isEmpty()) return
 
     val colors = MaterialTheme.colorScheme
+    val status = semanticStatusColors()
 
     // Indicator color — shared achievement palette
-    val indicatorColor = salesAchievementColor(achievementPercentage, colors.error)
+    val indicatorColor = salesAchievementColor(achievementPercentage, status)
 
     Row(
         verticalAlignment = Alignment.CenterVertically,

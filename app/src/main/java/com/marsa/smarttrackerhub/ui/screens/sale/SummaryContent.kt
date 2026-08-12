@@ -24,6 +24,7 @@ import com.marsa.smarttrackerhub.domain.MonthlySummary
 import com.marsa.smarttrackerhub.ui.components.InfoRow
 import com.marsa.smarttrackerhub.ui.screens.chart.salesAchievementColor
 import com.marsa.smarttrackerhub.utils.formatMoney
+import com.marsa.smarttracker.ui.theme.semanticStatusColors
 
 
 /**
@@ -34,11 +35,12 @@ import com.marsa.smarttrackerhub.utils.formatMoney
 @Composable
 fun SummaryContent(summary: MonthlySummary) {
     val colors = MaterialTheme.colorScheme
+    val status = semanticStatusColors()
     val avg = summary.averageSale ?: 0.0
     val target = summary.targetSale
     val hasTarget = target > 0.0
     val achievementPct = if (hasTarget) avg / target * 100 else 0.0
-    val achColor = if (hasTarget) salesAchievementColor(achievementPct, colors.error)
+    val achColor = if (hasTarget) salesAchievementColor(achievementPct, status)
     else colors.onSurfaceVariant
 
     Column {

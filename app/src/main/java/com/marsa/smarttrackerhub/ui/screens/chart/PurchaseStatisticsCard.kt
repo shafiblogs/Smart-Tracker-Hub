@@ -23,6 +23,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.marsa.smarttracker.ui.theme.semanticStatusColors
 import kotlin.math.abs
 
 /**
@@ -40,9 +41,10 @@ fun PurchaseStatisticsCard(
     onShareClick: (() -> Unit)? = null
 ) {
     val colors = MaterialTheme.colorScheme
+    val status = semanticStatusColors()
 
     // Shared purchase achievement palette (90 / 75 thresholds).
-    fun achievementColor(pct: Double): Color = purchaseAchievementColor(pct, colors.error)
+    fun achievementColor(pct: Double): Color = purchaseAchievementColor(pct, status)
 
     Card(
         modifier = modifier.fillMaxWidth(),
@@ -129,9 +131,9 @@ fun PurchaseStatisticsCard(
                         label = "On Target",
                         value = "${statistics.categoriesOnTarget} / ${statistics.totalCategories}",
                         valueColor = if (statistics.categoriesOnTarget == statistics.totalCategories)
-                            ChartSuccessGreen
+                            status.success
                         else
-                            colors.error
+                            status.danger
                     )
                 }
             }

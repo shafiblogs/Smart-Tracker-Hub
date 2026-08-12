@@ -25,6 +25,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.marsa.smarttracker.ui.theme.semanticStatusColors
 
 /**
  * Horizontal-bar breakdown chart for purchase categories.
@@ -49,6 +50,7 @@ fun PurchaseCategoryChart(
     modifier: Modifier = Modifier
 ) {
     val colors = MaterialTheme.colorScheme
+    val status = semanticStatusColors()
 
     Column(modifier = modifier) {
 
@@ -67,7 +69,7 @@ fun PurchaseCategoryChart(
 
         // Mirror individual row logic: no target data → use primary (neutral), not error red
         val totalColor = if (statistics.totalTarget > 0)
-            purchaseColor(statistics.achievementPercentage, colors.error)
+            purchaseAchievementColor(statistics.achievementPercentage, status)
         else
             colors.primary
         Row(
@@ -81,9 +83,9 @@ fun PurchaseCategoryChart(
             else 0.0
 
             val onTargetColor = when {
-                onTargetPercentage >= 80 -> ChartSuccessGreen    // SuccessGreen (good)
-                onTargetPercentage >= 50 -> ChartWarningAmber    // WarningAmber (warning)
-                else                     -> colors.error          // ErrorRed (poor)
+                onTargetPercentage >= 80 -> status.success   // success (good)
+                onTargetPercentage >= 50 -> status.warning   // warning (warning)
+                else                     -> status.danger     // danger (poor)
             }
 
             Text(
@@ -208,10 +210,11 @@ fun PurchaseCategoryChart(
 @Composable
 private fun PurchaseCategoryRow(category: PurchaseCategoryChartData) {
     val colors = MaterialTheme.colorScheme
+    val status = semanticStatusColors()
     // No previous month → render in primary (neutral, no baseline to compare)
     // Has target → colour by achievement: ≥100% green, 85-100% amber, <85% red
     val barColor = if (!category.hasTarget) colors.primary
-                   else purchaseColor(category.achievementPercentage, colors.error)
+                   else purchaseAchievementColor(category.achievementPercentage, status)
     val fraction = when {
         !category.hasTarget -> 1f
         category.target > 0 -> minOf(1f, (category.actual / category.target).toFloat())
@@ -281,8 +284,8 @@ private fun PurchaseCategoryRow(category: PurchaseCategoryChartData) {
  *   75–90% → WarningAmber (close but under)
  *   < 75%  → ErrorRed      (significantly under)
  */
-private fun purchaseColor(percentage: Double, errorColor: Color): Color =
-    purchaseAchievementColor(percentage, errorColor)
+private fun purchaseColor(percentage: Double, status: com.marsa.smarttracker.ui.theme.SemanticStatusColors): Color =
+    purchaseAchievementColor(percentage, status)
 
 private fun formatPurchaseAmount(amount: Double): String = when {
     amount >= 1_000_000 -> String.format("%.1fM", amount / 1_000_000)
