@@ -20,6 +20,8 @@ import com.marsa.smarttrackerhub.domain.MonthlySummary
 import com.marsa.smarttrackerhub.domain.ShopRegion
 import com.marsa.smarttrackerhub.domain.getHomeShopUser
 import com.marsa.smarttrackerhub.domain.getSummaryShopList
+import com.marsa.smarttrackerhub.helper.getLastHomeAutoSyncTime
+import com.marsa.smarttrackerhub.helper.saveLastHomeAutoSyncTime
 import com.marsa.smarttrackerhub.ui.screens.chart.PurchaseCategoryChartData
 import com.marsa.smarttrackerhub.ui.screens.chart.PurchaseChartStatistics
 import com.marsa.smarttrackerhub.ui.screens.purchase.PurchaseItem
@@ -49,9 +51,17 @@ private const val MIN_TOTAL_PURCHASE_TARGET = 10000.0
  * Same per-shop window math the old Home used, now rendered for every shop instead of one.
  */
 class HomeScreenViewModel(
-    application: Application,
+    private val application: Application,
     private val firebaseApp: FirebaseApp   // SmartTrackerApp (sales/purchase)
 ) : ViewModel() {
+
+    companion object {
+        // Home's auto-refresh (fired every time the screen opens) is throttled to this
+        // interval — repeated app opens/navigations within the window reuse the Room cache
+        // instead of re-hitting Firestore every time. A user-driven period change
+        // (setSelectedRange) always refreshes regardless of this timer.
+        private const val AUTO_SYNC_INTERVAL_MS = 4 * 60 * 60 * 1000L // 4 hours
+    }
 
     data class ShopStats(
         val shop: ShopListDto,
@@ -113,13 +123,20 @@ class HomeScreenViewModel(
         computeStats()
         if (hadCache) _isLoading.value = false   // records available → hide progress, refresh silently
 
-        // 2) Silently refresh all months in the selected period from Firestore, then re-render.
-        //    (If nothing was cached, the spinner stays up until this first fetch completes.)
-        withContext(Dispatchers.IO) {
-            refreshSelectedPeriod(_selectedRange.value)
-            buildIndexFromRoom()
+        // 2) Silently refresh all months in the selected period from Firestore, then re-render —
+        //    but only if due: no cache yet (first launch, always fetch), or the last auto-refresh
+        //    was 4+ hours ago. Otherwise this open reuses the Room cache from step 1 untouched.
+        val now = System.currentTimeMillis()
+        val dueForAutoSync = !hadCache ||
+            now - getLastHomeAutoSyncTime(application) >= AUTO_SYNC_INTERVAL_MS
+        if (dueForAutoSync) {
+            withContext(Dispatchers.IO) {
+                refreshSelectedPeriod(_selectedRange.value)
+                buildIndexFromRoom()
+            }
+            computeStats()
+            saveLastHomeAutoSyncTime(application, now)
         }
-        computeStats()
         _isLoading.value = false
     }
 
