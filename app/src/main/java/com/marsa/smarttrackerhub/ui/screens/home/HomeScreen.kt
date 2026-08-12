@@ -16,6 +16,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -69,31 +70,45 @@ fun HomeScreen(
     LaunchedEffect(Unit) { viewModel.loadScreenData(userAccessCode) }
 
     Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .verticalScroll(rememberScrollState())
-            .padding(16.dp)
+        modifier = Modifier.fillMaxSize()
     ) {
-        // ── Period selector (drives everything below) ────────────────────────
-        MonthSelector(
-            label = "Period",
-            selection = selectedRange,
-            presets = availableRanges,
-            onSelectionChange = { viewModel.setSelectedRange(it) },
-            enabled = availableRanges.isNotEmpty(),
-            modifier = Modifier.fillMaxWidth()
-        )
+        // ── Loading progress bar on top ────────────────────────────────────────
+        if (isLoading) {
+            LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+        }
 
-        Spacer(modifier = Modifier.height(16.dp))
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .verticalScroll(rememberScrollState())
+                .padding(16.dp)
+        ) {
+            // ── Period selector (drives everything below) ────────────────────────
+            MonthSelector(
+                label = "Period",
+                selection = selectedRange,
+                presets = availableRanges,
+                onSelectionChange = { viewModel.setSelectedRange(it) },
+                enabled = availableRanges.isNotEmpty(),
+                modifier = Modifier.fillMaxWidth()
+            )
 
-        if (isLoading && accountCards.isEmpty() && shopStats.isEmpty()) {
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(top = 48.dp),
-                contentAlignment = Alignment.Center
-            ) { CircularProgressIndicator() }
-        } else {
+            Spacer(modifier = Modifier.height(16.dp))
+
+            if (accountCards.isEmpty() && shopStats.isEmpty() && !isLoading) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 48.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        "No data available",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            } else {
             // ── Account card(s) — region-level aggregate, on top ─────────────
             accountCards.forEach { ra ->
                 val summary = ra.summary
@@ -168,6 +183,7 @@ fun HomeScreen(
             }
 
             Spacer(modifier = Modifier.height(24.dp))
+            }
         }
     }
 }

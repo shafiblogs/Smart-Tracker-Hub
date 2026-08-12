@@ -122,46 +122,48 @@ class HomeScreenViewModel(
     private var allMonthsSorted: List<String> = emptyList()
 
     fun loadScreenData(userAccessCode: AccessCode) = viewModelScope.launch {
-        _isLoading.value = true
+        _isLoading.value = true   // Show loading while reading from Room
         signIn(firebaseApp)
         accountApp?.let { signIn(it) }
 
-        // 1) Render whatever is already cached in Room — instantly, no spinner.
+        // 1) Load from Room cache and display data (may show loading briefly if it takes time).
         withContext(Dispatchers.IO) {
             shops = getHomeShopUser(userAccessCode, db).filter { it.region == ShopRegion.UAE }
             regions = getSummaryShopList(userAccessCode).filter { it.region == ShopRegion.UAE }
             buildIndexFromRoom()
         }
-        val hadCache = allMonthsSorted.isNotEmpty()
         computeStats()
-        if (hadCache) _isLoading.value = false   // records available → hide progress, refresh silently
+        _isLoading.value = false   // Data ready — hide loading after Room read completes
 
-        // 2) Silently refresh all months in the selected period from Firestore, then re-render —
-        //    but only if due: no cache yet (first launch, always fetch), or the last auto-refresh
-        //    was 4+ hours ago. Otherwise this open reuses the Room cache from step 1 untouched.
+        // 2) Refresh from Firestore only if 4+ hours have passed since last auto-sync.
+        //    Show loading again only if fetching from Firestore.
         val now = System.currentTimeMillis()
-        val dueForAutoSync = !hadCache ||
-            now - getLastHomeAutoSyncTime(application) >= AUTO_SYNC_INTERVAL_MS
+        val lastSyncTime = getLastHomeAutoSyncTime(application)
+        val dueForAutoSync = now - lastSyncTime >= AUTO_SYNC_INTERVAL_MS
+
         if (dueForAutoSync) {
+            _isLoading.value = true   // Show loading for Firestore fetch
             withContext(Dispatchers.IO) {
                 refreshSelectedPeriod(_selectedRange.value)
                 buildIndexFromRoom()
             }
             computeStats()
             saveLastHomeAutoSyncTime(application, now)
+            _isLoading.value = false
         }
-        _isLoading.value = false
     }
 
     fun setSelectedRange(range: MonthSelection) {
         _selectedRange.value = range
         viewModelScope.launch {
+            _isLoading.value = true   // Show loading when user changes month
             // Refresh all months in the newly selected period from Firestore
             withContext(Dispatchers.IO) {
                 refreshSelectedPeriod(range)
                 buildIndexFromRoom()
             }
             computeStats()
+            _isLoading.value = false  // Hide loading after stats computed
         }
     }
 
