@@ -4,6 +4,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -62,6 +63,10 @@ import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkManager
 import androidx.work.workDataOf
 import android.widget.Toast
+import com.marsa.smarttrackerhub.BuildConfig
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Star
@@ -839,7 +844,7 @@ fun SmartTrackerNavHost(navController: NavHostController) {
                         .fillMaxHeight(),
                     color = MaterialTheme.colorScheme.background
                 ) {
-                    Column {
+                    Column(modifier = Modifier.fillMaxWidth().fillMaxHeight()) {
                         Spacer(modifier = Modifier.size(24.dp))
                         Text(
                             "Menu Track",
@@ -914,6 +919,26 @@ fun SmartTrackerNavHost(navController: NavHostController) {
                             // are prevented at the source. Removed from the UI to avoid accidental
                             // over-merging of clean data. DuplicateCleanupRepository is kept dormant
                             // for a future break-glass re-wire if ever needed.
+                        }
+
+                        // Version info at the bottom
+                        Spacer(modifier = Modifier.weight(1f))
+                        HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp))
+                        Column(
+                            modifier = Modifier
+                                .padding(horizontal = 16.dp, vertical = 12.dp)
+                                .fillMaxWidth()
+                        ) {
+                            Text(
+                                "v${BuildConfig.VERSION_NAME}",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            Text(
+                                "Built ${SimpleDateFormat("MMM dd, yyyy", Locale.getDefault()).format(Date())}",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
                         }
                     }
                 }

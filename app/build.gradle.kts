@@ -21,8 +21,8 @@ android {
         applicationId = "com.marsa.smarttrackerhub"
         minSdk = 29
         targetSdk = 36
-        versionCode = 20
-        versionName = "2.6"
+        versionCode = 21
+        versionName = "3.0"
 
         val localProperties = Properties()
         localProperties.load(FileInputStream(rootProject.file("local.properties")))
