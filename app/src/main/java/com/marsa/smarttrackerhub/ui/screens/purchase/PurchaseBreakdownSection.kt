@@ -20,10 +20,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.text.buildAnnotatedString
+import com.marsa.smarttrackerhub.ui.components.AedText
+import com.marsa.smarttrackerhub.ui.components.appendAed
 import com.marsa.smarttrackerhub.ui.screens.chart.PurchaseCategoryChartData
 import com.marsa.smarttrackerhub.ui.screens.chart.PurchaseChartStatistics
 import com.marsa.smarttrackerhub.ui.screens.chart.purchaseAchievementColor
-import com.marsa.smarttrackerhub.utils.formatMoney
 import com.marsa.smarttracker.ui.theme.semanticStatusColors
 import kotlin.math.roundToInt
 
@@ -60,8 +62,8 @@ fun PurchaseBreakdownSection(
     Column {
         // ── Headline tiles ────────────────────────────────────────────────
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            PurchaseTile("Total Purchase", formatMoney(totalActual, 0), colors.onSurface, Modifier.weight(1f))
-            PurchaseTile("Budget", formatMoney(totalTarget, 0), colors.onSurface, Modifier.weight(1f))
+            PurchaseTile("Total Purchase", totalActual, colors.onSurface, Modifier.weight(1f))
+            PurchaseTile("Budget", totalTarget, colors.onSurface, Modifier.weight(1f))
             PurchaseTile(
                 "Achieved",
                 if (hasBudget) "${overallPct.roundToInt()}%" else "—",
@@ -99,7 +101,11 @@ fun PurchaseBreakdownSection(
                         modifier = Modifier.weight(1f)
                     )
                     Text(
-                        text = "${formatMoney(c.actual, 0)} / ${formatMoney(c.target, 0)}",
+                        text = buildAnnotatedString {
+                            appendAed(c.actual)
+                            append(" / ")
+                            appendAed(c.target)
+                        },
                         style = MaterialTheme.typography.labelSmall,
                         color = colors.onSurfaceVariant
                     )
@@ -137,9 +143,28 @@ private fun ProgressBar(fraction: Float, color: Color, modifier: Modifier = Modi
 
 @Composable
 private fun PurchaseTile(label: String, value: String, valueColor: Color, modifier: Modifier = Modifier) {
+    PurchaseTileChrome(label, modifier) {
+        Text(value, style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold), color = valueColor)
+    }
+}
+
+/** Money variant — renders the AED glyph via [AedText] instead of a plain formatted string. */
+@Composable
+private fun PurchaseTile(label: String, amount: Double, valueColor: Color, modifier: Modifier = Modifier) {
+    PurchaseTileChrome(label, modifier) {
+        AedText(
+            amount = amount,
+            style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold),
+            color = valueColor
+        )
+    }
+}
+
+@Composable
+private fun PurchaseTileChrome(label: String, modifier: Modifier, value: @Composable () -> Unit) {
     Column(modifier = modifier) {
         Text(label, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         Spacer(modifier = Modifier.height(2.dp))
-        Text(value, style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold), color = valueColor)
+        value()
     }
 }

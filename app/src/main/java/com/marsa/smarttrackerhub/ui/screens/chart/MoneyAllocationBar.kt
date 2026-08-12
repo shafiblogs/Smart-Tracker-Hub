@@ -27,7 +27,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.marsa.smarttracker.ui.theme.semanticStatusColors
-import com.marsa.smarttrackerhub.utils.formatMoney
+import com.marsa.smarttrackerhub.ui.components.AedText
 
 private data class AllocationSlice(val label: String, val amount: Double, val color: Color)
 
@@ -131,13 +131,13 @@ fun MoneyAllocationBar(
                         text = "${"%.0f".format(pct)}%",
                         style = MaterialTheme.typography.labelSmall,
                         color = colors.onSurfaceVariant,
-                        modifier = Modifier.width(35.dp),
+                        modifier = Modifier.weight(0.4f),
                         textAlign = TextAlign.Right
                     )
-                    Text(
-                        text = formatMoney(slice.amount, 0),
+                    AedText(
+                        amount = slice.amount,
                         style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold),
-                        color = slice.color,
+                        color = colors.onSurface,
                         modifier = Modifier.weight(1f),
                         textAlign = TextAlign.Right
                     )
@@ -171,8 +171,8 @@ private fun AllocationRow(label: String, amount: Double, color: Color) {
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
-        Text(
-            text = formatMoney(amount, 0),
+        AedText(
+            amount = amount,
             style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold),
             color = color
         )

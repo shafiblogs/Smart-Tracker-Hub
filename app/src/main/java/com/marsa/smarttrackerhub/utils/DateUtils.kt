@@ -39,6 +39,10 @@ fun Long.formatTimestamp(): String {
     return dateFormat.format(Date(this))
 }
 
+/** "24 Aug 2026" — date without time, for expiry/due dates shown alongside a relative count. */
+fun Long.formatDateOnly(): String =
+    SimpleDateFormat("dd MMM yyyy", Locale.getDefault()).format(Date(this))
+
 /** "Updated 24 Jul 2026, 06:12 PM" — card caption for data provenance. */
 fun Long.formatLastUpdated(): String =
     if (this == 0L) "Never updated" else "Updated ${formatTimestamp()}"

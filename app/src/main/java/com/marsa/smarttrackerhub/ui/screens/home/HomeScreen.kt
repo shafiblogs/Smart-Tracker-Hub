@@ -37,13 +37,12 @@ import com.google.firebase.FirebaseApp
 import com.marsa.smarttracker.ui.theme.semanticStatusColors
 import com.marsa.smarttrackerhub.domain.AccessCode
 import com.marsa.smarttrackerhub.domain.AccountSummary
+import com.marsa.smarttrackerhub.ui.components.AedText
 import com.marsa.smarttrackerhub.ui.components.DetailSectionCard
 import com.marsa.smarttrackerhub.ui.components.DropdownField
-import com.marsa.smarttrackerhub.ui.components.MoneyText
 import com.marsa.smarttrackerhub.ui.screens.chart.UnifiedStatisticsCard
 import com.marsa.smarttrackerhub.ui.screens.chart.MoneyAllocationBar
 import com.marsa.smarttrackerhub.utils.formatLastUpdated
-import com.marsa.smarttrackerhub.utils.formatMoney
 import com.marsa.smarttrackerhub.utils.shareCard
 
 @Composable
@@ -195,8 +194,8 @@ private fun HomeAccountTiles(summary: AccountSummary) {
             fontWeight = FontWeight.Medium
         )
         Spacer(modifier = Modifier.height(4.dp))
-        MoneyText(
-            text = formatMoney(summary.totalCollection, 0),
+        AedText(
+            amount = summary.totalCollection,
             style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold, fontSize = 28.sp),
             color = colors.onSurface
         )
@@ -219,8 +218,8 @@ private fun HomeAccountTiles(summary: AccountSummary) {
                     horizontalArrangement = Arrangement.spacedBy(6.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    MoneyText(
-                        text = formatMoney(summary.grossProfit, 0),
+                    AedText(
+                        amount = summary.grossProfit,
                         style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
                         color = if (summary.grossProfit >= 0) status.success else status.danger
                     )
@@ -252,8 +251,8 @@ private fun HomeAccountTiles(summary: AccountSummary) {
                     horizontalArrangement = Arrangement.spacedBy(6.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    MoneyText(
-                        text = formatMoney(summary.netProfit, 0),
+                    AedText(
+                        amount = summary.netProfit,
                         style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
                         color = if (summary.netProfit >= 0) status.success else status.danger
                     )

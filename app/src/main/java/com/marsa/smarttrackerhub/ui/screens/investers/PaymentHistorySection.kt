@@ -17,8 +17,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.marsa.smarttrackerhub.domain.PhaseTransactionDetail
+import com.marsa.smarttrackerhub.ui.components.AedText
 import com.marsa.smarttrackerhub.ui.components.DetailSectionCard
-import com.marsa.smarttrackerhub.utils.formatMoney
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -78,10 +78,9 @@ private fun PhaseGroup(
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.primary
             )
-            Text(
-                text = formatMoney(phaseTotal, 0),
-                style = MaterialTheme.typography.titleSmall,
-                fontWeight = FontWeight.Bold,
+            AedText(
+                amount = phaseTotal,
+                style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
                 color = MaterialTheme.colorScheme.primary
             )
         }
@@ -127,10 +126,9 @@ private fun PhaseGroup(
                         )
                     }
                 }
-                Text(
-                    text = formatMoney(tx.amount, 0),
-                    style = MaterialTheme.typography.bodyMedium,
-                    fontWeight = FontWeight.SemiBold,
+                AedText(
+                    amount = tx.amount,
+                    style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold),
                     color = MaterialTheme.colorScheme.onSurface
                 )
             }

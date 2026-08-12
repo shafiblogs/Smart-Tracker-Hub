@@ -5,6 +5,7 @@ import com.marsa.smarttrackerhub.data.dao.ShopDao
 import com.marsa.smarttrackerhub.ui.screens.notifications.NotificationItem
 import com.marsa.smarttrackerhub.ui.screens.notifications.NotificationPriority
 import com.marsa.smarttrackerhub.ui.screens.notifications.NotificationType
+import com.marsa.smarttrackerhub.utils.formatMoney
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
 import java.util.Calendar
@@ -80,7 +81,7 @@ class NotificationRepository(
                             entityId = shop.id,
                             entityName = shop.shopName,
                             priority = NotificationPriority.HIGH,
-                            additionalInfo = "Pending Amount: Đ${String.format("%.2f", zakathAmount)}"
+                            additionalInfo = "Pending amount: ${formatMoney(zakathAmount, 0)}"
                         )
                     )
                 }

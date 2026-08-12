@@ -27,8 +27,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.marsa.smarttracker.ui.theme.semanticStatusColors
+import com.marsa.smarttrackerhub.ui.components.AedText
 import com.marsa.smarttrackerhub.ui.screens.enums.ShopStatus
-import com.marsa.smarttrackerhub.utils.formatMoney
 
 /**
  * One shop on the Investments list.
@@ -108,8 +108,8 @@ fun InvestmentShopCard(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.Bottom
             ) {
-                Text(
-                    text = formatMoney(row.totalCapital, 0),
+                AedText(
+                    amount = row.totalCapital,
                     style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
                     color = colors.onSurface
                 )

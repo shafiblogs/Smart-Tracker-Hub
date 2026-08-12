@@ -27,7 +27,8 @@ import com.marsa.smarttrackerhub.utils.formatLastUpdated
 /**
  * Compact, tappable month row for the Sales/Account list screens.
  * Header: month title + optional headline (e.g., margin % or net profit) + chevron.
- * Optional lastUpdated caption and details section.
+ * Optional underHeader content (e.g., a health bar) renders full-width beneath the header,
+ * above the divider — before lastUpdated/details.
  */
 @Composable
 fun MonthListCard(
@@ -37,6 +38,7 @@ fun MonthListCard(
     subtitle: String? = null,
     lastUpdated: Long? = null,
     headline: (@Composable () -> Unit)? = null,
+    underHeader: (@Composable () -> Unit)? = null,
     details: (@Composable () -> Unit)? = null
 ) {
     Card(
@@ -78,6 +80,11 @@ fun MonthListCard(
                     contentDescription = "View details",
                     tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
                 )
+            }
+
+            if (underHeader != null) {
+                Spacer(modifier = Modifier.height(8.dp))
+                underHeader()
             }
 
             if (details != null) {

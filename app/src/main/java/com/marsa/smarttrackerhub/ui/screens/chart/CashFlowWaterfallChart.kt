@@ -25,7 +25,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.marsa.smarttracker.ui.theme.semanticStatusColors
-import com.marsa.smarttrackerhub.utils.formatMoney
+import com.marsa.smarttrackerhub.ui.components.AedText
 
 private data class WaterfallStep(
     val label: String,
@@ -104,13 +104,14 @@ fun CashFlowWaterfallChart(
                     )
                 }
                 Spacer(modifier = Modifier.width(8.dp))
-                Text(
-                    text = (if (!step.isTerminal && step.delta >= 0) "+" else "") + formatMoney(step.delta, 0),
+                AedText(
+                    amount = step.delta,
+                    prefix = if (!step.isTerminal && step.delta >= 0) "+" else "",
                     style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.SemiBold),
                     color = barColor,
                     textAlign = TextAlign.End,
                     maxLines = 1,
-                    modifier = Modifier.width(72.dp)
+                    modifier = Modifier.width(84.dp)
                 )
             }
         }

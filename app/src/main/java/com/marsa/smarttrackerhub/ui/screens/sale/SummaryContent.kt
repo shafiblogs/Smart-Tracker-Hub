@@ -21,9 +21,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.marsa.smarttrackerhub.domain.MonthlySummary
+import com.marsa.smarttrackerhub.ui.components.AedText
 import com.marsa.smarttrackerhub.ui.components.InfoRow
 import com.marsa.smarttrackerhub.ui.screens.chart.salesAchievementColor
-import com.marsa.smarttrackerhub.utils.formatMoney
 import com.marsa.smarttracker.ui.theme.semanticStatusColors
 
 
@@ -49,8 +49,8 @@ fun SummaryContent(summary: MonthlySummary) {
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            StatTile("Total Sale", formatMoney(summary.totalSales, 0), colors.onSurface, Modifier.weight(1f))
-            StatTile("Avg Sale", formatMoney(avg, 0), colors.onSurface, Modifier.weight(1f))
+            StatTile("Total Sale", summary.totalSales, colors.onSurface, Modifier.weight(1f))
+            StatTile("Avg Sale", avg, colors.onSurface, Modifier.weight(1f))
             StatTile(
                 "Achievement",
                 if (hasTarget) "${"%.0f".format(achievementPct)}%" else "—",
@@ -77,8 +77,9 @@ fun SummaryContent(summary: MonthlySummary) {
                 )
             }
             Spacer(modifier = Modifier.height(4.dp))
-            Text(
-                text = "Target ${formatMoney(target, 0)}",
+            AedText(
+                amount = target,
+                prefix = "Target ",
                 style = MaterialTheme.typography.labelSmall,
                 color = colors.onSurfaceVariant
             )
@@ -120,6 +121,29 @@ fun SummaryContent(summary: MonthlySummary) {
 
 @Composable
 private fun StatTile(label: String, value: String, valueColor: Color, modifier: Modifier = Modifier) {
+    StatTileChrome(label, modifier) {
+        Text(
+            text = value,
+            style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold),
+            color = valueColor
+        )
+    }
+}
+
+/** Money variant — renders the AED glyph via [AedText] instead of a plain formatted string. */
+@Composable
+private fun StatTile(label: String, amount: Double, valueColor: Color, modifier: Modifier = Modifier) {
+    StatTileChrome(label, modifier) {
+        AedText(
+            amount = amount,
+            style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold),
+            color = valueColor
+        )
+    }
+}
+
+@Composable
+private fun StatTileChrome(label: String, modifier: Modifier, value: @Composable () -> Unit) {
     Column(modifier = modifier) {
         Text(
             text = label,
@@ -127,11 +151,7 @@ private fun StatTile(label: String, value: String, valueColor: Color, modifier: 
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
         Spacer(modifier = Modifier.height(2.dp))
-        Text(
-            text = value,
-            style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold),
-            color = valueColor
-        )
+        value()
     }
 }
 
@@ -148,14 +168,14 @@ fun BalanceComparisonRow(label: String, opening: Double, current: Double) {
             style = MaterialTheme.typography.bodyMedium,
             modifier = Modifier.weight(1f)
         )
-        Text(
-            text = formatMoney(opening, 0),
+        AedText(
+            amount = opening,
             style = MaterialTheme.typography.bodyMedium,
             textAlign = TextAlign.Center,
             modifier = Modifier.weight(1f)
         )
-        Text(
-            text = formatMoney(current, 0),
+        AedText(
+            amount = current,
             style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Medium),
             color = if (current < 0) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface,
             textAlign = TextAlign.End,

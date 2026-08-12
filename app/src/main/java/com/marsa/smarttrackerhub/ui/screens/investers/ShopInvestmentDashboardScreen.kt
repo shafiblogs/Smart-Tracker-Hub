@@ -37,7 +37,6 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.marsa.smarttrackerhub.ui.components.DetailSectionCard
 import com.marsa.smarttrackerhub.ui.components.MetricCell
-import com.marsa.smarttrackerhub.utils.formatMoney
 
 /**
  * Full investment dashboard for a shop showing:
@@ -191,7 +190,7 @@ fun ShopInvestmentDashboardScreen(
                         ) {
                             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                                 Row(modifier = Modifier.fillMaxWidth()) {
-                                    MetricCell("Total Raised", formatMoney(uiState.totalCapital, 0), MaterialTheme.colorScheme.primary)
+                                    MetricCell("Total Raised", uiState.totalCapital, valueColor = MaterialTheme.colorScheme.primary)
                                     MetricCell("Allocated", "${"%.0f".format(uiState.allocatedPercentage)}%", MaterialTheme.colorScheme.onSurface)
                                 }
                                 Row(modifier = Modifier.fillMaxWidth()) {

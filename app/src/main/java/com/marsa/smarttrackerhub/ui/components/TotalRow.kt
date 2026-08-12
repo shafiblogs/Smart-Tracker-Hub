@@ -12,7 +12,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.marsa.smarttrackerhub.utils.formatMoney
 
 
 /**
@@ -36,10 +35,10 @@ fun TotalRow(label: String, amount: Double, color: Color) {
                 fontSize = 14.sp,
                 color = color
             )
-            Text(
-                text = formatMoney(amount),
-                style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold),
-                fontSize = 15.sp,
+            AedText(
+                amount = amount,
+                decimals = 2,
+                style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold, fontSize = 15.sp),
                 color = color
             )
         }

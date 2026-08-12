@@ -31,7 +31,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.marsa.smarttrackerhub.domain.ChartStatistics
-import com.marsa.smarttrackerhub.utils.formatMoney
+import com.marsa.smarttrackerhub.ui.components.AedText
 import com.marsa.smarttracker.ui.theme.semanticStatusColors
 
 /**
@@ -84,18 +84,10 @@ fun UnifiedStatisticsCard(
                     )
                     Spacer(modifier = Modifier.height(4.dp))
                     Text(
-                        text = periodLabel,
+                        text = if (!caption.isNullOrBlank()) "$periodLabel · $caption" else periodLabel,
                         style = MaterialTheme.typography.bodySmall,
                         color = colors.onSurfaceVariant
                     )
-                    if (!caption.isNullOrBlank()) {
-                        Spacer(modifier = Modifier.height(2.dp))
-                        Text(
-                            text = caption,
-                            style = MaterialTheme.typography.labelSmall,
-                            color = colors.onSurfaceVariant
-                        )
-                    }
                 }
 
                 onShareClick?.let { callback ->
@@ -156,8 +148,9 @@ private fun SalesMetricsSection(
     status: com.marsa.smarttracker.ui.theme.SemanticStatusColors
 ) {
     val colors = MaterialTheme.colorScheme
-    val targetAvg = salesStatistics.totalTarget / salesStatistics.totalMonths
-    val actualAvg = salesStatistics.totalAverage / salesStatistics.totalMonths
+    val months = salesStatistics.totalMonths
+    val targetAvg = if (months > 0) salesStatistics.totalTarget / months else 0.0
+    val actualAvg = if (months > 0) salesStatistics.totalAverage / months else 0.0
     val achievement = salesStatistics.averageAchievementPercentage
     val achievementColor = getAchievementColor(achievement)
 
@@ -179,13 +172,15 @@ private fun SalesMetricsSection(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Text(
-                text = formatMoney(actualAvg, 0),
+            AedText(
+                amount = actualAvg,
                 style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold),
                 color = achievementColor
             )
-            Text(
-                text = "of ${formatMoney(targetAvg, 0)} target",
+            AedText(
+                amount = targetAvg,
+                prefix = "of ",
+                suffix = " target",
                 style = MaterialTheme.typography.bodySmall,
                 color = colors.onSurfaceVariant
             )
@@ -230,34 +225,53 @@ private fun PurchaseMetricsSection(
 ) {
     val colors = MaterialTheme.colorScheme
     val achievement = purchaseStatistics.achievementPercentage
-    val achievementColor = if (purchaseStatistics.totalTarget > 0) getPurchaseAchievementColor(achievement) else colors.onSurfaceVariant
+    val hasBudget = purchaseStatistics.totalTarget > 0
+    val achievementColor = if (hasBudget) getPurchaseAchievementColor(achievement) else colors.onSurfaceVariant
+
+    // Purchase's bar grammar is identical to Sales' but means the opposite thing — a fuller bar
+    // is MORE spend, i.e. worse. State it as variance instead of achievement so "87%" doesn't
+    // read as 87% of the way to a goal worth reaching.
+    val variancePct = achievement - 100.0
+    val varianceColor = when {
+        !hasBudget -> colors.onSurfaceVariant
+        variancePct > 0 -> status.danger
+        variancePct < 0 -> status.success
+        else -> status.success
+    }
+    val varianceText = when {
+        !hasBudget -> "—"
+        variancePct == 0.0 -> "on budget"
+        variancePct > 0 -> "+${"%.0f".format(variancePct)}% over budget"
+        else -> "${"%.0f".format(variancePct)}% under budget"
+    }
 
     Column {
-        // Section header: "PURCHASE" label on the left, achievement % (or "—" when there's no
-        // budget) right-aligned on the same row.
+        // Section header: "PURCHASE" label on the left, variance right-aligned on the same row.
         SectionHeaderRow(label = "PURCHASE") {
             Text(
-                text = if (purchaseStatistics.totalTarget > 0) "${"%.0f".format(achievement)}%" else "—",
+                text = varianceText,
                 style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold),
-                color = achievementColor
+                color = varianceColor
             )
         }
 
         Spacer(modifier = Modifier.height(10.dp))
 
-        // Budget vs Actual: single line showing actual of budget (e.g., "Đ368,000 of Đ400,000 budget")
+        // Budget vs Actual: single line showing actual of budget (e.g., "AED 368,000 of AED 400,000 budget")
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Text(
-                text = formatMoney(purchaseStatistics.totalActual, 0),
+            AedText(
+                amount = purchaseStatistics.totalActual,
                 style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold),
                 color = achievementColor
             )
-            Text(
-                text = "of ${formatMoney(purchaseStatistics.totalTarget, 0)} budget",
+            AedText(
+                amount = purchaseStatistics.totalTarget,
+                prefix = "of ",
+                suffix = " budget",
                 style = MaterialTheme.typography.bodySmall,
                 color = colors.onSurfaceVariant
             )
@@ -295,7 +309,7 @@ private fun PurchaseMetricsSection(
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
             Text(
-                text = "On Target",
+                text = "Categories on target",
                 style = MaterialTheme.typography.bodySmall,
                 color = colors.onSurfaceVariant
             )
@@ -341,9 +355,14 @@ private fun AchievementBar(
     label: String = "target",
     modifier: Modifier = Modifier
 ) {
-    val maxValue = kotlin.math.max(actual, target).coerceAtLeast(1.0)
-    val filledFraction = (actual / maxValue).coerceIn(0.0, 1.0).toFloat()
-    val targetFraction = (target / maxValue).coerceIn(0.0, 1.0).toFloat()
+    // max(actual, target) is NaN whenever either input is NaN (0/0 upstream), which then makes
+    // every derived fraction NaN too — coerceIn treats NaN as "larger than max" and silently
+    // clamps to 1.0, so guard the inputs before they reach kotlin.math.max.
+    val safeActual = actual.takeIf { it.isFinite() } ?: 0.0
+    val safeTarget = target.takeIf { it.isFinite() } ?: 0.0
+    val maxValue = kotlin.math.max(safeActual, safeTarget).coerceAtLeast(1.0)
+    val filledFraction = (safeActual / maxValue).coerceIn(0.0, 1.0).toFloat()
+    val targetFraction = (safeTarget / maxValue).coerceIn(0.0, 1.0).toFloat()
 
     Column(modifier = modifier.fillMaxWidth()) {
         Box(
@@ -383,13 +402,16 @@ private fun AchievementBar(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
-            Spacer(modifier = Modifier.weight(targetFraction.coerceIn(0f, 0.95f)))
+            // RowScope.weight requires a value strictly > 0 — clamp both sides away from the
+            // 0/1 extremes the tick position can legitimately hit (no target, or target ≥ actual).
+            val leadFraction = targetFraction.coerceIn(0.0001f, 0.9999f)
+            Spacer(modifier = Modifier.weight(leadFraction))
             Text(
                 text = label,
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
-            Spacer(modifier = Modifier.weight((1f - targetFraction).coerceIn(0.05f, 1f)))
+            Spacer(modifier = Modifier.weight(1f - leadFraction))
         }
     }
 }

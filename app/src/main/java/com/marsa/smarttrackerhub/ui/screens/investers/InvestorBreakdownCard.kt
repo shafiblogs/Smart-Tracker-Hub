@@ -26,7 +26,6 @@ import com.marsa.smarttracker.ui.theme.semanticStatusColors
 import com.marsa.smarttrackerhub.domain.ShopInvestorSummary
 import com.marsa.smarttrackerhub.ui.components.DetailSectionCard
 import com.marsa.smarttrackerhub.ui.components.MetricCell
-import com.marsa.smarttrackerhub.utils.formatMoney
 
 /**
  * "Investor Breakdown" — one [DetailSectionCard] holding every investor as a divider-separated
@@ -137,14 +136,14 @@ private fun InvestorRow(
         Spacer(modifier = Modifier.height(10.dp))
         Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
             Row(modifier = Modifier.fillMaxWidth()) {
-                MetricCell("Paid", formatMoney(investor.totalPaid, 0), MaterialTheme.colorScheme.onSurface)
-                MetricCell("Fair Share", formatMoney(fairShare, 0), MaterialTheme.colorScheme.onSurface)
+                MetricCell("Paid", investor.totalPaid, valueColor = MaterialTheme.colorScheme.onSurface)
+                MetricCell("Fair Share", fairShare, valueColor = MaterialTheme.colorScheme.onSurface)
             }
             Row(modifier = Modifier.fillMaxWidth()) {
                 MetricCell(
                     if (balance >= 0) "Overpaid" else "Underpaid",
-                    formatMoney(kotlin.math.abs(balance), 0),
-                    balanceColor
+                    kotlin.math.abs(balance),
+                    valueColor = balanceColor
                 )
                 Spacer(modifier = Modifier.weight(1f))
             }

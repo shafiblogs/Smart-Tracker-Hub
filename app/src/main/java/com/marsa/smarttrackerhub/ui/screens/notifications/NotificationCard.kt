@@ -5,47 +5,41 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material.icons.filled.Info
-import androidx.compose.material.icons.filled.Notifications
-import androidx.compose.material.icons.filled.Person
-
-import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.text.style.TextAlign
+import com.marsa.smarttracker.ui.theme.cardRadius
 import com.marsa.smarttracker.ui.theme.semanticStatusColors
-import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
+import com.marsa.smarttracker.ui.theme.spaceLg
+import com.marsa.smarttracker.ui.theme.spaceSm
+import com.marsa.smarttrackerhub.utils.formatDateOnly
 
 /**
  * Created by Muhammed Shafi on 16/02/2026.
  * Moro Hub
  * muhammed.poyil@morohub.com
+ *
+ * One alert row: a severity rail carries priority while scrolling, an eyebrow states status +
+ * category, the subject (person/shop name) is the title, and the day count is the numeral the
+ * reader is actually scanning for. Everything is derived from [NotificationItem]'s own fields —
+ * no separate icon vocabulary to keep in sync with [NotificationType].
  */
 @Composable
 fun NotificationCard(
@@ -53,43 +47,35 @@ fun NotificationCard(
     onClick: () -> Unit
 ) {
     val colors = MaterialTheme.colorScheme
-    val status = com.marsa.smarttracker.ui.theme.semanticStatusColors()
+    val status = semanticStatusColors()
 
-    // Determine severity color and label
     val (severityColor, severityLabel) = when (notification.priority) {
-        NotificationPriority.HIGH -> Pair(status.danger, "OVERDUE")
-        NotificationPriority.MEDIUM -> Pair(status.warning, "DUE SOON")
+        NotificationPriority.HIGH -> status.danger to "OVERDUE"
+        NotificationPriority.MEDIUM -> status.warning to "DUE SOON"
     }
 
-    // Calculate days remaining
-    val today = System.currentTimeMillis()
-    val daysRemaining = ((notification.expiryDate - today) / (1000 * 60 * 60 * 24)).toInt()
-    val daysLabel = when {
-        daysRemaining > 0 -> Pair(daysRemaining, "days left")
-        daysRemaining < 0 -> Pair(-daysRemaining, "days over")
-        else -> Pair(0, "due today")
+    val daysRemaining = ((notification.expiryDate - System.currentTimeMillis()) / (1000 * 60 * 60 * 24)).toInt()
+    val (dayCount, dayUnit) = when {
+        daysRemaining > 0 -> daysRemaining to "days left"
+        daysRemaining < 0 -> -daysRemaining to "days over"
+        else -> 0 to "due today"
     }
 
-    // Determine notification category
-    val category = when (notification.type) {
-        NotificationType.SHOP_LICENSE_EXPIRED, NotificationType.SHOP_LICENSE_NEAR_EXPIRY -> "Shop licence"
-        NotificationType.EMPLOYEE_VISA_EXPIRED, NotificationType.EMPLOYEE_VISA_NEAR_EXPIRY -> "Employee visa"
-        NotificationType.ZAKATH_STOCK_DUE, NotificationType.ZAKATH_STOCK_APPROACHING -> "Zakath stock"
-        NotificationType.ZAKATH_PAYMENT_PENDING -> "Zakath payment"
-    }
+    val category = notification.type.categoryLabel()
+    val subject = notification.entityName.ifBlank { notification.title }
+    val subtitle = notification.dueDateSubtitle(daysRemaining)
 
     Card(
         modifier = Modifier
             .fillMaxWidth()
             .clickable(onClick = onClick),
-        shape = RoundedCornerShape(16.dp),
+        shape = RoundedCornerShape(cardRadius),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = colors.surface
-        )
+        colors = CardDefaults.cardColors(containerColor = colors.surface)
     ) {
-        Row(modifier = Modifier.fillMaxWidth()) {
-            // Severity rail
+        // height(IntrinsicSize.Min) gives the row a bounded height to measure the rail against —
+        // without it, fillMaxHeight() inside an unbounded LazyColumn item collapses to 0dp.
+        Row(modifier = Modifier.fillMaxWidth().height(IntrinsicSize.Min)) {
             Box(
                 modifier = Modifier
                     .width(4.dp)
@@ -97,11 +83,13 @@ fun NotificationCard(
                     .background(severityColor)
             )
 
-            // Content
-            Column(modifier = Modifier.weight(1f)) {
-                // Eyebrow: status pill + category
+            Column(
+                modifier = Modifier
+                    .weight(1f)
+                    .padding(spaceLg)
+            ) {
                 Row(
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    horizontalArrangement = Arrangement.spacedBy(spaceSm),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Surface(
@@ -111,12 +99,11 @@ fun NotificationCard(
                         Text(
                             text = severityLabel,
                             style = MaterialTheme.typography.labelSmall.copy(
-                                fontSize = 10.sp,
-                                letterSpacing = 0.09f.sp,
-                                fontWeight = FontWeight.Bold
+                                fontWeight = FontWeight.Bold,
+                                letterSpacing = 0.5.sp
                             ),
                             color = severityColor,
-                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                            modifier = Modifier.padding(horizontal = spaceSm, vertical = 4.dp)
                         )
                     }
                     Text(
@@ -126,44 +113,63 @@ fun NotificationCard(
                     )
                 }
 
-                Spacer(modifier = Modifier.height(8.dp))
+                Spacer(modifier = Modifier.height(spaceSm))
 
-                // Title: subject (e.g., employee name or shop name)
                 Text(
-                    text = notification.title,
-                    style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold),
+                    text = subject,
+                    style = MaterialTheme.typography.titleSmall,
                     color = colors.onSurface
                 )
 
                 Spacer(modifier = Modifier.height(3.dp))
 
-                // Subtitle: detailed message + location
                 Text(
-                    text = notification.message,
+                    text = subtitle,
                     style = MaterialTheme.typography.bodySmall,
                     color = colors.onSurfaceVariant
                 )
             }
 
-            // Days remaining: right-aligned block
             Column(
                 horizontalAlignment = Alignment.End,
-                modifier = Modifier.padding(start = 12.dp)
+                modifier = Modifier.padding(top = spaceLg, end = spaceLg, bottom = spaceLg)
             ) {
                 Text(
-                    text = daysLabel.first.toString(),
-                    style = MaterialTheme.typography.titleLarge.copy(
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 22.sp
-                    ),
+                    text = dayCount.toString(),
+                    style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
                     color = severityColor
                 )
                 Text(
-                    text = daysLabel.second,
+                    text = dayUnit,
                     style = MaterialTheme.typography.labelSmall,
                     color = severityColor
                 )
             }
         }
     }
+}
+
+private fun NotificationType.categoryLabel(): String = when (this) {
+    NotificationType.SHOP_LICENSE_EXPIRED, NotificationType.SHOP_LICENSE_NEAR_EXPIRY -> "Shop licence"
+    NotificationType.EMPLOYEE_VISA_EXPIRED, NotificationType.EMPLOYEE_VISA_NEAR_EXPIRY -> "Employee visa"
+    NotificationType.ZAKATH_STOCK_DUE, NotificationType.ZAKATH_STOCK_APPROACHING -> "Zakath stock"
+    NotificationType.ZAKATH_PAYMENT_PENDING -> "Zakath payment"
+}
+
+private fun NotificationType.subjectNoun(): String = when (this) {
+    NotificationType.SHOP_LICENSE_EXPIRED, NotificationType.SHOP_LICENSE_NEAR_EXPIRY -> "Licence"
+    NotificationType.EMPLOYEE_VISA_EXPIRED, NotificationType.EMPLOYEE_VISA_NEAR_EXPIRY -> "Visa"
+    NotificationType.ZAKATH_STOCK_DUE, NotificationType.ZAKATH_STOCK_APPROACHING -> "Stock count"
+    NotificationType.ZAKATH_PAYMENT_PENDING -> "Zakath payment"
+}
+
+/**
+ * "Visa expires 24 Aug 2026" / "Licence expired 3 Jan 2026" (+ additionalInfo when present).
+ * Built from the item's own fields rather than [NotificationItem.message], which duplicates the
+ * subject name and the relative day count the numeral already shows.
+ */
+private fun NotificationItem.dueDateSubtitle(daysRemaining: Int): String {
+    val verb = if (daysRemaining < 0) "expired" else "expires"
+    val base = "${type.subjectNoun()} $verb ${expiryDate.formatDateOnly()}"
+    return additionalInfo?.takeIf { it.isNotBlank() }?.let { "$base · $it" } ?: base
 }

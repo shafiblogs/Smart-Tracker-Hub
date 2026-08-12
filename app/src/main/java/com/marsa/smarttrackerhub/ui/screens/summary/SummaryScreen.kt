@@ -38,9 +38,8 @@ import com.google.firebase.FirebaseApp
 import com.marsa.smarttracker.ui.theme.semanticStatusColors
 import com.marsa.smarttrackerhub.domain.AccessCode
 import com.marsa.smarttrackerhub.domain.AccountSummary
-import com.marsa.smarttrackerhub.ui.components.MetricCell
+import com.marsa.smarttrackerhub.ui.components.AedText
 import com.marsa.smarttrackerhub.ui.screens.sale.MonthListCard
-import com.marsa.smarttrackerhub.utils.formatMoney
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -139,21 +138,19 @@ fun SummaryScreen(
                             },
                             lastUpdated = summary?.lastUpdated,
                             headline = if (summary != null) ({
+                                val netColor = if (summary.netProfit >= 0) status.success else status.danger
+                                val sign = if (summary.netProfit >= 0) "+" else ""
                                 Column(horizontalAlignment = Alignment.End) {
-                                    Text(
-                                        text = if (summary.netProfit >= 0) "+" else "",
-                                        style = MaterialTheme.typography.labelSmall,
-                                        color = if (summary.netProfit >= 0) status.success else status.danger
-                                    )
-                                    Text(
-                                        text = formatMoney(summary.netProfit, 0),
+                                    AedText(
+                                        amount = summary.netProfit,
+                                        prefix = sign,
                                         style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-                                        color = if (summary.netProfit >= 0) status.success else status.danger
+                                        color = netColor
                                     )
                                     Text(
                                         text = "net profit",
                                         style = MaterialTheme.typography.labelSmall,
-                                        color = if (summary.netProfit >= 0) status.success else status.danger
+                                        color = netColor
                                     )
                                 }
                             }) else null,
@@ -203,8 +200,8 @@ private fun AccountMonthMetrics(summary: AccountSummary?) {
                     .background(colors.primary)
             )
         }
-        Text(
-            text = formatMoney(cashIn, 0),
+        AedText(
+            amount = cashIn,
             style = MaterialTheme.typography.labelSmall,
             color = colors.onSurfaceVariant,
             modifier = Modifier.padding(start = 40.dp)
@@ -230,67 +227,67 @@ private fun AccountMonthMetrics(summary: AccountSummary?) {
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
-            Text(
-                text = formatMoney(cashOut, 0),
+            AedText(
+                amount = cashOut,
                 style = MaterialTheme.typography.labelSmall,
                 color = colors.onSurfaceVariant,
                 modifier = Modifier.width(40.dp)
             )
-            Text(
-                text = "${if (retained >= 0) "+" else ""}${formatMoney(retained, 0)} retained",
+            AedText(
+                amount = retained,
+                prefix = if (retained >= 0) "+" else "",
+                suffix = " retained",
                 style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.SemiBold),
-                color = if (retained >= 0) gpColor else colors.error
+                color = if (retained >= 0) gpColor else status.danger
             )
         }
 
         // Divider
         androidx.compose.material3.HorizontalDivider(color = colors.outlineVariant)
 
-        // Secondary metrics
+        // Secondary metrics: label-over-value three columns, matching SaleMonthMetrics' primary
+        // row so the Sales and Account cards read identically when switching tabs.
         Row(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            verticalAlignment = Alignment.Top
         ) {
-            Text(
-                text = "Gross profit",
-                style = MaterialTheme.typography.bodySmall,
-                color = colors.onSurfaceVariant
-            )
-            Text(
-                text = formatMoney(summary.grossProfit, 0),
-                style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.SemiBold),
-                color = gpColor
-            )
-        }
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween
-        ) {
-            Text(
-                text = "Expense",
-                style = MaterialTheme.typography.bodySmall,
-                color = colors.onSurfaceVariant
-            )
-            Text(
-                text = formatMoney(summary.totalExpenses, 0),
-                style = MaterialTheme.typography.bodySmall,
-                color = colors.onSurface
-            )
-        }
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween
-        ) {
-            Text(
-                text = "Withdrawal",
-                style = MaterialTheme.typography.bodySmall,
-                color = colors.onSurfaceVariant
-            )
-            Text(
-                text = formatMoney(summary.withdrawal, 0),
-                style = MaterialTheme.typography.bodySmall,
-                color = colors.onSurface
-            )
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = "Gross profit",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = colors.onSurfaceVariant
+                )
+                AedText(
+                    amount = summary.grossProfit,
+                    style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold),
+                    color = gpColor
+                )
+            }
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = "Expense",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = colors.onSurfaceVariant
+                )
+                AedText(
+                    amount = summary.totalExpenses,
+                    style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold),
+                    color = colors.onSurface
+                )
+            }
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = "Withdrawal",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = colors.onSurfaceVariant
+                )
+                AedText(
+                    amount = summary.withdrawal,
+                    style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold),
+                    color = colors.onSurface
+                )
+            }
         }
     }
 }

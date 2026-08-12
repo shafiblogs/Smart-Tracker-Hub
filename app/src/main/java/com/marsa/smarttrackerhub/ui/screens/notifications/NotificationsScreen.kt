@@ -31,6 +31,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.marsa.smarttracker.ui.theme.navBarInset
 import com.marsa.smarttrackerhub.domain.AccessCode
 
 /**
@@ -105,7 +106,8 @@ fun NotificationsScreen(
             else -> {
                 LazyColumn(
                     modifier = Modifier.fillMaxSize(),
-                    contentPadding = PaddingValues(16.dp)
+                    // Bottom inset keeps the last card from sitting under the bottom nav bar.
+                    contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 16.dp, bottom = navBarInset)
                 ) {
                     // Notifications list
                     items(uiState.notifications) { notification ->

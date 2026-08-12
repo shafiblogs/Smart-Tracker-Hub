@@ -25,8 +25,8 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.marsa.smarttrackerhub.ui.components.AedText
 import com.marsa.smarttrackerhub.ui.components.DetailSectionCard
-import com.marsa.smarttrackerhub.utils.formatMoney
 
 /**
  * Shop-first Investments dashboard (bottom tab). A portfolio summary strip over a list of
@@ -88,8 +88,8 @@ fun InvestmentsScreen(
 private fun PortfolioSummaryCard(state: InvestmentsUiState) {
     DetailSectionCard(title = "Portfolio") {
         Column(modifier = Modifier.fillMaxWidth()) {
-            Text(
-                text = formatMoney(state.totalCapital, 0),
+            AedText(
+                amount = state.totalCapital,
                 style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
                 color = MaterialTheme.colorScheme.primary
             )

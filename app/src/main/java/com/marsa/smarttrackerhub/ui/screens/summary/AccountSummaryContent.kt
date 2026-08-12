@@ -20,9 +20,8 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.marsa.smarttracker.ui.theme.semanticStatusColors
 import com.marsa.smarttrackerhub.domain.AccountSummary
-import com.marsa.smarttrackerhub.ui.components.InfoRow
+import com.marsa.smarttrackerhub.ui.components.AedText
 import com.marsa.smarttrackerhub.ui.screens.sale.BalanceComparisonRow
-import com.marsa.smarttrackerhub.utils.formatMoney
 
 
 /**
@@ -40,7 +39,7 @@ fun AccountProfitTiles(summary: AccountSummary) {
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        AccountTile("Balance", formatMoney(summary.cashBalance, 0), colors.onSurface, Modifier.weight(1f))
+        AccountTile("Balance", summary.cashBalance, colors.onSurface, Modifier.weight(1f))
         ProfitTile("Gross Profit", summary.grossProfit, summary.grossMargin, status.success, status.danger, Modifier.weight(1f))
         ProfitTile("Net Profit", summary.netProfit, summary.netProfitMargin, status.success, status.danger, Modifier.weight(1f))
     }
@@ -108,8 +107,8 @@ private fun AccountAmountRow(label: String, amount: Double, valueColor: Color, t
     ) {
         Text(label, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Text(
-                formatMoney(amount, 0),
+            AedText(
+                amount = amount,
                 style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold),
                 color = valueColor
             )
@@ -139,11 +138,11 @@ fun AccountSummaryContent(summary: AccountSummary) {
 }
 
 @Composable
-private fun AccountTile(label: String, value: String, valueColor: Color, modifier: Modifier = Modifier) {
+private fun AccountTile(label: String, amount: Double, valueColor: Color, modifier: Modifier = Modifier) {
     Column(modifier = modifier) {
         Text(label, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         Spacer(modifier = Modifier.height(2.dp))
-        Text(value, style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold), color = valueColor)
+        AedText(amount = amount, style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold), color = valueColor)
     }
 }
 
@@ -160,7 +159,7 @@ private fun ProfitTile(
     Column(modifier = modifier) {
         Text(label, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         Spacer(modifier = Modifier.height(2.dp))
-        Text(formatMoney(amount, 0), style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold), color = color)
+        AedText(amount = amount, style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold), color = color)
         Text("${"%.0f".format(marginPercent)}% margin", style = MaterialTheme.typography.labelSmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant)
     }

@@ -1,12 +1,14 @@
 package com.marsa.smarttrackerhub.ui.screens.sale
 
 import android.app.Application
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -29,6 +31,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
@@ -38,9 +41,8 @@ import com.google.firebase.FirebaseApp
 import com.marsa.smarttrackerhub.domain.AccessCode
 import com.marsa.smarttracker.ui.theme.semanticStatusColors
 import com.marsa.smarttrackerhub.domain.MonthlySummary
-import com.marsa.smarttrackerhub.ui.components.MetricCell
+import com.marsa.smarttrackerhub.ui.components.AedText
 import com.marsa.smarttrackerhub.ui.screens.chart.salesMarginColor
-import com.marsa.smarttrackerhub.utils.formatMoney
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -154,12 +156,41 @@ fun SaleScreen(
                                     )
                                 }
                             }) else null,
+                            underHeader = if (summary != null) ({
+                                MarginBar(marginPct = marginPct)
+                            }) else null,
                             details = { SaleMonthMetrics(summary) }
                         )
                     }
                     item { Spacer(modifier = Modifier.height(24.dp)) }
                 }
             }
+        }
+    }
+}
+
+/**
+ * Full-width 0–100% health bar under the header, coloured the same as the margin headline —
+ * lets twelve months be ranked by bar length while scrolling, without reading digits.
+ */
+@Composable
+private fun MarginBar(marginPct: Double) {
+    val color = salesMarginColor(marginPct, semanticStatusColors())
+    val filled = (marginPct / 100.0).toFloat().coerceIn(0f, 1f)
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(6.dp)
+            .clip(RoundedCornerShape(3.dp))
+            .background(MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.25f))
+    ) {
+        if (filled > 0f) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth(filled)
+                    .fillMaxHeight()
+                    .background(color)
+            )
         }
     }
 }
@@ -201,8 +232,8 @@ private fun SaleMonthMetrics(summary: MonthlySummary?) {
                     style = MaterialTheme.typography.labelSmall,
                     color = colors.onSurfaceVariant
                 )
-                Text(
-                    text = formatMoney(totalSales, 0),
+                AedText(
+                    amount = totalSales,
                     style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold),
                     color = colors.onSurface
                 )
@@ -214,8 +245,8 @@ private fun SaleMonthMetrics(summary: MonthlySummary?) {
                     style = MaterialTheme.typography.labelSmall,
                     color = colors.onSurfaceVariant
                 )
-                Text(
-                    text = formatMoney(summary.totalPurchases, 0),
+                AedText(
+                    amount = summary.totalPurchases,
                     style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold),
                     color = colors.onSurface
                 )
@@ -227,8 +258,8 @@ private fun SaleMonthMetrics(summary: MonthlySummary?) {
                     style = MaterialTheme.typography.labelSmall,
                     color = colors.onSurfaceVariant
                 )
-                Text(
-                    text = formatMoney(grossProfit, 0),
+                AedText(
+                    amount = grossProfit,
                     style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold),
                     color = gpColor
                 )
@@ -248,8 +279,8 @@ private fun SaleMonthMetrics(summary: MonthlySummary?) {
                 style = MaterialTheme.typography.bodySmall,
                 color = colors.onSurfaceVariant
             )
-            Text(
-                text = formatMoney(summary.creditPurchase, 0),
+            AedText(
+                amount = summary.creditPurchase,
                 style = MaterialTheme.typography.bodySmall,
                 color = colors.onSurface
             )
@@ -263,8 +294,8 @@ private fun SaleMonthMetrics(summary: MonthlySummary?) {
                 style = MaterialTheme.typography.bodySmall,
                 color = colors.onSurfaceVariant
             )
-            Text(
-                text = formatMoney(summary.vatPurchase, 0),
+            AedText(
+                amount = summary.vatPurchase,
                 style = MaterialTheme.typography.bodySmall,
                 color = colors.onSurface
             )
