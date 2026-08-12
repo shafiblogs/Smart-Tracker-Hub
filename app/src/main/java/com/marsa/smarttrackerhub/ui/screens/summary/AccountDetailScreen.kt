@@ -4,14 +4,12 @@ import android.app.Application
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -29,6 +27,9 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -45,6 +46,10 @@ import com.marsa.smarttrackerhub.ui.components.DetailSectionCard
 import com.marsa.smarttrackerhub.ui.components.DropdownField
 import com.marsa.smarttrackerhub.utils.formatLastUpdated
 import com.marsa.smarttrackerhub.utils.shareCard
+import com.marsa.smarttracker.ui.theme.navBarInset
+import com.marsa.smarttracker.ui.theme.spaceLg
+import com.marsa.smarttracker.ui.theme.spaceMd
+import com.marsa.smarttracker.ui.theme.spaceSm
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -71,6 +76,10 @@ fun AccountDetailScreen(
 
     val density = LocalDensity.current
     val widthPx = with(density) { LocalConfiguration.current.screenWidthDp.dp.roundToPx() }
+
+    // Hoisted (not scoped to the current month) so switching months doesn't reset the lens —
+    // survives rotation via rememberSaveable too (D9).
+    var moneyMovedView by rememberSaveable { mutableStateOf(MoneyMovedView.FLOW) }
 
     Scaffold(
         // Outer NavHost Scaffold already applies the status-bar inset; don't double it here.
@@ -108,10 +117,10 @@ fun AccountDetailScreen(
                         ?.let { viewModel.selectMonth(it.id) }
                 },
                 enabled = availableMonths.isNotEmpty(),
-                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                modifier = Modifier.padding(horizontal = spaceLg, vertical = spaceSm)
             )
 
-            Spacer(modifier = Modifier.height(12.dp))
+            Spacer(modifier = Modifier.height(spaceMd))
 
             when {
                 isLoading && summary == null -> {
@@ -126,8 +135,8 @@ fun AccountDetailScreen(
                         modifier = Modifier
                             .fillMaxSize()
                             .verticalScroll(rememberScrollState())
-                            .padding(horizontal = 16.dp),
-                        verticalArrangement = Arrangement.spacedBy(14.dp)
+                            .padding(horizontal = spaceLg),
+                        verticalArrangement = Arrangement.spacedBy(spaceLg)
                     ) {
                         SummaryCard(
                             summary = currentSummary,
@@ -141,37 +150,18 @@ fun AccountDetailScreen(
                                 ) { SummaryCard(currentSummary, comparison, shopName) }
                             }
                         )
-                        StatementCard(
+                        MoneyMovedCard(
                             summary = currentSummary,
                             shopName = shopName,
+                            selected = moneyMovedView,
+                            onSelectedChange = { moneyMovedView = it },
                             onShare = {
+                                val view = moneyMovedView
                                 shareCard(
                                     context, widthPx,
-                                    "account_statement_${shopName.replace(" ", "_")}_${selectedMonthId.replace(" ", "_")}.png",
-                                    "Share Account Statement"
-                                ) { StatementCard(currentSummary, shopName) }
-                            }
-                        )
-                        CashFlowCard(
-                            summary = currentSummary,
-                            shopName = shopName,
-                            onShare = {
-                                shareCard(
-                                    context, widthPx,
-                                    "account_cashflow_${shopName.replace(" ", "_")}_${selectedMonthId.replace(" ", "_")}.png",
-                                    "Share Cash Flow"
-                                ) { CashFlowCard(currentSummary, shopName) }
-                            }
-                        )
-                        MoneyAllocationCard(
-                            summary = currentSummary,
-                            shopName = shopName,
-                            onShare = {
-                                shareCard(
-                                    context, widthPx,
-                                    "account_allocation_${shopName.replace(" ", "_")}_${selectedMonthId.replace(" ", "_")}.png",
-                                    "Share Allocation"
-                                ) { MoneyAllocationCard(currentSummary, shopName) }
+                                    "account_${view.label.lowercase()}_${shopName.replace(" ", "_")}_${selectedMonthId.replace(" ", "_")}.png",
+                                    "Share ${view.label}"
+                                ) { MoneyMovedCard(currentSummary, shopName, view, {}) }
                             }
                         )
                         ProfitTrendCard(
@@ -185,7 +175,7 @@ fun AccountDetailScreen(
                                 ) { ProfitTrendCard(history, shopName) }
                             }
                         )
-                        Spacer(modifier = Modifier.height(24.dp))
+                        Spacer(modifier = Modifier.height(navBarInset))
                     }
                 }
 
@@ -210,36 +200,19 @@ private fun SummaryCard(
     shopName: String = "",
     onShare: (() -> Unit)? = null
 ) {
+    // Cash-balance delta moved down into AccountProfitTiles as the Balance tile's own
+    // opening-to-closing caption; only the net-profit chip stays up here, on the title line
+    // where SalesDetailScreen already positions its equivalent (D8).
     DetailSectionCard(
         title = "Summary",
         subtitle = shopName,
         caption = summary.lastUpdated.formatLastUpdated(),
-        onShare = onShare
-    ) {
-        Column {
-            val np = comparison?.netProfitDeltaPct
-            val cb = comparison?.cashBalanceDeltaPct
-            if (comparison != null && (np != null || cb != null)) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    DeltaChip(deltaPercent = np, label = "Net Profit")
-                    Spacer(modifier = Modifier.width(8.dp))
-                    DeltaChip(deltaPercent = cb, label = "Cash")
-                }
-                Spacer(modifier = Modifier.height(12.dp))
-            }
-            AccountProfitTiles(summary)
+        onShare = onShare,
+        trailing = {
+            comparison?.netProfitDeltaPct?.let { DeltaChip(deltaPercent = it) }
         }
+    ) {
+        AccountProfitTiles(summary)
     }
 }
 
-@Composable
-private fun StatementCard(summary: AccountSummary, shopName: String = "", onShare: (() -> Unit)? = null) {
-    DetailSectionCard(
-        title = "Statement",
-        subtitle = shopName,
-        caption = summary.lastUpdated.formatLastUpdated(),
-        onShare = onShare
-    ) {
-        AccountBreakdown(summary)
-    }
-}

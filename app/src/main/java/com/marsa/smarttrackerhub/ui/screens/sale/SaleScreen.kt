@@ -1,14 +1,12 @@
 package com.marsa.smarttrackerhub.ui.screens.sale
 
 import android.app.Application
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -31,7 +29,6 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
@@ -42,6 +39,7 @@ import com.marsa.smarttrackerhub.domain.AccessCode
 import com.marsa.smarttracker.ui.theme.semanticStatusColors
 import com.marsa.smarttrackerhub.domain.MonthlySummary
 import com.marsa.smarttrackerhub.ui.components.AedText
+import com.marsa.smarttrackerhub.ui.components.MarginBar
 import com.marsa.smarttrackerhub.ui.screens.chart.salesMarginColor
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -169,31 +167,8 @@ fun SaleScreen(
     }
 }
 
-/**
- * Full-width 0–100% health bar under the header, coloured the same as the margin headline —
- * lets twelve months be ranked by bar length while scrolling, without reading digits.
- */
-@Composable
-private fun MarginBar(marginPct: Double) {
-    val color = salesMarginColor(marginPct, semanticStatusColors())
-    val filled = (marginPct / 100.0).toFloat().coerceIn(0f, 1f)
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(6.dp)
-            .clip(RoundedCornerShape(3.dp))
-            .background(MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.25f))
-    ) {
-        if (filled > 0f) {
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth(filled)
-                    .fillMaxHeight()
-                    .background(color)
-            )
-        }
-    }
-}
+// MarginBar moved to ui/components/MarginBar.kt so the Sales detail screen's verdict strip
+// (D4) can share the same health-bar treatment.
 
 /**
  * Per-month sale row detail — headline shows margin, this section shows primary metrics.

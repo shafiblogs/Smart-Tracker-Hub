@@ -22,6 +22,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.marsa.smarttracker.ui.theme.spaceLg
+import com.marsa.smarttracker.ui.theme.spaceMd
 
 /**
  * Section card used by the month-detail screens. Chrome matches the home cards:
@@ -46,7 +48,7 @@ fun DetailSectionCard(
     ) {
         Column {
             Row(
-                modifier = Modifier.fillMaxWidth().padding(16.dp),
+                modifier = Modifier.fillMaxWidth().padding(spaceLg),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Column(modifier = Modifier.weight(1f)) {
@@ -85,9 +87,9 @@ fun DetailSectionCard(
                     }
                 }
             }
-            HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp), color = colors.outlineVariant)
-            Spacer(modifier = Modifier.height(12.dp))
-            Column(modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 16.dp)) {
+            HorizontalDivider(modifier = Modifier.padding(horizontal = spaceLg), color = colors.outlineVariant)
+            Spacer(modifier = Modifier.height(spaceMd))
+            Column(modifier = Modifier.padding(start = spaceLg, end = spaceLg, bottom = spaceLg)) {
                 content()
             }
         }

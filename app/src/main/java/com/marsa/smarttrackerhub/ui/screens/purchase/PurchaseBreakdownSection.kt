@@ -26,14 +26,16 @@ import com.marsa.smarttrackerhub.ui.components.appendAed
 import com.marsa.smarttrackerhub.ui.screens.chart.PurchaseCategoryChartData
 import com.marsa.smarttrackerhub.ui.screens.chart.PurchaseChartStatistics
 import com.marsa.smarttrackerhub.ui.screens.chart.purchaseAchievementColor
+import com.marsa.smarttrackerhub.ui.screens.chart.purchaseVarianceColor
 import com.marsa.smarttracker.ui.theme.semanticStatusColors
 import kotlin.math.roundToInt
 
 /**
  * Category-wise purchase breakdown as an actual-vs-target comparison (same model as the home
- * screen): headline tiles (Total Purchase, Budget, Achieved%), an overall progress bar, then one
- * row per category with `actual / target`, a progress bar (fraction = actual/target) and the
- * achievement %. Colour follows `purchaseAchievementColor` (green ≥90 / amber ≥75 / red).
+ * screen): headline tiles (Spent, Budget, Variance), an overall progress bar, then one row per
+ * category with `actual of target`, a progress bar (fraction = actual/target) and the signed
+ * variance. Per-category bar colour follows `purchaseAchievementColor` (green 90–120% / amber
+ * 75–90% / red below 75% or above 120% — a large overrun is a problem, not an achievement).
  * Target = previous month's category amount × 1.10 (floored); primary/neutral when no target.
  */
 @Composable
@@ -57,18 +59,27 @@ fun PurchaseBreakdownSection(
     val totalTarget = statistics?.totalTarget ?: 0.0
     val hasBudget = totalTarget > 0.0
     val overallPct = statistics?.achievementPercentage ?: 0.0
-    val overallColor = if (hasBudget) purchaseAchievementColor(overallPct, status) else colors.onSurface
+    // Purchase's bar means the opposite of Sales' — a fuller bar is MORE spend, i.e. worse —
+    // so state it as budget variance rather than achievement (matches the Home card).
+    val overallVariancePct = overallPct - 100.0
+    val overallColor = purchaseVarianceColor(overallPct, hasBudget, status) ?: colors.onSurface
+    val overallCaption = when {
+        !hasBudget -> null
+        kotlin.math.abs(overallVariancePct) <= 2.0 -> "on budget"
+        overallVariancePct > 0 -> "over budget"
+        else -> "under budget"
+    }
 
     Column {
         // ── Headline tiles ────────────────────────────────────────────────
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            PurchaseTile("Total Purchase", totalActual, colors.onSurface, Modifier.weight(1f))
+            PurchaseTile("Spent", totalActual, colors.onSurface, Modifier.weight(1f))
             PurchaseTile("Budget", totalTarget, colors.onSurface, Modifier.weight(1f))
-            PurchaseTile(
-                "Achieved",
-                if (hasBudget) "${overallPct.roundToInt()}%" else "—",
-                overallColor,
-                Modifier.weight(1f)
+            VarianceTile(
+                variancePercent = if (hasBudget) overallVariancePct else null,
+                caption = overallCaption,
+                color = overallColor,
+                modifier = Modifier.weight(1f)
             )
         }
 
@@ -103,7 +114,7 @@ fun PurchaseBreakdownSection(
                     Text(
                         text = buildAnnotatedString {
                             appendAed(c.actual)
-                            append(" / ")
+                            append(" of ")
                             appendAed(c.target)
                         },
                         style = MaterialTheme.typography.labelSmall,
@@ -115,7 +126,10 @@ fun PurchaseBreakdownSection(
                     ProgressBar(fraction, barColor, modifier = Modifier.weight(1f))
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(
-                        text = if (c.hasTarget) "${c.achievementPercentage.roundToInt()}%" else "—",
+                        text = if (c.hasTarget) {
+                            val v = c.achievementPercentage - 100.0
+                            "${if (v > 0) "+" else ""}${v.roundToInt()}%"
+                        } else "—",
                         style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.SemiBold),
                         color = barColor
                     )
@@ -157,6 +171,21 @@ private fun PurchaseTile(label: String, amount: Double, valueColor: Color, modif
             style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold),
             color = valueColor
         )
+    }
+}
+
+/** Third headline tile — signed budget variance ("+12%"/"−8%") with an "over/under/on budget" caption. */
+@Composable
+private fun VarianceTile(variancePercent: Double?, caption: String?, color: Color, modifier: Modifier = Modifier) {
+    PurchaseTileChrome("Variance", modifier) {
+        Text(
+            text = if (variancePercent != null) "${if (variancePercent > 0) "+" else ""}${variancePercent.roundToInt()}%" else "—",
+            style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold),
+            color = color
+        )
+        if (caption != null) {
+            Text(caption, style = MaterialTheme.typography.labelSmall, color = color)
+        }
     }
 }
 

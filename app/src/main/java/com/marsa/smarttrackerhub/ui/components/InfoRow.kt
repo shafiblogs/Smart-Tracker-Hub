@@ -19,30 +19,41 @@ import androidx.compose.ui.unit.dp
  * muhammed.poyil@morohub.com
  */
 
+/**
+ * [showZero] defaults to true so the row set is fixed month to month — a hidden zero is
+ * indistinguishable from missing data. Pass false to keep the old hide-when-zero behaviour.
+ * A zero amount renders in [MaterialTheme.colorScheme.onSurfaceVariant] regardless of [color],
+ * so it reads as "nothing happened" rather than a live figure.
+ */
 @Composable
-fun InfoRow(label: String, amount: Double, color: Color = MaterialTheme.colorScheme.onSurface) {
-    if (amount != 0.0) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(vertical = 4.dp),
-            horizontalArrangement = Arrangement.SpaceBetween
-        ) {
-            Text(text = label, style = MaterialTheme.typography.bodyMedium, color = color)
-            if (label.contains("Margin")) {
-                Text(
-                    text = "${"%.2f".format(amount)}%",
-                    style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
-                    color = color
-                )
-            } else {
-                AedText(
-                    amount = amount,
-                    decimals = 2,
-                    style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Medium),
-                    color = color
-                )
-            }
+fun InfoRow(
+    label: String,
+    amount: Double,
+    color: Color = MaterialTheme.colorScheme.onSurface,
+    showZero: Boolean = true
+) {
+    if (!showZero && amount == 0.0) return
+    val rowColor = if (amount == 0.0) MaterialTheme.colorScheme.onSurfaceVariant else color
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 4.dp),
+        horizontalArrangement = Arrangement.SpaceBetween
+    ) {
+        Text(text = label, style = MaterialTheme.typography.bodyMedium, color = rowColor)
+        if (label.contains("Margin")) {
+            Text(
+                text = "${"%.2f".format(amount)}%",
+                style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
+                color = rowColor
+            )
+        } else {
+            AedText(
+                amount = amount,
+                decimals = 2,
+                style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Medium),
+                color = rowColor
+            )
         }
     }
 }

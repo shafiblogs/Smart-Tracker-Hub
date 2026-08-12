@@ -18,6 +18,8 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -37,18 +39,28 @@ import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.google.firebase.FirebaseApp
 import com.marsa.smarttrackerhub.domain.MonthlySummary
+import com.marsa.smarttrackerhub.ui.components.AedText
 import com.marsa.smarttrackerhub.ui.components.DeltaChip
 import com.marsa.smarttrackerhub.ui.components.DetailSectionCard
 import com.marsa.smarttrackerhub.ui.components.DropdownField
+import com.marsa.smarttrackerhub.ui.components.MarginBar
 import com.marsa.smarttrackerhub.ui.screens.chart.PurchaseCategoryChartData
 import com.marsa.smarttrackerhub.ui.screens.chart.PurchaseChartStatistics
+import com.marsa.smarttrackerhub.ui.screens.chart.salesMarginColor
 import com.marsa.smarttrackerhub.ui.screens.purchase.PurchaseBreakdownSection
 import com.marsa.smarttrackerhub.utils.formatLastUpdated
 import com.marsa.smarttrackerhub.utils.shareCard
+import com.marsa.smarttracker.ui.theme.navBarInset
+import com.marsa.smarttracker.ui.theme.semanticStatusColors
+import com.marsa.smarttracker.ui.theme.spaceLg
+import com.marsa.smarttracker.ui.theme.spaceMd
+import com.marsa.smarttracker.ui.theme.spaceSm
+import kotlin.math.roundToInt
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -116,10 +128,10 @@ fun SalesDetailScreen(
                         ?.let { viewModel.selectMonth(it.id) }
                 },
                 enabled = availableMonths.isNotEmpty(),
-                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                modifier = Modifier.padding(horizontal = spaceLg, vertical = spaceSm)
             )
 
-            Spacer(modifier = Modifier.height(12.dp))
+            Spacer(modifier = Modifier.height(spaceMd))
 
             when {
                 isLoading && summary == null -> {
@@ -134,12 +146,12 @@ fun SalesDetailScreen(
                         modifier = Modifier
                             .fillMaxSize()
                             .verticalScroll(rememberScrollState())
-                            .padding(horizontal = 16.dp),
-                        verticalArrangement = Arrangement.spacedBy(14.dp)
+                            .padding(horizontal = spaceLg),
+                        verticalArrangement = Arrangement.spacedBy(spaceLg)
                     ) {
+                        MonthVerdictStrip(summary = currentSummary, comparison = comparison)
                         SalesSectionCard(
                             summary = currentSummary,
-                            comparison = comparison,
                             shopName = shopName,
                             onShare = {
                                 shareCard(
@@ -147,13 +159,12 @@ fun SalesDetailScreen(
                                     widthPx = widthPx,
                                     fileName = "sales_${shopName.replace(" ", "_")}_${selectedMonthId.replace(" ", "_")}.png",
                                     shareTitle = "Share Sales"
-                                ) { SalesSectionCard(currentSummary, comparison, shopName) }
+                                ) { SalesSectionCard(currentSummary, shopName) }
                             }
                         )
                         PurchaseSectionCard(
                             categories = purchaseChart,
                             statistics = purchaseStats,
-                            comparison = comparison,
                             shopName = shopName,
                             lastUpdated = currentSummary.lastUpdated,
                             onShare = {
@@ -164,13 +175,13 @@ fun SalesDetailScreen(
                                     shareTitle = "Share Purchase"
                                 ) {
                                     PurchaseSectionCard(
-                                        purchaseChart, purchaseStats, comparison, shopName,
+                                        purchaseChart, purchaseStats, shopName,
                                         currentSummary.lastUpdated
                                     )
                                 }
                             }
                         )
-                        Spacer(modifier = Modifier.height(24.dp))
+                        Spacer(modifier = Modifier.height(navBarInset))
                     }
                 }
 
@@ -191,18 +202,15 @@ fun SalesDetailScreen(
 @Composable
 private fun SalesSectionCard(
     summary: MonthlySummary,
-    comparison: SalesComparison? = null,
     shopName: String = "",
     onShare: (() -> Unit)? = null
 ) {
+    // Month-over-month delta now lives in MonthVerdictStrip above, so it appears once (D4).
     DetailSectionCard(
         title = "Sales",
         subtitle = shopName,
         caption = summary.lastUpdated.formatLastUpdated(),
-        onShare = onShare,
-        trailing = {
-            comparison?.totalSalesDeltaPct?.let { DeltaChip(deltaPercent = it) }
-        }
+        onShare = onShare
     ) { SummaryContent(summary = summary) }
 }
 
@@ -210,7 +218,6 @@ private fun SalesSectionCard(
 private fun PurchaseSectionCard(
     categories: List<PurchaseCategoryChartData>,
     statistics: PurchaseChartStatistics?,
-    comparison: SalesComparison? = null,
     shopName: String = "",
     lastUpdated: Long = 0L,
     onShare: (() -> Unit)? = null
@@ -221,9 +228,81 @@ private fun PurchaseSectionCard(
         caption = lastUpdated.formatLastUpdated(),
         onShare = onShare,
         trailing = {
-            comparison?.totalPurchaseDeltaPct?.let { DeltaChip(deltaPercent = it) }
+            // Budget variance, not month-over-month — an overrun is the bad direction here,
+            // whichever way spend moved versus last month. See D7.
+            if (statistics != null && statistics.totalTarget > 0.0) {
+                DeltaChip(
+                    deltaPercent = statistics.achievementPercentage - 100.0,
+                    higherIsBetter = false
+                )
+            }
         }
     ) {
         PurchaseBreakdownSection(categories = categories, statistics = statistics)
+    }
+}
+
+/**
+ * Opens the screen with the month's verdict: gross margin as the headline (same figure, same
+ * salesMarginColor thresholds as the Sales list card, so tapping a row keeps its identity),
+ * the month-over-month delta, total sale and achievement on the right, and the full-width
+ * margin bar underneath. Same surface/elevation as DetailSectionCard so it reads as part of
+ * the same card family (D4).
+ */
+@Composable
+private fun MonthVerdictStrip(summary: MonthlySummary, comparison: SalesComparison?) {
+    val colors = MaterialTheme.colorScheme
+    val status = semanticStatusColors()
+    val totalSales = summary.totalSales
+    val marginPct = if (totalSales > 0.0) {
+        (totalSales - summary.totalPurchases) / totalSales * 100
+    } else 0.0
+    val marginColor = salesMarginColor(marginPct, status)
+    val target = summary.targetSale
+    val avg = summary.averageSale ?: 0.0
+    val hasTarget = target > 0.0
+    val achievementPct = if (hasTarget) avg / target * 100 else 0.0
+
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(containerColor = colors.surface),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+    ) {
+        Column(modifier = Modifier.fillMaxWidth().padding(spaceLg)) {
+            Row(verticalAlignment = Alignment.Top) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = "GROSS MARGIN",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = colors.onSurfaceVariant
+                    )
+                    Text(
+                        text = "${"%.1f".format(marginPct)}%",
+                        style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
+                        color = marginColor
+                    )
+                }
+                Column(horizontalAlignment = Alignment.End) {
+                    comparison?.totalSalesDeltaPct?.let { DeltaChip(deltaPercent = it) }
+                    Spacer(modifier = Modifier.height(5.dp))
+                    AedText(
+                        amount = totalSales,
+                        suffix = " sale",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = colors.onSurfaceVariant,
+                        textAlign = TextAlign.End
+                    )
+                    if (hasTarget) {
+                        Text(
+                            text = "${achievementPct.roundToInt()}% of target",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = colors.onSurfaceVariant
+                        )
+                    }
+                }
+            }
+            Spacer(modifier = Modifier.height(spaceMd))
+            MarginBar(marginPct = marginPct)
+        }
     }
 }

@@ -6,12 +6,10 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Share
@@ -31,6 +29,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.marsa.smarttrackerhub.domain.ChartStatistics
+import com.marsa.smarttrackerhub.ui.components.AchievementBar
 import com.marsa.smarttrackerhub.ui.components.AedText
 import com.marsa.smarttracker.ui.theme.semanticStatusColors
 
@@ -228,22 +227,8 @@ private fun PurchaseMetricsSection(
     val hasBudget = purchaseStatistics.totalTarget > 0
     val achievementColor = if (hasBudget) getPurchaseAchievementColor(achievement) else colors.onSurfaceVariant
 
-    // Purchase's bar grammar is identical to Sales' but means the opposite thing — a fuller bar
-    // is MORE spend, i.e. worse. State it as variance instead of achievement so "87%" doesn't
-    // read as 87% of the way to a goal worth reaching.
-    val variancePct = achievement - 100.0
-    val varianceColor = when {
-        !hasBudget -> colors.onSurfaceVariant
-        variancePct > 0 -> status.danger
-        variancePct < 0 -> status.success
-        else -> status.success
-    }
-    val varianceText = when {
-        !hasBudget -> "—"
-        variancePct == 0.0 -> "on budget"
-        variancePct > 0 -> "+${"%.0f".format(variancePct)}% over budget"
-        else -> "${"%.0f".format(variancePct)}% under budget"
-    }
+    val varianceText = purchaseVarianceText(achievement, hasBudget)
+    val varianceColor = purchaseVarianceColor(achievement, hasBudget, status) ?: colors.onSurfaceVariant
 
     Column {
         // Section header: "PURCHASE" label on the left, variance right-aligned on the same row.
@@ -347,71 +332,5 @@ private fun SectionHeaderRow(
     }
 }
 
-@Composable
-private fun AchievementBar(
-    actual: Double,
-    target: Double,
-    color: Color,
-    label: String = "target",
-    modifier: Modifier = Modifier
-) {
-    // max(actual, target) is NaN whenever either input is NaN (0/0 upstream), which then makes
-    // every derived fraction NaN too — coerceIn treats NaN as "larger than max" and silently
-    // clamps to 1.0, so guard the inputs before they reach kotlin.math.max.
-    val safeActual = actual.takeIf { it.isFinite() } ?: 0.0
-    val safeTarget = target.takeIf { it.isFinite() } ?: 0.0
-    val maxValue = kotlin.math.max(safeActual, safeTarget).coerceAtLeast(1.0)
-    val filledFraction = (safeActual / maxValue).coerceIn(0.0, 1.0).toFloat()
-    val targetFraction = (safeTarget / maxValue).coerceIn(0.0, 1.0).toFloat()
-
-    Column(modifier = modifier.fillMaxWidth()) {
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(8.dp)
-                .clip(RoundedCornerShape(4.dp))
-                .background(MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.25f))
-        ) {
-            // Filled portion
-            if (filledFraction > 0f) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth(filledFraction)
-                        .fillMaxHeight()
-                        .background(color)
-                )
-            }
-            // Target tick mark
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth(targetFraction)
-                    .fillMaxHeight()
-                    .padding(end = 1.dp),
-                contentAlignment = Alignment.CenterEnd
-            ) {
-                Box(
-                    modifier = Modifier
-                        .width(2.dp)
-                        .fillMaxHeight()
-                        .background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.85f))
-                )
-            }
-        }
-        Spacer(modifier = Modifier.height(4.dp))
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween
-        ) {
-            // RowScope.weight requires a value strictly > 0 — clamp both sides away from the
-            // 0/1 extremes the tick position can legitimately hit (no target, or target ≥ actual).
-            val leadFraction = targetFraction.coerceIn(0.0001f, 0.9999f)
-            Spacer(modifier = Modifier.weight(leadFraction))
-            Text(
-                text = label,
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-            Spacer(modifier = Modifier.weight(1f - leadFraction))
-        }
-    }
-}
+// AchievementBar moved to ui/components/AchievementBar.kt so the Sales detail screen (D5)
+// can share the same unclamped, target-tick treatment.
