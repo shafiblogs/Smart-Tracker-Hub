@@ -115,7 +115,7 @@ fun HomeScreen(
                 val regionName = ra.region.name ?: ""
                 DetailSectionCard(
                     title = regionName,
-                    subtitle = selectedRange.displayName,
+                    subtitle = ra.periodLabel(selectedRange.displayName),
                     caption = summary?.lastUpdated?.formatLastUpdated(),
                     onShare = summary?.let {
                         {
@@ -150,7 +150,7 @@ fun HomeScreen(
                         salesStatistics = sales,
                         purchaseStatistics = purchase,
                         shopName = shopName,
-                        periodLabel = selectedRange.displayName,
+                        periodLabel = st.periodLabel(selectedRange.displayName),
                         salesMargin = st.salesMargin,
                         caption = st.lastUpdated.takeIf { it > 0 }?.formatLastUpdated(),
                         onShareClick = {
@@ -163,7 +163,7 @@ fun HomeScreen(
                                     salesStatistics = sales,
                                     purchaseStatistics = purchase,
                                     shopName = shopName,
-                                    periodLabel = selectedRange.displayName,
+                                    periodLabel = st.periodLabel(selectedRange.displayName),
                                     salesMargin = st.salesMargin,
                                     caption = st.lastUpdated.takeIf { it > 0 }?.formatLastUpdated()
                                 )

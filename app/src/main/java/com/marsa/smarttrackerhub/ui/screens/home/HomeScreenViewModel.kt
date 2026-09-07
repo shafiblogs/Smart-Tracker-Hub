@@ -29,13 +29,15 @@ import com.marsa.smarttrackerhub.ui.screens.purchase.PurchaseItem
 import com.marsa.smarttrackerhub.ui.screens.sale.TargetSaleCalculator
 import com.marsa.smarttrackerhub.ui.screens.statement.ShopListDto
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.time.YearMonth
-import java.time.temporal.ChronoUnit
 import kotlin.coroutines.resume
 import kotlin.coroutines.suspendCoroutine
 
@@ -59,13 +61,16 @@ private fun defaultRanges(): List<MonthSelection> {
  *   - one Account card (region-level aggregate, AccountTrackerApp), then
  *   - one Sales card (UnifiedStatisticsCard: sales + purchase stats) per shop.
  *
- * Same per-shop window math the old Home used, now rendered for every shop instead of one.
+ * Every window is resolved to an explicit, calendar-derived list of month keys
+ * ([monthKeysFor]) which is then looked up by key in Room. The screen therefore shows exactly
+ * the months the user asked for — "Last 3 Months" is always the three completed months before
+ * the current one, for every shop — and a month with no cached record is reported as missing
+ * (see [ShopStats.monthsCovered]) rather than being silently replaced by an older one.
  *
- * The period selector's free "pick a month" entry is deliberately NOT wired in yet: [windowFor]
- * and [purchaseIndicesFor] compute a skip count that indexes into [allMonthsSorted] — the months
- * a shop actually has cached — rather than a calendar distance. Those agree only when there's no
- * gap between "now" and a shop's most recent cached month. Resolving an arbitrary picked month
- * correctly means switching to a lookup-by-key (fetch-then-locate), which is a separate change.
+ * This replaces the previous positional math (`list.drop(skip).take(n)`), which indexed into
+ * whatever months a shop happened to have cached: a shop missing one month slid its whole window
+ * back, so each card could cover a different span, and an arbitrary picked month could not be
+ * resolved at all.
  */
 class HomeScreenViewModel(
     private val application: Application,
@@ -80,15 +85,28 @@ class HomeScreenViewModel(
         private const val AUTO_SYNC_INTERVAL_MS = 4 * 60 * 60 * 1000L // 4 hours
     }
 
+    /**
+     * [monthsCovered] months of the [monthsExpected] the selected period asks for actually had a
+     * record in Room; the figures below aggregate exactly those. They differ when a shop has no
+     * summary for part of the window.
+     */
     data class ShopStats(
         val shop: ShopListDto,
         val sales: ChartStatistics?,
         val purchase: PurchaseChartStatistics?,
         val salesMargin: Double,
-        val lastUpdated: Long = 0L
+        val lastUpdated: Long = 0L,
+        val monthsCovered: Int = 0,
+        val monthsExpected: Int = 0
     )
 
-    data class RegionAccount(val region: ShopListDto, val summary: AccountSummary?)
+    data class RegionAccount(
+        val region: ShopListDto,
+        val summary: AccountSummary?,
+        val monthsCovered: Int = 0,
+        val monthsExpected: Int = 0
+    )
+
 
     private val db = AppDatabase.getDatabase(application)
     private val summaryDao = db.summaryDao()
@@ -116,15 +134,18 @@ class HomeScreenViewModel(
 
     private var shops: List<ShopListDto> = emptyList()
     private var regions: List<ShopListDto> = emptyList()
-    // shopId → summaries sorted newest→oldest.
-    private var salesByShop: Map<String, List<SummaryEntity>> = emptyMap()
-    // Global month set (newest→oldest) for the account card's representative month.
-    private var allMonthsSorted: List<String> = emptyList()
+    // shopId → (month key → summary). Keyed by the "MonthName - yyyy" document convention so a
+    // window can be resolved by calendar key instead of by position in a cached list.
+    private var salesByShop: Map<String, Map<String, SummaryEntity>> = emptyMap()
 
     fun loadScreenData(userAccessCode: AccessCode) = viewModelScope.launch {
         _isLoading.value = true   // Show loading while reading from Room
         signIn(firebaseApp)
         accountApp?.let { signIn(it) }
+
+        // Rebuilt on every load: the presets are relative to "now", so one computed at ViewModel
+        // construction would still name the old month after crossing a month boundary.
+        _availableRanges.value = defaultRanges()
 
         // 1) Load from Room cache and display data (may show loading briefly if it takes time).
         withContext(Dispatchers.IO) {
@@ -141,14 +162,18 @@ class HomeScreenViewModel(
         val lastSyncTime = getLastHomeAutoSyncTime(application)
         val dueForAutoSync = now - lastSyncTime >= AUTO_SYNC_INTERVAL_MS
 
-        if (dueForAutoSync) {
+        // The throttle must not strand a window that is incomplete locally: without this, a month
+        // missing from Room stays missing on every reopen until the 4-hour timer happens to lapse.
+        val incomplete = withContext(Dispatchers.IO) { hasMissingMonths(_selectedRange.value) }
+
+        if (dueForAutoSync || incomplete) {
             _isLoading.value = true   // Show loading for Firestore fetch
             withContext(Dispatchers.IO) {
                 refreshSelectedPeriod(_selectedRange.value)
                 buildIndexFromRoom()
             }
             computeStats()
-            saveLastHomeAutoSyncTime(application, now)
+            if (dueForAutoSync) saveLastHomeAutoSyncTime(application, now)
             _isLoading.value = false
         }
     }
@@ -167,10 +192,9 @@ class HomeScreenViewModel(
         }
     }
 
-    /** Build the shop→summaries index + month list from Room only (no network). */
+    /** Build the shop→(monthKey→summary) index from Room only (no network). */
     private suspend fun buildIndexFromRoom() {
-        val byShop = mutableMapOf<String, List<SummaryEntity>>()
-        val monthTimestamps = mutableMapOf<String, Long>()
+        val byShop = mutableMapOf<String, Map<String, SummaryEntity>>()
         shops.forEach { shop ->
             val id = shop.shopId ?: return@forEach
             var list = summaryDao.getAllSummariesForShop(id)
@@ -180,77 +204,172 @@ class HomeScreenViewModel(
                 summaryDao.insertSummaries(recalced)
                 list = recalced
             }
-            byShop[id] = list.sortedByDescending { it.monthTimestamp }
-            list.forEach { monthTimestamps[it.monthYear] = it.monthTimestamp }
+            // Index under both the document id and the stored monthYear field: they follow the
+            // same "MonthName - yyyy" convention, but indexing both means a row whose field
+            // drifted from its id is still findable.
+            val byMonth = mutableMapOf<String, SummaryEntity>()
+            list.forEach { e ->
+                byMonth[e.monthId] = e
+                byMonth.putIfAbsent(e.monthYear, e)
+            }
+            byShop[id] = byMonth
         }
         salesByShop = byShop
-        allMonthsSorted = monthTimestamps.entries.sortedByDescending { it.value }.map { it.key }
     }
 
-    /** Firestore refresh of all months in the selected period (sales + account). */
-    private suspend fun refreshSelectedPeriod(range: MonthSelection) {
-        val (_, statsCount, skip) = windowFor(range)
-        // Get the months to refresh: skip the first 'skip' months, then take 'statsCount' months
-        val monthsToRefresh = allMonthsSorted.drop(skip).take(statsCount)
+    /**
+     * Firestore refresh of the selected period. The months come from the calendar
+     * ([monthKeysFor]), not from what Room already holds — otherwise a month that was never
+     * cached could never be fetched, and would stay permanently blank.
+     *
+     * The previous window is refreshed too because the purchase target is derived from it.
+     * Requests are issued concurrently: a 6-month range across several shops and regions is
+     * dozens of round trips, and awaiting them one at a time is what made the screen look stuck.
+     */
+    private suspend fun refreshSelectedPeriod(range: MonthSelection) = coroutineScope {
+        val months = (monthKeysFor(range) + previousMonthKeysFor(range)).distinct()
+        months.flatMap { monthId ->
+            shops.mapNotNull { s -> s.shopId?.let { async { refreshSalesMonth(it, monthId) } } } +
+                regions.mapNotNull { r -> r.shopId?.let { async { refreshAccountMonth(it, monthId) } } }
+        }.awaitAll()
+    }
 
-        monthsToRefresh.forEach { monthId ->
-            shops.forEach { it.shopId?.let { id -> refreshSalesMonth(id, monthId) } }
-            regions.forEach { it.shopId?.let { id -> refreshAccountMonth(id, monthId) } }
+    /** True when the selected window has a month with no local record, for any shop or region. */
+    private suspend fun hasMissingMonths(range: MonthSelection): Boolean {
+        val keys = monthKeysFor(range)
+        val salesMissing = shops.any { shop ->
+            val byMonth = shop.shopId?.let { salesByShop[it] } ?: return@any true
+            keys.any { byMonth[it] == null }
+        }
+        if (salesMissing) return true
+        return regions.any { region ->
+            val id = region.shopId ?: return@any true
+            keys.any { accountDao.getAccountSummary(id, it) == null }
         }
     }
 
     /** Compute shop + account cards for the selected period. Does NOT toggle isLoading. */
     private suspend fun computeStats() {
         val range = _selectedRange.value
+        val keys = monthKeysFor(range)
         // Sales first (fast, Room-backed) so the UI paints immediately…
         _shopStats.value = withContext(Dispatchers.IO) {
             shops.map { shop -> buildShopStats(shop, range) }
         }
-        // …then the account card(s) for the representative (newest-in-window) month.
-        val accountMonth = allMonthsSorted.getOrNull(windowFor(range).third)
-            ?: allMonthsSorted.firstOrNull()
+        // …then the account card(s), aggregated over the SAME months as the sales cards. Reading
+        // a single representative month here was why a "Last 3 Months" card showed one month's
+        // collection next to three months of sales.
         _accountCards.value = withContext(Dispatchers.IO) {
             regions.map { region ->
-                RegionAccount(region, region.shopId?.takeIf { accountMonth != null }
-                    ?.let { fetchAccount(it, accountMonth!!) })
+                val id = region.shopId
+                val months = if (id == null) emptyList()
+                else keys.mapNotNull { accountDao.getAccountSummary(id, it)?.toDomain() }
+                RegionAccount(
+                    region = region,
+                    summary = aggregateAccounts(months),
+                    monthsCovered = months.size,
+                    monthsExpected = keys.size
+                )
             }
         }
     }
 
     /**
-     * How many calendar months back from "now" a [MonthSelection.Month] sits — 0 for the
-     * current month, 1 for last month, etc. Only exact for the built-in relative presets
-     * ([defaultRanges]); see the class doc for why an arbitrary picked month isn't wired in yet.
+     * Combine one window's account summaries into the figure the card shows.
+     *
+     * Not every field is additive, so they are combined three different ways:
+     *  - flows (collection, purchases, expenses, withdrawal, provision, profits) are summed;
+     *  - closing balances are point-in-time, so they come from the newest month alone;
+     *  - opening balances come from the oldest month, so opening→closing spans the whole window;
+     *  - margins are recomputed from the summed totals. Averaging the stored percentages would
+     *    weight a quiet month equally with a busy one.
+     *
+     * [months] is ordered newest→oldest, matching [monthKeysFor].
      */
-    private fun relativeSkipFor(month: MonthSelection.Month): Int =
-        ChronoUnit.MONTHS.between(month.option.yearMonth, YearMonth.now()).toInt().coerceAtLeast(0)
+    private fun aggregateAccounts(months: List<AccountSummary>): AccountSummary? {
+        if (months.isEmpty()) return null
+        if (months.size == 1) return months.first()
 
-    /** (chartMonthCount, statsMonthCount, skipCount) — same windows as the old Home. */
-    private fun windowFor(range: MonthSelection): Triple<Int, Int, Int> = when (range) {
-        is MonthSelection.Month         -> Triple(1, 1, relativeSkipFor(range))
-        is MonthSelection.TrailingRange -> Triple(range.monthCount, range.monthCount, 1)
+        val newest = months.first()
+        val oldest = months.last()
+        val collection = months.sumOf { it.totalCollection }
+        val gross = months.sumOf { it.grossProfit }
+        val net = months.sumOf { it.netProfit }
+
+        return AccountSummary(
+            monthYear = newest.monthYear,
+            totalCollection = collection,
+            totalPurchases = months.sumOf { it.totalPurchases },
+            totalExpenses = months.sumOf { it.totalExpenses },
+            withdrawal = months.sumOf { it.withdrawal },
+            provision = months.sumOf { it.provision },
+            grossProfit = gross,
+            netProfit = net,
+            grossMargin = if (collection > 0) gross / collection * 100.0 else 0.0,
+            netProfitMargin = if (collection > 0) net / collection * 100.0 else 0.0,
+            outstandingPayments = newest.outstandingPayments,
+            cashBalance = newest.cashBalance,
+            outstandingBalance = newest.outstandingBalance,
+            accountBalance = newest.accountBalance,
+            openingCashBalance = oldest.openingCashBalance,
+            openingOutstandingBalance = oldest.openingOutstandingBalance,
+            openingAccountBalance = oldest.openingAccountBalance,
+            lastUpdated = months.maxOf { it.lastUpdated }
+        )
     }
 
-    /** Purchase current-window vs previous-window indices into the shop's newest→oldest list. */
-    private fun purchaseIndicesFor(range: MonthSelection): Pair<List<Int>, List<Int>> = when (range) {
-        is MonthSelection.Month -> {
-            val skip = relativeSkipFor(range)
-            listOf(skip) to listOf(skip + 1)
-        }
+    /**
+     * The month keys ("MonthName - yyyy", newest→oldest) a selection covers. This is the single
+     * source of truth for every window: refresh, sales stats and the account card all resolve
+     * against the same list, so the three can never disagree.
+     *
+     * [YearMonth.now] is read on each call rather than captured at construction, so a
+     * long-running process crossing a month boundary reports the new month.
+     */
+    private fun monthKeysFor(range: MonthSelection): List<String> = when (range) {
+        is MonthSelection.Month ->
+            listOf(range.option.yearMonth.format(MonthOption.SUMMARY_KEY_FORMATTER))
         is MonthSelection.TrailingRange -> {
+            val now = YearMonth.now()
+            (1..range.monthCount).map {
+                now.minusMonths(it.toLong()).format(MonthOption.SUMMARY_KEY_FORMATTER)
+            }
+        }
+    }
+
+    /**
+     * The window immediately preceding [monthKeysFor], of the same length — the comparison
+     * baseline the purchase target (previous × 1.10) is derived from.
+     */
+    private fun previousMonthKeysFor(range: MonthSelection): List<String> = when (range) {
+        is MonthSelection.Month ->
+            listOf(
+                range.option.yearMonth.minusMonths(1)
+                    .format(MonthOption.SUMMARY_KEY_FORMATTER)
+            )
+        is MonthSelection.TrailingRange -> {
+            val now = YearMonth.now()
             val n = range.monthCount
-            (1..n).toList() to (n + 1..2 * n).toList()
+            (n + 1..2 * n).map {
+                now.minusMonths(it.toLong()).format(MonthOption.SUMMARY_KEY_FORMATTER)
+            }
         }
     }
 
     private suspend fun buildShopStats(shop: ShopListDto, range: MonthSelection): ShopStats {
         val id = shop.shopId
-        val list = id?.let { salesByShop[it] } ?: emptyList()
-        if (id == null || list.isEmpty()) return ShopStats(shop, null, null, 0.0)
+        val keys = monthKeysFor(range)
+        val byMonth = id?.let { salesByShop[it] } ?: emptyMap()
+        if (id == null || byMonth.isEmpty()) {
+            return ShopStats(shop, null, null, 0.0, monthsExpected = keys.size)
+        }
 
-        val (_, statsCount, skip) = windowFor(range)
-        val statsMonths = list.drop(skip).take(statsCount)
-        if (statsMonths.isEmpty()) return ShopStats(shop, null, null, 0.0)
+        // Only the requested months that actually exist locally — a missing month is reported
+        // via monthsCovered, never substituted with a neighbouring one.
+        val statsMonths = keys.mapNotNull { byMonth[it] }
+        if (statsMonths.isEmpty()) {
+            return ShopStats(shop, null, null, 0.0, monthsExpected = keys.size)
+        }
 
         val totalTarget = statsMonths.sumOf { it.targetSale }
         val totalAverage = statsMonths.sumOf { it.averageSale ?: 0.0 }
@@ -266,9 +385,8 @@ class HomeScreenViewModel(
         )
 
         // Purchase: aggregate current vs previous window (target = prev × 1.10, floored).
-        val (curIdx, prevIdx) = purchaseIndicesFor(range)
-        val currentAgg = aggregateBreakdown(id, list, curIdx)
-        val prevAgg = aggregateBreakdownAmounts(id, list, prevIdx)
+        val currentAgg = aggregateBreakdown(id, keys)
+        val prevAgg = aggregateBreakdownAmounts(id, previousMonthKeysFor(range))
         val chart = currentAgg.values.sortedByDescending { it.totalAmount }.map { item ->
             val prev = prevAgg[item.categoryId]
             PurchaseCategoryChartData(
@@ -293,14 +411,18 @@ class HomeScreenViewModel(
         val margin = if (totalSales > 0) (totalSales - totalPurchases) / totalSales * 100.0 else 0.0
         val lastUpdated = statsMonths.maxOf { it.lastUpdated }
 
-        return ShopStats(shop, sales, purchase, margin, lastUpdated)
+        return ShopStats(
+            shop, sales, purchase, margin, lastUpdated,
+            monthsCovered = statsMonths.size,
+            monthsExpected = keys.size
+        )
     }
 
     private suspend fun aggregateBreakdown(
-        shopId: String, list: List<SummaryEntity>, indices: List<Int>
+        shopId: String, months: List<String>
     ): Map<Int, PurchaseItem> {
         val agg = mutableMapOf<Int, PurchaseItem>()
-        indices.mapNotNull { list.getOrNull(it)?.monthYear }.forEach { month ->
+        months.forEach { month ->
             fetchPurchaseBreakdown(shopId, month).forEach { item ->
                 val existing = agg[item.categoryId]
                 agg[item.categoryId] = existing?.copy(totalAmount = existing.totalAmount + item.totalAmount)
@@ -311,10 +433,10 @@ class HomeScreenViewModel(
     }
 
     private suspend fun aggregateBreakdownAmounts(
-        shopId: String, list: List<SummaryEntity>, indices: List<Int>
+        shopId: String, months: List<String>
     ): Map<Int, Double> {
         val agg = mutableMapOf<Int, Double>()
-        indices.mapNotNull { list.getOrNull(it)?.monthYear }.forEach { month ->
+        months.forEach { month ->
             fetchPurchaseBreakdown(shopId, month).forEach { item ->
                 agg[item.categoryId] = (agg[item.categoryId] ?: 0.0) + item.totalAmount
             }
@@ -340,21 +462,21 @@ class HomeScreenViewModel(
 
         @Suppress("UNCHECKED_CAST")
         val breakdown = doc.get("purchaseBreakdown") as? List<Map<String, Any>> ?: emptyList()
-        if (breakdown.isNotEmpty()) {
-            val entities = breakdown.map { m ->
-                PurchaseEntity(
-                    shopId = shopId,
-                    monthId = monthId,
-                    categoryId = (m["categoryId"] as? Long)?.toInt() ?: 0,
-                    categoryName = m["categoryName"] as? String ?: "Uncategorised",
-                    totalAmount = parseAmount(m["totalAmount"]),
-                    lastUpdated = System.currentTimeMillis()
-                )
-            }
-            runCatching {
-                purchaseDao.deletePurchasesForMonth(shopId, monthId)
-                purchaseDao.insertPurchases(entities)
-            }
+        val entities = breakdown.map { m ->
+            PurchaseEntity(
+                shopId = shopId,
+                monthId = monthId,
+                categoryId = parseCategoryId(m["categoryId"]),
+                categoryName = m["categoryName"] as? String ?: "Uncategorised",
+                totalAmount = parseAmount(m["totalAmount"]),
+                lastUpdated = System.currentTimeMillis()
+            )
+        }
+        // Delete unconditionally: a month whose breakdown was emptied upstream must clear its
+        // cached rows, otherwise the old figures are aggregated forever.
+        runCatching {
+            purchaseDao.deletePurchasesForMonth(shopId, monthId)
+            if (entities.isNotEmpty()) purchaseDao.insertPurchases(entities)
         }
     }
 
@@ -390,7 +512,7 @@ class HomeScreenViewModel(
                     val raw = doc.get("purchaseBreakdown") as? List<Map<String, Any>> ?: emptyList()
                     cont.resume(raw.map { m ->
                         PurchaseItem(
-                            categoryId = (m["categoryId"] as? Long)?.toInt() ?: 0,
+                            categoryId = parseCategoryId(m["categoryId"]),
                             categoryName = m["categoryName"] as? String ?: "Uncategorised",
                             totalAmount = parseAmount(m["totalAmount"])
                         )
@@ -400,29 +522,25 @@ class HomeScreenViewModel(
         }
     }
 
-    private suspend fun fetchAccount(shopId: String, month: String): AccountSummary? {
-        accountDao.getAccountSummary(shopId, month)?.let { return it.toDomain() }
-        val fs = accountFirestore ?: return null
-        val summary = suspendCoroutine<AccountSummary?> { cont ->
-            fs.collection("summary").document(shopId).collection("months").document(month).get()
-                .addOnSuccessListener { doc ->
-                    cont.resume(
-                        doc.toObject(AccountSummary::class.java)?.let {
-                            if (it.lastUpdated == 0L) it.copy(lastUpdated = System.currentTimeMillis()) else it
-                        }
-                    )
-                }
-                .addOnFailureListener { cont.resume(null) }
-        }
-        if (summary != null) runCatching { accountDao.insertAccountSummary(summary.toEntity(shopId, month)) }
-        return summary
-    }
-
     private fun parseAmount(v: Any?): Double = when (v) {
         is Double -> v
         is Long -> v.toDouble()
         is String -> v.toDoubleOrNull() ?: 0.0
         else -> 0.0
+    }
+
+    /**
+     * Firestore hands back whichever numeric type the writer used. Accepting only `Long` meant
+     * a category written as a Double or Int fell through to `0`, collapsing every such category
+     * into one bucket and summing their amounts together.
+     */
+    private fun parseCategoryId(v: Any?): Int = when (v) {
+        is Int -> v
+        is Long -> v.toInt()
+        is Double -> v.toInt()
+        is Number -> v.toInt()
+        is String -> v.toIntOrNull() ?: 0
+        else -> 0
     }
 
     private suspend fun signIn(app: FirebaseApp): Boolean = suspendCoroutine { cont ->
@@ -434,3 +552,18 @@ class HomeScreenViewModel(
             }
     }
 }
+
+/**
+ * The period label a card shows. When the local records cover fewer months than the selected
+ * period asks for, the shortfall is named ("Last 3 Months (2 of 3)") rather than presenting a
+ * partial aggregate as if it were the full window.
+ */
+fun HomeScreenViewModel.ShopStats.periodLabel(rangeLabel: String): String =
+    partialPeriodLabel(rangeLabel, monthsCovered, monthsExpected)
+
+fun HomeScreenViewModel.RegionAccount.periodLabel(rangeLabel: String): String =
+    partialPeriodLabel(rangeLabel, monthsCovered, monthsExpected)
+
+private fun partialPeriodLabel(rangeLabel: String, covered: Int, expected: Int): String =
+    if (expected > 1 && covered in 1 until expected) "$rangeLabel ($covered of $expected)"
+    else rangeLabel
