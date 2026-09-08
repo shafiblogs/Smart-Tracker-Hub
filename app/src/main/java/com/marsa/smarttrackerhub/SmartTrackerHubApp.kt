@@ -66,14 +66,25 @@ class SmartTrackerHubApp : Application() {
             .setRequiredNetworkType(NetworkType.CONNECTED)
             .build()
 
-        // Periodic sync — runs once daily while connected to push any isSynced=false records
+        // Periodic sync — runs once daily while connected to push any isSynced=false records,
+        // and (scope=ALL, the default) pull shops/employees/investors/transactions/settlements
+        // too — this is what keeps notification-source data (shop licenses, employee visas)
+        // fresh on a device where nobody happened to open the Shops/Employees screen.
+        //
+        // Policy is UPDATE, not KEEP: KEEP means enqueueUniquePeriodicWork is a no-op whenever a
+        // worker already exists under this name, so on any device that already has the app
+        // installed, a future change to this schedule would silently never take effect — the
+        // on-device schedule stays pinned at whatever first ran on that device. UPDATE also
+        // matters directly for cross-device sync: a change made on one device should reach every
+        // other device within a bounded, predictable window, not "whenever that device happens
+        // to reinstall."
         val periodicSync = PeriodicWorkRequestBuilder<SyncWorker>(1, TimeUnit.DAYS)
             .setConstraints(constraints)
             .build()
 
         WorkManager.getInstance(this).enqueueUniquePeriodicWork(
             "firebase_sync_periodic",
-            ExistingPeriodicWorkPolicy.KEEP,
+            ExistingPeriodicWorkPolicy.UPDATE,
             periodicSync
         )
         Log.d("SmartTrackerHubApp", "Daily SyncWorker scheduled")
