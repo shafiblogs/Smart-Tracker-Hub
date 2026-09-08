@@ -42,7 +42,13 @@ private val opsShops = listOf(
         shopId = "ops_uae",
         category = ShopCategory.OPS,
         region = ShopRegion.UAE,
-        folderPath = "gs://accounts-tracker-16f93.firebasestorage.app/shop/ops_uae"
+        // AccountsTracker's UploadWorker.setupShopPath() writes PDFs to
+        // "regions/{region}/statements/" (region = "uae"/"kuwait"/"admin" from the
+        // signed-in user's role) — this must match that exactly, not a guessed path.
+        // A prior "shop/ops_uae" here pointed at a folder AccountsTracker never wrote to,
+        // so Account Statements silently listed empty while Shop Statements (which do
+        // match SmartTracker's real "shops/{shopId}/" upload path) worked fine.
+        folderPath = "gs://accounts-tracker-16f93.firebasestorage.app/regions/uae/statements"
     ),
     ShopListDto(
         name = "Shops In Kuwait",
@@ -50,7 +56,7 @@ private val opsShops = listOf(
         shopId = "ops_kuwait",
         category = ShopCategory.OPS,
         region = ShopRegion.KUWAIT,
-        folderPath = "gs://accounts-tracker-16f93.firebasestorage.app/shop/ops_kuwait"
+        folderPath = "gs://accounts-tracker-16f93.firebasestorage.app/regions/kuwait/statements"
     )
 )
 
