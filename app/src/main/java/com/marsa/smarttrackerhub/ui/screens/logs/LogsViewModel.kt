@@ -8,8 +8,10 @@ import com.google.firebase.FirebaseApp
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import com.marsa.smarttrackerhub.data.AppDatabase
+import com.marsa.smarttrackerhub.data.entity.CachedLogEntry
 import com.marsa.smarttrackerhub.data.entity.EmployeeInfo
 import com.marsa.smarttrackerhub.data.entity.ShopInfo
+import com.marsa.smarttrackerhub.data.repository.SyncPolicy
 import com.marsa.smarttrackerhub.domain.MonthOption
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -46,6 +48,24 @@ data class LogEntry(
     val timestamp:    Long   = 0L,
     val employeeId:   String = "",
     val employeeName: String = ""
+)
+
+private fun LogEntry.toCachedLogEntry(shopFirebaseId: String, monthKey: String) = CachedLogEntry(
+    shopFirebaseId = shopFirebaseId,
+    monthKey = monthKey,
+    date = date,
+    eventType = eventType,
+    timestamp = timestamp,
+    employeeId = employeeId,
+    employeeName = employeeName
+)
+
+private fun CachedLogEntry.toLogEntry() = LogEntry(
+    date = date,
+    eventType = eventType,
+    timestamp = timestamp,
+    employeeId = employeeId,
+    employeeName = employeeName
 )
 
 // ── Shop view data ────────────────────────────────────────────────────────────
@@ -180,18 +200,18 @@ class LogsViewModel : ViewModel() {
 
     fun selectItem(item: SelectionItem) {
         _selectedItem.value = item
-        _logs.value = emptyList()
+        // loadLogs() shows the cache for this new selection immediately, then decides
+        // whether a fresh fetch is needed — clearing here would flash blank first for no
+        // reason when a cache entry already exists.
         loadLogs()
     }
 
     fun selectMonth(month: MonthOption) {
         _selectedMonth.value = month
-        _logs.value = emptyList()
         loadLogs()
     }
 
     fun refresh() {
-        _logs.value = emptyList()
         loadLogs()
     }
 
@@ -207,8 +227,28 @@ class LogsViewModel : ViewModel() {
             is SelectionItem.EmployeeItem -> item.employee.associatedShopFirebaseId
         }
         if (shopFirebaseId.isBlank()) return@launch
+        val localDb = db ?: return@launch
+
+        // Show whatever's cached for this selection immediately — a switch to a selection
+        // that was fetched recently (TTL hit below) then has the right data on screen the
+        // whole time, instead of going blank while nothing gets re-fetched.
+        _logs.value = localDb.cachedLogEntryDao().getForKey(shopFirebaseId, month).map { it.toLogEntry() }
+
+        val syncPolicy = SyncPolicy(localDb.syncMarkerDao())
+        val ttlKey = "logs:$shopFirebaseId:$month"
+        if (syncPolicy.withinTtl(ttlKey)) {
+            Log.d(TAG, "loadLogs: skipped — pulled within TTL ($shopFirebaseId/$month)")
+            return@launch
+        }
+
         _isLoading.value = true
-        _logs.value = fetchFromFirestore(shopFirebaseId, month)
+        val fetched = fetchFromFirestore(shopFirebaseId, month)
+        localDb.cachedLogEntryDao().deleteForKey(shopFirebaseId, month)
+        if (fetched.isNotEmpty()) {
+            localDb.cachedLogEntryDao().insertAll(fetched.map { it.toCachedLogEntry(shopFirebaseId, month) })
+        }
+        syncPolicy.recordPull(ttlKey, 0L, wasFull = false)
+        _logs.value = fetched
         _isLoading.value = false
     }
 
