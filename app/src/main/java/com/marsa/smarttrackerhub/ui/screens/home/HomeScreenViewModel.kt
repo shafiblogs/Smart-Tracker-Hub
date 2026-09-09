@@ -234,9 +234,20 @@ class HomeScreenViewModel(
         }.awaitAll()
     }
 
-    /** True when the selected window has a month with no local record, for any shop or region. */
+    /**
+     * True when the selected window has a month with no local record, for any shop or region.
+     *
+     * Shops are checked against both the selected window AND the preceding window of the same
+     * length ([previousMonthKeysFor]) — the purchase target's comparison baseline (see
+     * [buildShopStats]) — since a month can look "complete" for sales while its purchase
+     * breakdown baseline is still unfetched. [salesByShop] doubles as that signal: refreshing a
+     * month always writes its sales summary and purchase breakdown together (see
+     * [refreshSalesMonth]), so a present sales entry means the purchase side was synced too
+     * (whether or not it turned out to have any purchases). Regions don't need the extra window —
+     * the previous window's account summaries aren't used anywhere.
+     */
     private suspend fun hasMissingMonths(range: MonthSelection): Boolean {
-        val keys = monthKeysFor(range)
+        val keys = monthKeysFor(range) + previousMonthKeysFor(range)
         val salesMissing = shops.any { shop ->
             val byMonth = shop.shopId?.let { salesByShop[it] } ?: return@any true
             keys.any { byMonth[it] == null }
@@ -244,7 +255,7 @@ class HomeScreenViewModel(
         if (salesMissing) return true
         return regions.any { region ->
             val id = region.shopId ?: return@any true
-            keys.any { accountDao.getAccountSummary(id, it) == null }
+            monthKeysFor(range).any { accountDao.getAccountSummary(id, it) == null }
         }
     }
 
