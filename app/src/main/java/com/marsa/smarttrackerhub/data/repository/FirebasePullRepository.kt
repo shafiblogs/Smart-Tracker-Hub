@@ -3,6 +3,7 @@ package com.marsa.smarttrackerhub.data.repository
 import android.util.Log
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.Query
 import com.marsa.smarttrackerhub.data.AppDatabase
 import com.marsa.smarttrackerhub.data.entity.EmployeeInfo
 import com.marsa.smarttrackerhub.data.entity.InvestmentTransaction
@@ -34,6 +35,7 @@ class FirebasePullRepository(private val db: AppDatabase) {
 
     private val firestore = FirebaseFirestore.getInstance()
     private val tag = "##FirebasePull"
+    private val syncPolicy = SyncPolicy(db.syncMarkerDao())
 
     // ─────────────────────────────────────────────────────────────────────────
     // Auth
@@ -174,8 +176,10 @@ class FirebasePullRepository(private val db: AppDatabase) {
     // ─────────────────────────────────────────────────────────────────────────
 
     private suspend fun pullShops(): Map<String, Int> {
-        val docs = firestoreGetCollection("shops")
-        Log.d(tag, "pullShops: ${docs.size} document(s) from Firebase")
+        val key = "shops"
+        val plan = syncPolicy.planFor(key)
+        val docs = firestoreGetCollection("shops", plan.sinceMs)
+        Log.d(tag, "pullShops: ${docs.size} document(s) from Firebase (full=${plan.fullReconcile})")
 
         // Build existing map (shopId string → Room entity) to reuse Room int PKs on update
         val existing = db.shopDao().getAllShops().first().associateBy { it.shopId }
@@ -184,13 +188,19 @@ class FirebasePullRepository(private val db: AppDatabase) {
         // process only the first and skip repeats.
         val seen = HashSet<String>()
 
-        val idMap = mutableMapOf<String, Int>()
+        // Seed from ALL local shops, not just this pull's results — an incremental pull only
+        // returns shops that changed since sinceMs, but downstream FK resolution
+        // (pullEmployees, pullShopInvestors, ...) needs to resolve EVERY shop, including ones
+        // that simply didn't change this window.
+        val idMap = existing.mapValues { it.value.id }.toMutableMap()
+        var maxRemoteMs = 0L
         for (data in docs) {
             try {
                 val shopId = data["shopId"] as? String ?: continue
                 if (shopId.isBlank()) continue
                 if (!seen.add(shopId)) continue
                 val incomingUpdatedAt = data["updatedAt"] as? Long ?: 0L
+                maxRemoteMs = maxOf(maxRemoteMs, incomingUpdatedAt)
 
                 val existing_ = existing[shopId]
                 val entity = ShopInfo(
@@ -232,7 +242,8 @@ class FirebasePullRepository(private val db: AppDatabase) {
                 Log.e(tag, "pullShops: error processing document", e)
             }
         }
-        Log.d(tag, "pullShops: upserted ${idMap.size} shop(s)")
+        syncPolicy.recordPull(key, maxRemoteMs, plan.fullReconcile)
+        Log.d(tag, "pullShops: touched ${docs.size} document(s), ${idMap.size} total known shop(s)")
         return idMap
     }
 
@@ -241,15 +252,22 @@ class FirebasePullRepository(private val db: AppDatabase) {
     // ─────────────────────────────────────────────────────────────────────────
 
     private suspend fun pullInvestors(): Map<String, Int> {
-        val docs = firestoreGetCollection("investors")
-        Log.d(tag, "pullInvestors: ${docs.size} document(s) from Firebase")
+        val key = "investors"
+        val plan = syncPolicy.planFor(key)
+        val docs = firestoreGetCollection("investors", plan.sinceMs)
+        Log.d(tag, "pullInvestors: ${docs.size} document(s) from Firebase (full=${plan.fullReconcile})")
 
-        val idMap = mutableMapOf<String, Int>()
+        // Seed from ALL local investors, not just this pull's results — same reasoning as
+        // pullShops: downstream FK resolution needs every investor, not only changed ones.
+        val allExisting = db.investorDao().getAllInvestorsAsList().associateBy { it.investorId }
+        val idMap = allExisting.mapValues { it.value.id }.toMutableMap()
+        var maxRemoteMs = 0L
         for (data in docs) {
             try {
                 val investorFbId  = data["investorId"] as? String ?: continue
                 if (investorFbId.isBlank()) continue
                 val incomingUpdatedAt = data["updatedAt"] as? Long ?: 0L
+                maxRemoteMs = maxOf(maxRemoteMs, incomingUpdatedAt)
 
                 val existing = db.investorDao().getInvestorByInvestorId(investorFbId)
                 val entity = InvestorInfo(
@@ -278,7 +296,8 @@ class FirebasePullRepository(private val db: AppDatabase) {
                 Log.e(tag, "pullInvestors: error processing document", e)
             }
         }
-        Log.d(tag, "pullInvestors: upserted ${idMap.size} investor(s)")
+        syncPolicy.recordPull(key, maxRemoteMs, plan.fullReconcile)
+        Log.d(tag, "pullInvestors: touched ${docs.size} document(s), ${idMap.size} total known investor(s)")
         return idMap
     }
 
@@ -632,10 +651,15 @@ class FirebasePullRepository(private val db: AppDatabase) {
     // Internal helpers
     // ─────────────────────────────────────────────────────────────────────────
 
-    private suspend fun firestoreGetCollection(collection: String): List<Map<String, Any>> =
+    private suspend fun firestoreGetCollection(
+        collection: String,
+        sinceMs: Long? = null
+    ): List<Map<String, Any>> =
         suspendCoroutine { cont ->
-            firestore.collection(collection)
-                .get()
+            val query: Query = firestore.collection(collection).let { base ->
+                if (sinceMs != null) base.whereGreaterThan("updatedAt", sinceMs) else base
+            }
+            query.get()
                 .addOnSuccessListener { snapshot ->
                     cont.resume(snapshot.documents.mapNotNull { it.data })
                 }

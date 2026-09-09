@@ -7,6 +7,7 @@ import androidx.work.WorkerParameters
 import com.marsa.smarttrackerhub.data.AppDatabase
 import com.marsa.smarttrackerhub.data.repository.FirebasePullRepository
 import com.marsa.smarttrackerhub.data.repository.FirebaseSyncRepository
+import com.marsa.smarttrackerhub.data.repository.SyncPolicy
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 
@@ -53,6 +54,7 @@ class SyncWorker(
             val db = AppDatabase.getDatabase(applicationContext)
             val sync = FirebaseSyncRepository(db)
             val pull = FirebasePullRepository(db)
+            val syncPolicy = SyncPolicy(db.syncMarkerDao())
 
             val scope = inputData.getString(KEY_SCOPE) ?: SCOPE_ALL
             val pushOnly = inputData.getBoolean(KEY_PUSH_ONLY, false)
@@ -76,12 +78,23 @@ class SyncWorker(
             Log.d("SyncWorker", "Push completed (scope=$scope, pushOnly=$pushOnly)")
 
             if (!pushOnly) {
-                // 2. Apply remote deletions, then pull this scope (additive/newest-wins).
-                pull.pullDeletions()
-                pull()
-                Log.d("SyncWorker", "Pull completed (scope=$scope)")
-                // 3. Push again to flush anything resolved during pull.
-                push()
+                // Debounce a repeat pull for this scope within SyncPolicy.TTL_MS — harmless
+                // for the daily periodic run (24h always exceeds the 15-min TTL, so it never
+                // actually blocks that run) and directly fixes rapid double-taps on a manual
+                // refresh icon, which previously replaced rather than skipped an in-flight
+                // sync (WorkManager APPEND_OR_REPLACE only dedupes the request, not the pull).
+                val ttlKey = "trackerhub_sync:$scope"
+                if (syncPolicy.withinTtl(ttlKey)) {
+                    Log.d("SyncWorker", "Pull skipped (scope=$scope) — pulled within TTL")
+                } else {
+                    // 2. Apply remote deletions, then pull this scope (additive/newest-wins).
+                    pull.pullDeletions()
+                    pull()
+                    syncPolicy.recordPull(ttlKey, 0L, wasFull = false)
+                    Log.d("SyncWorker", "Pull completed (scope=$scope)")
+                    // 3. Push again to flush anything resolved during pull.
+                    push()
+                }
             }
 
             Result.success()
