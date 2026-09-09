@@ -526,60 +526,6 @@ class FirebaseSyncRepository(private val db: AppDatabase) {
         }
     }
 
-    /** Deletes a shop document. No-op if its Firebase ID is blank. */
-    suspend fun deleteShopDoc(shopFirebaseId: String): Boolean {
-        if (shopFirebaseId.isBlank()) return true
-        if (!ensureSignedIn()) return false
-        return firestoreDelete("shops", shopFirebaseId)
-    }
-
-    /** Deletes a single transaction document. No-op if its Firebase ID is blank. */
-    suspend fun deleteTransactionDoc(transactionFirebaseId: String): Boolean {
-        if (transactionFirebaseId.isBlank()) return true
-        if (!ensureSignedIn()) return false
-        return firestoreDelete("transactions", transactionFirebaseId)
-    }
-
-    /**
-     * Deletes an investor document and any of its (payment-free) shop-investor link docs.
-     * Investor delete is only allowed when there are no payments, so there are no
-     * transaction/settlement docs to cascade here.
-     */
-    suspend fun deleteInvestorWithLinks(
-        investorFirebaseId: String,
-        linkFirebaseIds: List<String>
-    ): Boolean {
-        if (!ensureSignedIn()) return false
-        var ok = true
-        linkFirebaseIds.filter { it.isNotBlank() }.forEach {
-            if (!firestoreDelete("shop_investors", it)) ok = false
-        }
-        if (investorFirebaseId.isNotBlank()) {
-            if (!firestoreDelete("investors", investorFirebaseId)) ok = false
-        }
-        return ok
-    }
-
-    /**
-     * Deletes a settlement and all its entries from Firestore (explicit cascade —
-     * Firestore has no FK cascade like Room does). Pass the entry IDs gathered from Room
-     * BEFORE the local delete cascaded them away.
-     */
-    suspend fun deleteSettlementWithEntries(
-        settlementFirebaseId: String,
-        entryFirebaseIds: List<String>
-    ): Boolean {
-        if (!ensureSignedIn()) return false
-        var ok = true
-        entryFirebaseIds.filter { it.isNotBlank() }.forEach {
-            if (!firestoreDelete("settlement_entries", it)) ok = false
-        }
-        if (settlementFirebaseId.isNotBlank()) {
-            if (!firestoreDelete("settlements", settlementFirebaseId)) ok = false
-        }
-        return ok
-    }
-
     private suspend fun firestoreDelete(collection: String, docId: String): Boolean =
         suspendCoroutine { cont ->
             firestore.collection(collection)

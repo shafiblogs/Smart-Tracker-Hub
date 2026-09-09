@@ -7,7 +7,6 @@ import com.marsa.smarttrackerhub.data.AppDatabase
 import com.marsa.smarttrackerhub.data.entity.UserAccount
 import com.marsa.smarttrackerhub.data.repository.UserAccountRepository
 import com.marsa.smarttrackerhub.domain.AccessCode
-import com.marsa.smarttrackerhub.helper.AuthHelper
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
