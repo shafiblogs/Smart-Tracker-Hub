@@ -14,6 +14,7 @@ import com.marsa.smarttrackerhub.data.dao.PurchaseDao
 import com.marsa.smarttrackerhub.data.dao.ShopDao
 import com.marsa.smarttrackerhub.data.dao.ShopInvestorDao
 import com.marsa.smarttrackerhub.data.dao.SummaryDao
+import com.marsa.smarttrackerhub.data.dao.SyncMarkerDao
 import com.marsa.smarttrackerhub.data.dao.TombstoneDao
 import com.marsa.smarttrackerhub.data.dao.UserAccountDao
 import com.marsa.smarttrackerhub.data.dao.YearEndSettlementDao
@@ -26,6 +27,7 @@ import com.marsa.smarttrackerhub.data.entity.SettlementEntry
 import com.marsa.smarttrackerhub.data.entity.ShopInfo
 import com.marsa.smarttrackerhub.data.entity.ShopInvestor
 import com.marsa.smarttrackerhub.data.entity.SummaryEntity
+import com.marsa.smarttrackerhub.data.entity.SyncMarker
 import com.marsa.smarttrackerhub.data.entity.Tombstone
 import com.marsa.smarttrackerhub.data.entity.UserAccount
 import com.marsa.smarttrackerhub.data.entity.YearEndSettlement
@@ -36,6 +38,7 @@ import com.marsa.smarttrackerhub.data.migrations.MIGRATION_3_4
 import com.marsa.smarttrackerhub.data.migrations.MIGRATION_4_5
 import com.marsa.smarttrackerhub.data.migrations.MIGRATION_5_6
 import com.marsa.smarttrackerhub.data.migrations.MIGRATION_6_7
+import com.marsa.smarttrackerhub.data.migrations.MIGRATION_7_8
 
 
 /**
@@ -76,9 +79,10 @@ import com.marsa.smarttrackerhub.data.migrations.MIGRATION_6_7
         YearEndSettlement::class,
         SettlementEntry::class,
         PurchaseEntity::class,
-        Tombstone::class
+        Tombstone::class,
+        SyncMarker::class
     ],
-    version = 7
+    version = 8
 )
 @TypeConverters(Converters::class)
 abstract class AppDatabase : RoomDatabase() {
@@ -93,6 +97,7 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun yearEndSettlementDao(): YearEndSettlementDao
     abstract fun purchaseDao(): PurchaseDao
     abstract fun tombstoneDao(): TombstoneDao
+    abstract fun syncMarkerDao(): SyncMarkerDao
 
     companion object {
         @Volatile
@@ -105,7 +110,7 @@ abstract class AppDatabase : RoomDatabase() {
                     AppDatabase::class.java,
                     "tracker_hub_db"
                 )
-                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7)
+                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8)
                     .fallbackToDestructiveMigrationOnDowngrade()
                     .addCallback(object : Callback() {
                         override fun onCreate(db: SupportSQLiteDatabase) {
