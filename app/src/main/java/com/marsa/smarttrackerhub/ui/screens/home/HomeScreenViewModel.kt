@@ -516,21 +516,42 @@ class HomeScreenViewModel(
             }
         }
         @Suppress("UNCHECKED_CAST")
-        return suspendCoroutine { cont ->
+        val raw = suspendCoroutine<List<Map<String, Any>>> { cont ->
             salesFirestore.collection("summary").document(shopId)
                 .collection("months").document(monthId).get()
                 .addOnSuccessListener { doc ->
-                    val raw = doc.get("purchaseBreakdown") as? List<Map<String, Any>> ?: emptyList()
-                    cont.resume(raw.map { m ->
-                        PurchaseItem(
-                            categoryId = parseCategoryId(m["categoryId"]),
-                            categoryName = m["categoryName"] as? String ?: "Uncategorised",
-                            totalAmount = parseAmount(m["totalAmount"])
-                        )
-                    })
+                    cont.resume(doc.get("purchaseBreakdown") as? List<Map<String, Any>> ?: emptyList())
                 }
                 .addOnFailureListener { cont.resume(emptyList()) }
         }
+        val items = raw.map { m ->
+            PurchaseItem(
+                categoryId = parseCategoryId(m["categoryId"]),
+                categoryName = m["categoryName"] as? String ?: "Uncategorised",
+                totalAmount = parseAmount(m["totalAmount"])
+            )
+        }
+        // Persist so the next call (a re-render, a sibling category's aggregation) reads from
+        // Room instead of re-hitting Firestore — same pattern refreshSalesMonth (above) already
+        // uses for its own writes. Without this the cache-miss path re-fetches on every call
+        // until refreshSelectedPeriod happens to run and populate it separately.
+        runCatching {
+            if (items.isNotEmpty()) {
+                purchaseDao.insertPurchases(
+                    items.map {
+                        PurchaseEntity(
+                            shopId = shopId,
+                            monthId = monthId,
+                            categoryId = it.categoryId,
+                            categoryName = it.categoryName,
+                            totalAmount = it.totalAmount,
+                            lastUpdated = System.currentTimeMillis()
+                        )
+                    }
+                )
+            }
+        }
+        return items
     }
 
     private fun parseAmount(v: Any?): Double = when (v) {
