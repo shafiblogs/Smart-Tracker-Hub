@@ -28,17 +28,15 @@
 }
 
 # Firestore's .toObject() reflects into these two classes to match document fields to
-# Kotlin properties via a no-arg constructor. Unlike a missing Worker, a broken keep rule
-# here doesn't crash — toObject() silently returns null/default values for renamed fields,
-# so a stripped field would just show up as zero on the dashboard with no error at all.
--keepclassmembers class com.marsa.smarttrackerhub.domain.AccountSummary {
-    <fields>;
-    <init>();
-}
--keepclassmembers class com.marsa.smarttrackerhub.domain.MonthlySummary {
-    <fields>;
-    <init>();
-}
+# Kotlin properties. CONFIRMED IN PRODUCTION (crash log): keeping only <fields> + <init>()
+# is NOT enough — Firestore's POJO mapper is Java-Bean-based and discovers properties via
+# getter methods, not raw field access, so R8 stripping the Kotlin-generated getters threw
+# "RuntimeException: No properties to serialize found on class <obfuscated name>" the first
+# time HomeScreenViewModel.refreshAccountMonth() called doc.toObject(AccountSummary::class.java)
+# — a hard crash, not the silent-zero fallback originally assumed here. Keep the whole class
+# for both — they're small POJOs, no obfuscation value worth the risk.
+-keep class com.marsa.smarttrackerhub.domain.AccountSummary { *; }
+-keep class com.marsa.smarttrackerhub.domain.MonthlySummary { *; }
 
 # A transitive dependency references slf4j's optional logging backend binding, which this
 # app never bundles — slf4j's own documented design is to fall back to a no-op logger when
