@@ -21,7 +21,7 @@ android {
         applicationId = "com.marsa.smarttrackerhub"
         minSdk = 29
         targetSdk = 36
-        versionCode = 21
+        versionCode = 22
         versionName = "3.0"
 
         val localProperties = Properties()
