@@ -222,9 +222,10 @@ class HomeScreenViewModel(
      * ([monthKeysFor]), not from what Room already holds — otherwise a month that was never
      * cached could never be fetched, and would stay permanently blank.
      *
-     * The previous window is refreshed too because the purchase target is derived from it.
-     * Requests are issued concurrently: a 6-month range across several shops and regions is
-     * dozens of round trips, and awaiting them one at a time is what made the screen look stuck.
+     * The one month before the window is refreshed too ([previousMonthKeysFor]) because the
+     * oldest month in the window needs it to compute its own purchase target. Requests are
+     * issued concurrently: a 6-month range across several shops and regions is dozens of round
+     * trips, and awaiting them one at a time is what made the screen look stuck.
      */
     private suspend fun refreshSelectedPeriod(range: MonthSelection) = coroutineScope {
         val months = (monthKeysFor(range) + previousMonthKeysFor(range)).distinct()
@@ -237,14 +238,14 @@ class HomeScreenViewModel(
     /**
      * True when the selected window has a month with no local record, for any shop or region.
      *
-     * Shops are checked against both the selected window AND the preceding window of the same
-     * length ([previousMonthKeysFor]) — the purchase target's comparison baseline (see
-     * [buildShopStats]) — since a month can look "complete" for sales while its purchase
-     * breakdown baseline is still unfetched. [salesByShop] doubles as that signal: refreshing a
-     * month always writes its sales summary and purchase breakdown together (see
-     * [refreshSalesMonth]), so a present sales entry means the purchase side was synced too
-     * (whether or not it turned out to have any purchases). Regions don't need the extra window —
-     * the previous window's account summaries aren't used anywhere.
+     * Shops are checked against both the selected window AND the one month before it
+     * ([previousMonthKeysFor]) — the oldest month in the window needs that extra month to
+     * compute its own purchase target (see [purchaseStatsForMonth]) — since a month can look
+     * "complete" for sales while that baseline is still unfetched. [salesByShop] doubles as that
+     * signal: refreshing a month always writes its sales summary and purchase breakdown together
+     * (see [refreshSalesMonth]), so a present sales entry means the purchase side was synced too
+     * (whether or not it turned out to have any purchases). Regions don't need the extra month —
+     * the preceding month's account summary isn't used anywhere.
      */
     private suspend fun hasMissingMonths(range: MonthSelection): Boolean {
         val keys = monthKeysFor(range) + previousMonthKeysFor(range)
@@ -337,20 +338,23 @@ class HomeScreenViewModel(
      * [YearMonth.now] is read on each call rather than captured at construction, so a
      * long-running process crossing a month boundary reports the new month.
      */
-    private fun monthKeysFor(range: MonthSelection): List<String> = when (range) {
-        is MonthSelection.Month ->
-            listOf(range.option.yearMonth.format(MonthOption.SUMMARY_KEY_FORMATTER))
+    private fun monthYearMonthsFor(range: MonthSelection): List<YearMonth> = when (range) {
+        is MonthSelection.Month -> listOf(range.option.yearMonth)
         is MonthSelection.TrailingRange -> {
             val now = YearMonth.now()
-            (1..range.monthCount).map {
-                now.minusMonths(it.toLong()).format(MonthOption.SUMMARY_KEY_FORMATTER)
-            }
+            (1..range.monthCount).map { now.minusMonths(it.toLong()) }
         }
     }
 
+    private fun monthKeysFor(range: MonthSelection): List<String> =
+        monthYearMonthsFor(range).map { it.format(MonthOption.SUMMARY_KEY_FORMATTER) }
+
     /**
-     * The window immediately preceding [monthKeysFor], of the same length — the comparison
-     * baseline the purchase target (previous × 1.10) is derived from.
+     * The single month immediately before the whole window — the one extra month the purchase
+     * target calculation needs beyond the window itself. Every month inside the window compares
+     * against its own immediately preceding month (see [purchaseStatsForMonth]), and for every
+     * month except the oldest one in the window, that preceding month is already inside the
+     * window; only the oldest month's predecessor falls outside it.
      */
     private fun previousMonthKeysFor(range: MonthSelection): List<String> = when (range) {
         is MonthSelection.Month ->
@@ -358,13 +362,11 @@ class HomeScreenViewModel(
                 range.option.yearMonth.minusMonths(1)
                     .format(MonthOption.SUMMARY_KEY_FORMATTER)
             )
-        is MonthSelection.TrailingRange -> {
-            val now = YearMonth.now()
-            val n = range.monthCount
-            (n + 1..2 * n).map {
-                now.minusMonths(it.toLong()).format(MonthOption.SUMMARY_KEY_FORMATTER)
-            }
-        }
+        is MonthSelection.TrailingRange ->
+            listOf(
+                YearMonth.now().minusMonths((range.monthCount + 1).toLong())
+                    .format(MonthOption.SUMMARY_KEY_FORMATTER)
+            )
     }
 
     private suspend fun buildShopStats(shop: ShopListDto, range: MonthSelection): ShopStats {
@@ -395,26 +397,18 @@ class HomeScreenViewModel(
                 monthsTargetMet.toDouble() / statsMonths.size * 100.0 else 0.0
         )
 
-        // Purchase: aggregate current vs previous window (target = prev × 1.10, floored).
-        val currentAgg = aggregateBreakdown(id, keys)
-        val prevAgg = aggregateBreakdownAmounts(id, previousMonthKeysFor(range))
-        val chart = currentAgg.values.sortedByDescending { it.totalAmount }.map { item ->
-            val prev = prevAgg[item.categoryId]
-            PurchaseCategoryChartData(
-                categoryId = item.categoryId,
-                categoryName = item.categoryName,
-                actual = item.totalAmount,
-                target = if (prev != null && prev > 0)
-                    maxOf(prev * 1.10, MIN_PURCHASE_CATEGORY_TARGET)
-                else MIN_PURCHASE_CATEGORY_TARGET
-            )
-        }
+        // Purchase: the single-month formula (this month's category actual vs its own
+        // immediately preceding month's actual × 1.10, floored) run once per month in the
+        // window and summed — "Last 3/6 Months" is literally that many months of the
+        // single-month calculation added together, not the window compared as one block against
+        // the prior block. See [purchaseStatsForMonth].
+        val monthlyPurchase = monthYearMonthsFor(range).map { purchaseStatsForMonth(id, it) }
         val purchase = PurchaseChartStatistics(
-            totalActual = chart.sumOf { it.actual },
-            totalTarget = maxOf(chart.sumOf { it.target }, MIN_TOTAL_PURCHASE_TARGET),
+            totalActual = monthlyPurchase.sumOf { it.totalActual },
+            totalTarget = monthlyPurchase.sumOf { it.totalTarget },
             monthLabel = range.displayName,
-            categoriesOnTarget = chart.count { !it.hasTarget || it.actual >= it.target },
-            totalCategories = chart.size
+            categoriesOnTarget = monthlyPurchase.sumOf { it.categoriesOnTarget },
+            totalCategories = monthlyPurchase.sumOf { it.totalCategories }
         )
 
         val totalSales = statsMonths.sumOf { it.totalSales }
@@ -426,6 +420,38 @@ class HomeScreenViewModel(
             shop, sales, purchase, margin, lastUpdated,
             monthsCovered = statsMonths.size,
             monthsExpected = keys.size
+        )
+    }
+
+    /**
+     * One month's purchase stats, computed the same way a single selected month always has been:
+     * each category's target is that category's own actual from the immediately preceding
+     * month × 1.10 (floored at [MIN_PURCHASE_CATEGORY_TARGET]), and the month's total target is
+     * floored at [MIN_TOTAL_PURCHASE_TARGET]. [buildShopStats] calls this once per month in the
+     * selected window and sums the results for multi-month periods.
+     */
+    private suspend fun purchaseStatsForMonth(shopId: String, month: YearMonth): PurchaseChartStatistics {
+        val monthKey = month.format(MonthOption.SUMMARY_KEY_FORMATTER)
+        val prevKey = month.minusMonths(1).format(MonthOption.SUMMARY_KEY_FORMATTER)
+        val currentAgg = aggregateBreakdown(shopId, listOf(monthKey))
+        val prevAgg = aggregateBreakdownAmounts(shopId, listOf(prevKey))
+        val chart = currentAgg.values.sortedByDescending { it.totalAmount }.map { item ->
+            val prev = prevAgg[item.categoryId]
+            PurchaseCategoryChartData(
+                categoryId = item.categoryId,
+                categoryName = item.categoryName,
+                actual = item.totalAmount,
+                target = if (prev != null && prev > 0)
+                    maxOf(prev * 1.10, MIN_PURCHASE_CATEGORY_TARGET)
+                else MIN_PURCHASE_CATEGORY_TARGET
+            )
+        }
+        return PurchaseChartStatistics(
+            totalActual = chart.sumOf { it.actual },
+            totalTarget = maxOf(chart.sumOf { it.target }, MIN_TOTAL_PURCHASE_TARGET),
+            monthLabel = monthKey,
+            categoriesOnTarget = chart.count { !it.hasTarget || it.actual >= it.target },
+            totalCategories = chart.size
         )
     }
 
