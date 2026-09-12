@@ -2,43 +2,57 @@ package com.marsa.smarttrackerhub.utils
 
 import android.content.Context
 import android.content.Intent
+import android.graphics.Color
+import android.graphics.Paint
+import android.graphics.Typeface
+import android.graphics.pdf.PdfDocument
 import androidx.core.content.FileProvider
-import com.itextpdf.io.font.constants.StandardFonts
-import com.itextpdf.kernel.colors.DeviceRgb
-import com.itextpdf.kernel.font.PdfFont
-import com.itextpdf.kernel.font.PdfFontFactory
-import com.itextpdf.kernel.geom.PageSize
-import com.itextpdf.kernel.pdf.PdfDocument
-import com.itextpdf.kernel.pdf.PdfWriter
-import com.itextpdf.layout.Document
-import com.itextpdf.layout.borders.Border
-import com.itextpdf.layout.borders.SolidBorder
-import com.itextpdf.layout.element.Cell
-import com.itextpdf.layout.element.Paragraph
-import com.itextpdf.layout.element.Table
-import com.itextpdf.layout.properties.HorizontalAlignment
-import com.itextpdf.layout.properties.TextAlignment
-import com.itextpdf.layout.properties.UnitValue
 import com.marsa.smarttrackerhub.ui.screens.logs.DayLogSummary
 import com.marsa.smarttrackerhub.ui.screens.logs.EmployeeDayRecord
 import com.marsa.smarttrackerhub.ui.screens.logs.EmployeeMonthSummary
 import com.marsa.smarttrackerhub.ui.screens.logs.ShopMonthSummary
 import java.io.File
+import java.io.FileOutputStream
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 /**
- * Utility for generating and sharing Shop Logs as PDF
+ * Utility for generating and sharing Shop/Employee Logs as PDF.
+ *
+ * Uses the platform's native android.graphics.pdf.PdfDocument instead of iText7: iText7 relies
+ * on reflection in several places and ships no consumer ProGuard rules, so under R8
+ * (isMinifyEnabled=true on release, see app/build.gradle.kts) PDF generation was silently
+ * failing in production while working fine in debug — the whole call is wrapped in
+ * try/catch { e.printStackTrace() }, so the Share button just did nothing. AccountsTracker hit
+ * the same class of R8 issue and already solved it this way (see its
+ * ui/screens/logs/LogsPdfExport.kt); this ports that same approach here.
+ *
+ * Over the 200-line util soft cap: the shared pagination/drawing routine (buildLogsPdf) is one
+ * responsibility (render a two-table logs report) that both entry points need identically —
+ * splitting it into a second file would just move code around, not simplify it. Same tradeoff
+ * accepted in AccountsTracker's equivalent file (267 lines).
  */
 object PdfExportUtil {
 
-    /**
-     * Generates a PDF from shop logs data and shares it
-     *
-     * @param context Application context
-     * @param shopName Name of the shop
-     * @param monthDisplay Display label for the month (e.g., "June 2026")
-     * @param daySummaries List of daily summaries with session data
-     * @param monthSummary Monthly summary with total statistics
-     */
+    private const val PAGE_WIDTH = 595
+    private const val PAGE_HEIGHT = 842
+    private const val MARGIN = 20f
+    private val HEADER_GREEN = Color.rgb(15, 64, 36)
+    private val GRAY_TEXT = Color.rgb(110, 110, 110)
+    private const val ROW_HEIGHT = 22f
+    private const val HEADER_ROW_HEIGHT = 20f
+
+    /** One rendered table row. [closedLabel] non-null means "Closed"/"No record" (day had no sessions). */
+    private data class PdfRow(
+        val date: String,
+        val inTime: String = "",
+        val outTime: String = "",
+        val duration: String = "",
+        val total: String = "",
+        val closedLabel: String? = null
+    )
+
     fun generateAndShareShopLogsPdf(
         context: Context,
         shopName: String,
@@ -47,182 +61,33 @@ object PdfExportUtil {
         monthSummary: ShopMonthSummary?
     ) {
         try {
-            val fileName = "shop_logs_${shopName.replace(" ", "_")}_${System.currentTimeMillis()}.pdf"
-            val cachePath = File(context.cacheDir, "pdfs")
-            cachePath.mkdirs()
-
-            val file = File(cachePath, fileName)
-            val pdfWriter = PdfWriter(file)
-            val pdfDocument = PdfDocument(pdfWriter)
-            val document = Document(pdfDocument, PageSize.A4)
-            document.setMargins(20f, 20f, 20f, 20f)
-
-            // Get font (using built-in Helvetica which supports basic text)
-            val font = PdfFontFactory.createFont(StandardFonts.HELVETICA)
-            val boldFont = PdfFontFactory.createFont(StandardFonts.HELVETICA_BOLD)
-
-            // Header with shop name and month
-            val headerParagraph = Paragraph(shopName)
-                .setFont(boldFont)
-                .setFontSize(18f)
-                .setBold()
-                .setTextAlignment(TextAlignment.CENTER)
-                .setMarginBottom(4f)
-            document.add(headerParagraph)
-
-            val monthParagraph = Paragraph(monthDisplay)
-                .setFont(font)
-                .setFontSize(12f)
-                .setTextAlignment(TextAlignment.CENTER)
-                .setMarginBottom(2f)
-            document.add(monthParagraph)
-            document.add(generatedParagraph(font))
-
-            // Stats section
-            if (monthSummary != null) {
-                val statsTable = Table(UnitValue.createPercentArray(3))
-                    .setWidth(UnitValue.createPercentValue(100f))
-                    .setMarginBottom(16f)
-
-                // Stats headers
-                addTableCell(statsTable, "Days Open", font, 10f, true)
-                addTableCell(statsTable, "Total", font, 10f, true)
-                addTableCell(statsTable, "Average", font, 10f, true)
-
-                // Stats values
-                addTableCell(statsTable, "${monthSummary.totalDaysOpen}", font, 11f, false)
-                addTableCell(statsTable, monthSummary.totalMinutes.toHoursLabel(), font, 11f, false)
-                addTableCell(statsTable, monthSummary.avgMinutesPerDay.toHoursLabel(), font, 11f, false)
-
-                document.add(statsTable)
-            }
-
-            // Shop logs table
-            val logsTable = Table(UnitValue.createPercentArray(5))
-                .setWidth(UnitValue.createPercentValue(100f))
-
-            // Table headers
-            addTableCell(logsTable, "Date", font, 10f, true)
-            addTableCell(logsTable, "Open", font, 10f, true)
-            addTableCell(logsTable, "Close", font, 10f, true)
-            addTableCell(logsTable, "Duration", font, 10f, true)
-            addTableCell(logsTable, "Total", font, 10f, true)
-
-            // Table data
-            for (day in daySummaries) {
-                val dateNumber = try {
-                    day.date.split("-")[2]
-                } catch (e: Exception) {
-                    "01"
-                }
-
-                if (day.sessions.isNotEmpty()) {
-                    for ((index, session) in day.sessions.withIndex()) {
-                        val isFirstSession = index == 0
-                        val isLastSession = index == day.sessions.size - 1
-
-                        // Date column (only on first session of the day)
-                        if (isFirstSession) {
-                            addTableCell(logsTable, dateNumber, font, 9f, false, hasBottomBorder = isLastSession, isFirstSessionOfDay = true)
-                        } else {
-                            addTableCell(logsTable, "", font, 9f, false, hasBottomBorder = isLastSession, isFirstSessionOfDay = false)
-                        }
-
-                        // In time
-                        val inTime = formatLogTime(session.openTime)
-                        addTableCell(logsTable, inTime, font, 9f, false, hasBottomBorder = isLastSession, isFirstSessionOfDay = isFirstSession)
-
-                        // Out time
-                        val outTime = if (session.closeTime != null) {
-                            formatLogTime(session.closeTime)
-                        } else {
-                            "--"
-                        }
-                        addTableCell(logsTable, outTime, font, 9f, false, hasBottomBorder = isLastSession, isFirstSessionOfDay = isFirstSession)
-
-                        // Duration
-                        val duration = session.durationMinutes.toHoursLabel()
-                        addTableCell(logsTable, duration, font, 9f, false, hasBottomBorder = isLastSession, isFirstSessionOfDay = isFirstSession)
-
-                        // Total (only on last session of the day)
-                        if (isLastSession) {
-                            addTableCell(logsTable, day.totalMinutes.toHoursLabel(), font, 9f, false, hasBottomBorder = true, isFirstSessionOfDay = isFirstSession)
-                        } else {
-                            addTableCell(logsTable, "", font, 9f, false, hasBottomBorder = false, isFirstSessionOfDay = isFirstSession)
-                        }
+            val rows = daySummaries.flatMap { day ->
+                if (day.sessions.isEmpty()) {
+                    listOf(PdfRow(date = dayNumber(day.date), closedLabel = "Closed"))
+                } else {
+                    day.sessions.mapIndexed { index, session ->
+                        PdfRow(
+                            date = if (index == 0) dayNumber(day.date) else "",
+                            inTime = formatLogTime(session.openTime),
+                            outTime = if (session.closeTime != null) formatLogTime(session.closeTime) else "--",
+                            duration = session.durationMinutes.toHoursLabel(),
+                            total = if (index == day.sessions.lastIndex) day.totalMinutes.toHoursLabel() else ""
+                        )
                     }
                 }
             }
-
-            document.add(logsTable)
-            document.close()
-
-            // Share the PDF
-            val contentUri = FileProvider.getUriForFile(
-                context,
-                "${context.packageName}.fileprovider",
-                file
+            val stats = listOf(
+                "Days Open" to (monthSummary?.totalDaysOpen?.toString() ?: "0"),
+                "Total" to (monthSummary?.totalMinutes?.toHoursLabel() ?: "0m"),
+                "Average" to (monthSummary?.avgMinutesPerDay?.toHoursLabel() ?: "0m")
             )
-
-            val shareIntent = Intent().apply {
-                action = Intent.ACTION_SEND
-                putExtra(Intent.EXTRA_STREAM, contentUri)
-                type = "application/pdf"
-                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-            }
-
-            context.startActivity(Intent.createChooser(shareIntent, "Share Shop Logs"))
-
+            val file = buildLogsPdf(context, shopName, monthDisplay, stats, rows, "shop_logs_${shopName.replace(" ", "_")}")
+            sharePdf(context, file, "Share Shop Logs")
         } catch (e: Exception) {
             e.printStackTrace()
         }
     }
 
-    private fun addTableCell(
-        table: Table,
-        text: String,
-        font: PdfFont,
-        fontSize: Float,
-        isHeader: Boolean,
-        hasBottomBorder: Boolean = true,
-        isFirstSessionOfDay: Boolean = true
-    ) {
-        val para = Paragraph(text).setFont(font).setFontSize(fontSize)
-        if (isHeader) para.setFontColor(DeviceRgb(255, 255, 255))   // white text on the header band
-        val cell = Cell()
-            .add(para)
-            .setTextAlignment(TextAlignment.CENTER)
-            .setPadding(8f)
-
-        // Set borders
-        val topBorder = if (isFirstSessionOfDay || isHeader) SolidBorder(0.5f) else Border.NO_BORDER
-        val bottomBorder = if (hasBottomBorder) SolidBorder(0.5f) else Border.NO_BORDER
-        val leftBorder = SolidBorder(0.5f)
-        val rightBorder = SolidBorder(0.5f)
-
-        cell.setBorderTop(topBorder)
-        cell.setBorderBottom(bottomBorder)
-        cell.setBorderLeft(leftBorder)
-        cell.setBorderRight(rightBorder)
-
-        if (isHeader) {
-            cell.setBold()
-            cell.setBackgroundColor(DeviceRgb(15, 64, 36))          // dark-green header band
-        }
-
-        table.addCell(cell)
-    }
-
-    /**
-     * Generates a PDF from employee logs data and shares it
-     *
-     * @param context Application context
-     * @param employeeName Name of the employee
-     * @param shopName Name of the associated shop
-     * @param monthDisplay Display label for the month (e.g., "June 2026")
-     * @param dayRecords List of daily records with session data
-     * @param monthSummary Monthly summary with total statistics
-     */
     fun generateAndShareEmployeeLogsPdf(
         context: Context,
         employeeName: String,
@@ -232,153 +97,198 @@ object PdfExportUtil {
         monthSummary: EmployeeMonthSummary?
     ) {
         try {
-            val fileName = "employee_logs_${employeeName.replace(" ", "_")}_${System.currentTimeMillis()}.pdf"
-            val cachePath = File(context.cacheDir, "pdfs")
-            cachePath.mkdirs()
-
-            val file = File(cachePath, fileName)
-            val pdfWriter = PdfWriter(file)
-            val pdfDocument = PdfDocument(pdfWriter)
-            val document = Document(pdfDocument, PageSize.A4)
-            document.setMargins(20f, 20f, 20f, 20f)
-
-            // Get font (using built-in Helvetica which supports basic text)
-            val font = PdfFontFactory.createFont(StandardFonts.HELVETICA)
-            val boldFont = PdfFontFactory.createFont(StandardFonts.HELVETICA_BOLD)
-
-            // Header with employee name
-            val headerParagraph = Paragraph(employeeName)
-                .setFont(boldFont)
-                .setFontSize(18f)
-                .setBold()
-                .setTextAlignment(TextAlignment.CENTER)
-                .setMarginBottom(4f)
-            document.add(headerParagraph)
-
-            // Shop and month info
-            val infoParagraph = Paragraph("$shopName · $monthDisplay")
-                .setFont(font)
-                .setFontSize(12f)
-                .setTextAlignment(TextAlignment.CENTER)
-                .setMarginBottom(2f)
-            document.add(infoParagraph)
-            document.add(generatedParagraph(font))
-
-            // Stats section
-            if (monthSummary != null) {
-                val statsTable = Table(UnitValue.createPercentArray(3))
-                    .setWidth(UnitValue.createPercentValue(100f))
-                    .setMarginBottom(16f)
-
-                // Stats headers
-                addTableCell(statsTable, "Days Worked", font, 10f, true)
-                addTableCell(statsTable, "Total", font, 10f, true)
-                addTableCell(statsTable, "Average", font, 10f, true)
-
-                // Stats values
-                addTableCell(statsTable, "${monthSummary.totalDays}", font, 11f, false)
-                addTableCell(statsTable, monthSummary.totalMinutes.toHoursLabel(), font, 11f, false)
-                addTableCell(statsTable, monthSummary.avgMinutesPerDay.toHoursLabel(), font, 11f, false)
-
-                document.add(statsTable)
-            }
-
-            // Employee logs table
-            val logsTable = Table(UnitValue.createPercentArray(5))
-                .setWidth(UnitValue.createPercentValue(100f))
-
-            // Table headers
-            addTableCell(logsTable, "Date", font, 10f, true)
-            addTableCell(logsTable, "In", font, 10f, true)
-            addTableCell(logsTable, "Out", font, 10f, true)
-            addTableCell(logsTable, "Duration", font, 10f, true)
-            addTableCell(logsTable, "Total", font, 10f, true)
-
-            // Table data
-            for (day in dayRecords) {
-                val dateNumber = try {
-                    day.date.split("-")[2]
-                } catch (e: Exception) {
-                    "01"
-                }
-
-                if (day.sessions.isNotEmpty()) {
-                    for ((index, session) in day.sessions.withIndex()) {
-                        val isFirstSession = index == 0
-                        val isLastSession = index == day.sessions.size - 1
-
-                        // Date column (only on first session of the day)
-                        if (isFirstSession) {
-                            addTableCell(logsTable, dateNumber, font, 9f, false, hasBottomBorder = isLastSession, isFirstSessionOfDay = true)
-                        } else {
-                            addTableCell(logsTable, "", font, 9f, false, hasBottomBorder = isLastSession, isFirstSessionOfDay = false)
-                        }
-
-                        // In time
-                        val inTime = formatLogTime(session.loginTime)
-                        addTableCell(logsTable, inTime, font, 9f, false, hasBottomBorder = isLastSession, isFirstSessionOfDay = isFirstSession)
-
-                        // Out time
-                        val outTime = if (session.logoutTime != null) {
-                            formatLogTime(session.logoutTime)
-                        } else {
-                            "--"
-                        }
-                        addTableCell(logsTable, outTime, font, 9f, false, hasBottomBorder = isLastSession, isFirstSessionOfDay = isFirstSession)
-
-                        // Duration
-                        val duration = session.durationMinutes.toHoursLabel()
-                        addTableCell(logsTable, duration, font, 9f, false, hasBottomBorder = isLastSession, isFirstSessionOfDay = isFirstSession)
-
-                        // Total (only on last session of the day)
-                        if (isLastSession) {
-                            addTableCell(logsTable, day.totalMinutes.toHoursLabel(), font, 9f, false, hasBottomBorder = true, isFirstSessionOfDay = isFirstSession)
-                        } else {
-                            addTableCell(logsTable, "", font, 9f, false, hasBottomBorder = false, isFirstSessionOfDay = isFirstSession)
-                        }
+            val rows = dayRecords.flatMap { day ->
+                if (day.sessions.isEmpty()) {
+                    listOf(PdfRow(date = dayNumber(day.date), closedLabel = "No record"))
+                } else {
+                    day.sessions.mapIndexed { index, session ->
+                        PdfRow(
+                            date = if (index == 0) dayNumber(day.date) else "",
+                            inTime = formatLogTime(session.loginTime),
+                            outTime = if (session.logoutTime != null) formatLogTime(session.logoutTime) else "--",
+                            duration = session.durationMinutes.toHoursLabel(),
+                            total = if (index == day.sessions.lastIndex) day.totalMinutes.toHoursLabel() else ""
+                        )
                     }
                 }
             }
-
-            document.add(logsTable)
-            document.close()
-
-            // Share the PDF
-            val contentUri = FileProvider.getUriForFile(
-                context,
-                "${context.packageName}.fileprovider",
-                file
+            val stats = listOf(
+                "Days Worked" to (monthSummary?.totalDays?.toString() ?: "0"),
+                "Total" to (monthSummary?.totalMinutes?.toHoursLabel() ?: "0m"),
+                "Average" to (monthSummary?.avgMinutesPerDay?.toHoursLabel() ?: "0m")
             )
-
-            val shareIntent = Intent().apply {
-                action = Intent.ACTION_SEND
-                putExtra(Intent.EXTRA_STREAM, contentUri)
-                type = "application/pdf"
-                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-            }
-
-            context.startActivity(Intent.createChooser(shareIntent, "Share Employee Logs"))
-
+            val file = buildLogsPdf(
+                context, employeeName, "$shopName · $monthDisplay", stats, rows,
+                "employee_logs_${employeeName.replace(" ", "_")}"
+            )
+            sharePdf(context, file, "Share Employee Logs")
         } catch (e: Exception) {
             e.printStackTrace()
         }
     }
 
-    /** Standard "Generated: <date>" subtitle used on both reports. */
-    private fun generatedParagraph(font: PdfFont): Paragraph =
-        Paragraph(
-            "Generated: " + java.text.SimpleDateFormat("dd MMM yyyy", java.util.Locale.ENGLISH)
-                .format(java.util.Date())
-        )
-            .setFont(font)
-            .setFontSize(9f)
-            .setFontColor(DeviceRgb(110, 110, 110))
-            .setTextAlignment(TextAlignment.CENTER)
-            .setMarginBottom(16f)
+    /**
+     * Shared drawing engine for both shop and employee logs PDFs — title/subtitle/generated line,
+     * a 3-column stats table, then the 5-column (Date | In | Out | Duration | Total) day table,
+     * paginating (repeating just the table header on continuation pages) when rows overflow.
+     */
+    private fun buildLogsPdf(
+        context: Context,
+        title: String,
+        subtitle: String,
+        stats: List<Pair<String, String>>,
+        rows: List<PdfRow>,
+        filePrefix: String
+    ): File {
+        val document = PdfDocument()
+        val paint = Paint().apply { isAntiAlias = true }
+        val leftMargin = MARGIN
+        val rightMargin = PAGE_WIDTH - MARGIN
+        val contentWidth = rightMargin - leftMargin
+        val centerX = PAGE_WIDTH / 2f
+
+        val colWidths = floatArrayOf(50f, 145f, 145f, 105f, 110f)
+        val colX = FloatArray(5)
+        colX[0] = leftMargin
+        for (i in 1 until 5) colX[i] = colX[i - 1] + colWidths[i - 1]
+        val headers = listOf("Date", "In", "Out", "Duration", "Total")
+
+        var pageNumber = 1
+        var page = document.startPage(PdfDocument.PageInfo.Builder(PAGE_WIDTH, PAGE_HEIGHT, pageNumber).create())
+        var canvas = page.canvas
+        var y = MARGIN
+
+        y += 18f
+        paint.apply {
+            textAlign = Paint.Align.CENTER
+            textSize = 18f
+            typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
+            color = Color.BLACK
+        }
+        canvas.drawText(title, centerX, y, paint)
+
+        y += 20f
+        paint.apply {
+            textSize = 12f
+            typeface = Typeface.create(Typeface.DEFAULT, Typeface.NORMAL)
+        }
+        canvas.drawText(subtitle, centerX, y, paint)
+
+        y += 16f
+        paint.apply { textSize = 9f; color = GRAY_TEXT }
+        canvas.drawText("Generated: " + SimpleDateFormat("dd MMM yyyy", Locale.ENGLISH).format(Date()), centerX, y, paint)
+        y += 16f
+
+        val statColWidth = contentWidth / 3f
+        paint.style = Paint.Style.FILL
+        paint.color = HEADER_GREEN
+        canvas.drawRect(leftMargin, y, rightMargin, y + HEADER_ROW_HEIGHT + 2f, paint)
+        paint.color = Color.WHITE
+        paint.textAlign = Paint.Align.CENTER
+        paint.textSize = 10f
+        paint.typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
+        stats.forEachIndexed { i, (label, _) ->
+            canvas.drawText(label, leftMargin + statColWidth * i + statColWidth / 2f, y + HEADER_ROW_HEIGHT - 5f, paint)
+        }
+        y += HEADER_ROW_HEIGHT + 2f
+        paint.color = Color.BLACK
+        paint.textSize = 11f
+        paint.typeface = Typeface.create(Typeface.DEFAULT, Typeface.NORMAL)
+        stats.forEachIndexed { i, (_, value) ->
+            canvas.drawText(value, leftMargin + statColWidth * i + statColWidth / 2f, y + HEADER_ROW_HEIGHT - 5f, paint)
+        }
+        y += HEADER_ROW_HEIGHT + 16f
+
+        fun drawTableHeader() {
+            paint.style = Paint.Style.FILL
+            paint.color = HEADER_GREEN
+            canvas.drawRect(leftMargin, y, rightMargin, y + HEADER_ROW_HEIGHT, paint)
+            paint.color = Color.WHITE
+            paint.textAlign = Paint.Align.CENTER
+            paint.textSize = 10f
+            paint.typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
+            headers.forEachIndexed { i, h ->
+                canvas.drawText(h, colX[i] + colWidths[i] / 2f, y + HEADER_ROW_HEIGHT - 6f, paint)
+            }
+            y += HEADER_ROW_HEIGHT
+        }
+        drawTableHeader()
+
+        fun newPage() {
+            document.finishPage(page)
+            pageNumber++
+            page = document.startPage(PdfDocument.PageInfo.Builder(PAGE_WIDTH, PAGE_HEIGHT, pageNumber).create())
+            canvas = page.canvas
+            y = MARGIN
+            drawTableHeader()
+        }
+
+        val borderPaint = Paint().apply { color = Color.LTGRAY; strokeWidth = 0.5f; style = Paint.Style.STROKE }
+        for (row in rows) {
+            if (y + ROW_HEIGHT > PAGE_HEIGHT - MARGIN) newPage()
+            val rowTop = y
+            val rowBottom = y + ROW_HEIGHT
+            val baseline = rowBottom - 7f
+
+            paint.style = Paint.Style.FILL
+            paint.typeface = Typeface.create(Typeface.DEFAULT, Typeface.NORMAL)
+            paint.textSize = 9f
+            paint.color = Color.BLACK
+
+            if (row.closedLabel != null) {
+                paint.textAlign = Paint.Align.LEFT
+                canvas.drawText(row.date, colX[0] + 4f, baseline, paint)
+                canvas.drawText(row.closedLabel, colX[1] + 4f, baseline, paint)
+            } else {
+                paint.textAlign = Paint.Align.CENTER
+                if (row.date.isNotEmpty()) canvas.drawText(row.date, colX[0] + colWidths[0] / 2f, baseline, paint)
+                canvas.drawText(row.inTime, colX[1] + colWidths[1] / 2f, baseline, paint)
+                canvas.drawText(row.outTime, colX[2] + colWidths[2] / 2f, baseline, paint)
+                canvas.drawText(row.duration, colX[3] + colWidths[3] / 2f, baseline, paint)
+                if (row.total.isNotEmpty()) {
+                    paint.typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
+                    canvas.drawText(row.total, colX[4] + colWidths[4] / 2f, baseline, paint)
+                }
+            }
+
+            canvas.drawLine(leftMargin, rowTop, rightMargin, rowTop, borderPaint)
+            canvas.drawLine(leftMargin, rowBottom, rightMargin, rowBottom, borderPaint)
+            canvas.drawLine(leftMargin, rowTop, leftMargin, rowBottom, borderPaint)
+            canvas.drawLine(rightMargin, rowTop, rightMargin, rowBottom, borderPaint)
+            for (i in 1 until 5) canvas.drawLine(colX[i], rowTop, colX[i], rowBottom, borderPaint)
+
+            y = rowBottom
+        }
+
+        document.finishPage(page)
+
+        val pdfDir = File(context.cacheDir, "pdfs").apply { mkdirs() }
+        val file = File(pdfDir, "${filePrefix}_${System.currentTimeMillis()}.pdf")
+        document.writeTo(FileOutputStream(file))
+        document.close()
+        return file
+    }
+
+    private fun sharePdf(context: Context, file: File, chooserTitle: String) {
+        val contentUri = FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", file)
+        val shareIntent = Intent(Intent.ACTION_SEND).apply {
+            putExtra(Intent.EXTRA_STREAM, contentUri)
+            type = "application/pdf"
+            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+        }
+        context.startActivity(Intent.createChooser(shareIntent, chooserTitle))
+    }
+
+    private fun dayNumber(date: String): String = try {
+        date.split("-")[2]
+    } catch (e: Exception) {
+        "01"
+    }
 
     private fun formatLogTime(timestamp: Long): String {
-        val dateFormat = java.text.SimpleDateFormat("HH:mm", java.util.Locale.getDefault())
-        return dateFormat.format(java.util.Date(timestamp))
+        if (timestamp == 0L) return ""
+        return try { SimpleDateFormat("HH:mm", Locale.getDefault()).format(Date(timestamp)) }
+        catch (e: Exception) { "" }
     }
 }
 
