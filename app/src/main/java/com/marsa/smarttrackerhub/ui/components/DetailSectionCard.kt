@@ -77,7 +77,9 @@ fun DetailSectionCard(
                 trailing?.invoke()
                 if (onShare != null) {
                     Spacer(modifier = Modifier.width(4.dp))
-                    IconButton(onClick = onShare) {
+                    // Sized to the icon itself — IconButton's default 48dp minimum touch target
+                    // would otherwise force this header row taller than its text needs.
+                    IconButton(onClick = onShare, modifier = Modifier.size(20.dp)) {
                         Icon(
                             imageVector = Icons.Default.Share,
                             contentDescription = "Share $title",

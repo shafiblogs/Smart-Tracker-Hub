@@ -32,7 +32,9 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -42,6 +44,7 @@ import com.marsa.smarttrackerhub.domain.AccessCode
 import com.marsa.smarttrackerhub.domain.AccountSummary
 import com.marsa.smarttrackerhub.ui.components.AedText
 import com.marsa.smarttrackerhub.ui.screens.sale.MonthListCard
+import com.marsa.smarttrackerhub.utils.shareCard
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -50,6 +53,7 @@ fun SummaryScreen(
     onMonthClick: (shopId: String, monthId: String, shopName: String) -> Unit
 ) {
     val context = LocalContext.current
+    val widthPx = with(LocalDensity.current) { LocalConfiguration.current.screenWidthDp.dp.roundToPx() }
     val firebaseApp = FirebaseApp.getInstance("AccountTrackerApp")
     val viewModel: SummaryViewModel = viewModel(
         factory = SummaryScreenViewModelFactory(
@@ -130,36 +134,58 @@ fun SummaryScreen(
                 ) {
                     items(availableMonths) { monthItem ->
                         val summary = summariesCache[monthItem.id]
+                        val shopName = selectedShop?.name ?: ""
                         val status = semanticStatusColors()
+                        val headline: (@Composable () -> Unit)? = if (summary != null) ({
+                            val netColor = if (summary.netProfit >= 0) status.success else status.danger
+                            val sign = if (summary.netProfit >= 0) "+" else ""
+                            Column(horizontalAlignment = Alignment.End) {
+                                AedText(
+                                    amount = summary.netProfit,
+                                    prefix = sign,
+                                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                                    color = netColor
+                                )
+                                Text(
+                                    text = "net profit",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = netColor
+                                )
+                            }
+                        }) else null
+                        val underHeader: (@Composable () -> Unit)? = if (summary != null) ({
+                            AccountMonthCashFlowBars(summary)
+                        }) else null
                         MonthListCard(
                             monthLabel = monthItem.displayName,
-                            shopName = selectedShop?.name ?: "",
+                            shopName = shopName,
                             onClick = {
                                 val sid = selectedShop?.shopId ?: return@MonthListCard
-                                onMonthClick(sid, monthItem.id, selectedShop?.name ?: "")
+                                onMonthClick(sid, monthItem.id, shopName)
                             },
                             lastUpdated = summary?.lastUpdated,
-                            headline = if (summary != null) ({
-                                val netColor = if (summary.netProfit >= 0) status.success else status.danger
-                                val sign = if (summary.netProfit >= 0) "+" else ""
-                                Column(horizontalAlignment = Alignment.End) {
-                                    AedText(
-                                        amount = summary.netProfit,
-                                        prefix = sign,
-                                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-                                        color = netColor
-                                    )
-                                    Text(
-                                        text = "net profit",
-                                        style = MaterialTheme.typography.labelSmall,
-                                        color = netColor
-                                    )
+                            headline = headline,
+                            underHeader = underHeader,
+                            details = { AccountMonthSecondaryMetrics(summary) },
+                            onShare = summary?.let {
+                                {
+                                    shareCard(
+                                        context, widthPx,
+                                        "account_${shopName.replace(" ", "_")}_${monthItem.id.replace(" ", "_")}.png",
+                                        "Share Account"
+                                    ) {
+                                        MonthListCard(
+                                            monthLabel = monthItem.displayName,
+                                            shopName = shopName,
+                                            onClick = {},
+                                            lastUpdated = summary.lastUpdated,
+                                            headline = headline,
+                                            underHeader = underHeader,
+                                            details = { AccountMonthSecondaryMetrics(summary) }
+                                        )
+                                    }
                                 }
-                            }) else null,
-                            underHeader = if (summary != null) ({
-                                AccountMonthCashFlowBars(summary)
-                            }) else null,
-                            details = { AccountMonthSecondaryMetrics(summary) }
+                            }
                         )
                     }
                     item { Spacer(modifier = Modifier.height(24.dp)) }

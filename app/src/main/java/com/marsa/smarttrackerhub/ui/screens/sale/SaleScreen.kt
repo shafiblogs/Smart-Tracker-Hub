@@ -30,7 +30,9 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -41,6 +43,7 @@ import com.marsa.smarttrackerhub.domain.MonthlySummary
 import com.marsa.smarttrackerhub.ui.components.AedText
 import com.marsa.smarttrackerhub.ui.components.MarginBar
 import com.marsa.smarttrackerhub.ui.screens.chart.salesMarginColor
+import com.marsa.smarttrackerhub.utils.shareCard
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -49,6 +52,7 @@ fun SaleScreen(
     onMonthClick: (shopId: String, monthId: String, shopName: String) -> Unit
 ) {
     val context = LocalContext.current
+    val widthPx = with(LocalDensity.current) { LocalConfiguration.current.screenWidthDp.dp.roundToPx() }
     val firebaseApp = FirebaseApp.getInstance("SmartTrackerApp")
     val viewModel: SaleScreenViewModel = viewModel(
         factory = SaleScreenViewModelFactory(
@@ -129,35 +133,57 @@ fun SaleScreen(
                 ) {
                     items(availableMonths) { monthItem ->
                         val summary = summariesCache[monthItem.id]
+                        val shopName = selectedShop?.name ?: ""
                         val marginPct = if (summary != null && summary.totalSales > 0.0) {
                             (summary.totalSales - summary.totalPurchases) / summary.totalSales * 100
                         } else 0.0
+                        val headline: (@Composable () -> Unit)? = if (summary != null) ({
+                            Column(horizontalAlignment = Alignment.End) {
+                                Text(
+                                    text = "${"%.0f".format(marginPct)}%",
+                                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                                    color = salesMarginColor(marginPct, semanticStatusColors())
+                                )
+                                Text(
+                                    text = "margin",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = salesMarginColor(marginPct, semanticStatusColors())
+                                )
+                            }
+                        }) else null
+                        val underHeader: (@Composable () -> Unit)? = if (summary != null) ({
+                            MarginBar(marginPct = marginPct)
+                        }) else null
                         MonthListCard(
                             monthLabel = monthItem.displayName,
-                            shopName = selectedShop?.name ?: "",
+                            shopName = shopName,
                             onClick = {
                                 val sid = selectedShop?.shopId ?: return@MonthListCard
-                                onMonthClick(sid, monthItem.id, selectedShop?.name ?: "")
+                                onMonthClick(sid, monthItem.id, shopName)
                             },
                             lastUpdated = summary?.lastUpdated,
-                            headline = if (summary != null) ({
-                                Column(horizontalAlignment = Alignment.End) {
-                                    Text(
-                                        text = "${"%.0f".format(marginPct)}%",
-                                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-                                        color = salesMarginColor(marginPct, semanticStatusColors())
-                                    )
-                                    Text(
-                                        text = "margin",
-                                        style = MaterialTheme.typography.labelSmall,
-                                        color = salesMarginColor(marginPct, semanticStatusColors())
-                                    )
+                            headline = headline,
+                            underHeader = underHeader,
+                            details = { SaleMonthMetrics(summary) },
+                            onShare = summary?.let {
+                                {
+                                    shareCard(
+                                        context, widthPx,
+                                        "sales_${shopName.replace(" ", "_")}_${monthItem.id.replace(" ", "_")}.png",
+                                        "Share Sales"
+                                    ) {
+                                        MonthListCard(
+                                            monthLabel = monthItem.displayName,
+                                            shopName = shopName,
+                                            onClick = {},
+                                            lastUpdated = summary.lastUpdated,
+                                            headline = headline,
+                                            underHeader = underHeader,
+                                            details = { SaleMonthMetrics(summary) }
+                                        )
+                                    }
                                 }
-                            }) else null,
-                            underHeader = if (summary != null) ({
-                                MarginBar(marginPct = marginPct)
-                            }) else null,
-                            details = { SaleMonthMetrics(summary) }
+                            }
                         )
                     }
                     item { Spacer(modifier = Modifier.height(24.dp)) }

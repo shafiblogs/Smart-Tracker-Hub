@@ -90,9 +90,11 @@ fun UnifiedStatisticsCard(
                 }
 
                 onShareClick?.let { callback ->
+                    // Sized to the icon itself — IconButton's default 48dp minimum touch target
+                    // would otherwise force this header row taller than its two-line text needs.
                     IconButton(
                         onClick = callback,
-                        modifier = Modifier.padding(0.dp)
+                        modifier = Modifier.size(20.dp)
                     ) {
                         Icon(
                             imageVector = Icons.Default.Share,

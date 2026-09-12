@@ -8,13 +8,16 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
+import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -26,9 +29,9 @@ import com.marsa.smarttrackerhub.utils.formatLastUpdated
 
 /**
  * Compact, tappable month row for the Sales/Account list screens.
- * Header: month title + optional headline (e.g., margin % or net profit) + chevron.
- * Optional underHeader content (e.g., a health bar) renders full-width beneath the header,
- * above the divider — before lastUpdated/details.
+ * Header: month title + optional headline (e.g., margin % or net profit) + optional share
+ * button + chevron. Optional underHeader content (e.g., a health bar) renders full-width
+ * beneath the header, above the divider — before lastUpdated/details.
  */
 @Composable
 fun MonthListCard(
@@ -39,7 +42,8 @@ fun MonthListCard(
     lastUpdated: Long? = null,
     headline: (@Composable () -> Unit)? = null,
     underHeader: (@Composable () -> Unit)? = null,
-    details: (@Composable () -> Unit)? = null
+    details: (@Composable () -> Unit)? = null,
+    onShare: (() -> Unit)? = null
 ) {
     Card(
         modifier = Modifier
@@ -75,6 +79,19 @@ fun MonthListCard(
                     }
                 }
                 headline?.invoke()
+                onShare?.let { callback ->
+                    // IconButton's default 48dp minimum touch target would force this compact
+                    // row taller than the month label/headline columns need — sized down to the
+                    // icon itself so the row's height (and everything below it) is unaffected.
+                    IconButton(onClick = callback, modifier = Modifier.size(20.dp)) {
+                        Icon(
+                            imageVector = Icons.Default.Share,
+                            contentDescription = "Share",
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
+                }
                 Icon(
                     imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
                     contentDescription = "View details",
